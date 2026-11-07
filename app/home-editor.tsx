@@ -1,4 +1,6 @@
 "use client";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
 import { HomeDisclosure } from "./home-disclosure";
 import {
   Children,
@@ -158,20 +160,21 @@ export function HomeLayout({
             </small>
           </div>
           <div>
-            <button
+            <Button
               type="button"
               disabled={busy}
               onClick={() => onEditingChange(false)}
             >
               Cancelar
-            </button>
-            <button
-              className="primary"
-              disabled={busy}
+            </Button>
+            <Button
+              variant="primary"
+              busy={busy}
+              busyLabel="Salvando…"
               onClick={() => void save()}
             >
-              {busy ? "Salvando…" : "Concluir"}
-            </button>
+              Concluir
+            </Button>
           </div>
           {message && <p role="alert">{message}</p>}
         </div>
@@ -190,7 +193,7 @@ export function HomeLayout({
           >
             {editing && (
               <div className="home-card-tools">
-                <button
+                <Button
                   type="button"
                   className="home-drag-handle"
                   disabled={busy}
@@ -209,9 +212,9 @@ export function HomeLayout({
                 >
                   <span aria-hidden="true">⠿</span>
                   <span>{label}</span>
-                </button>
+                </Button>
                 <div>
-                  <button
+                  <Button
                     type="button"
                     disabled={busy || index === 0}
                     aria-label={"Subir " + label}
@@ -228,8 +231,8 @@ export function HomeLayout({
                     }
                   >
                     ↑
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     disabled={busy || index === visible.length - 1}
                     aria-label={"Descer " + label}
@@ -246,8 +249,8 @@ export function HomeLayout({
                     }
                   >
                     ↓
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     disabled={busy}
                     className="home-remove-card"
@@ -270,7 +273,7 @@ export function HomeLayout({
                     >
                       <path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -292,17 +295,21 @@ export function HomeLayout({
         );
       })}
       {editing && (
-        <details className="home-add-cards">
-          <summary>
-            ＋ Adicionar cards
-            {p.hidden_cards.length ? ` (${p.hidden_cards.length})` : ""}
-          </summary>
+        <Collapsible
+          className="home-add-cards"
+          summary={
+            <>
+              ＋ Adicionar cards
+              {p.hidden_cards.length ? ` (${p.hidden_cards.length})` : ""}
+            </>
+          }
+        >
           <p className="fine">Toque para trazer um card de volta.</p>
           {p.hidden_cards.length ? (
             p.card_order
               .filter((id) => p.hidden_cards.includes(id))
               .map((id) => (
-                <button
+                <Button
                   type="button"
                   key={id}
                   disabled={busy}
@@ -314,12 +321,12 @@ export function HomeLayout({
                   }
                 >
                   ＋ {homeCards.find((c) => c[0] === id)![1]}
-                </button>
+                </Button>
               ))
           ) : (
             <p>Todos os cards já estão na sua tela.</p>
           )}
-        </details>
+        </Collapsible>
       )}
       {!editing && visible.length === 0 && (
         <p className="family-card">

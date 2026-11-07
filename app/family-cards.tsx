@@ -3,6 +3,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { readCards } from "../src/server/cards.ts";
 import { cardOverview } from "../src/domain/card-overview";
 import { formatted, brDate } from "../src/domain/format.ts";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
+import { Field } from "./field";
 type Cards = Awaited<ReturnType<typeof readCards>>;
 export function CardsPanel({
   cards,
@@ -315,11 +318,14 @@ export function CardsPanel({
                 despesa.
               </p>
             )}
-            <details>
-              <summary>
-                Ver compras e pagamentos (
-                {c.purchases.length + c.payments.length})
-              </summary>
+            <Collapsible
+              summary={
+                <>
+                  Ver compras e pagamentos (
+                  {c.purchases.length + c.payments.length})
+                </>
+              }
+            >
               <ul className="credit-purchases">
                 {[...c.purchases, ...c.payments].map((r) => (
                   <li key={r.id}>
@@ -344,7 +350,7 @@ export function CardsPanel({
                   </li>
                 ))}
               </ul>
-            </details>
+            </Collapsible>
             <p className="fine">
               Compras sem vínculo com uma fatura são mostradas pela data da
               operação. Com ciclo informado, indicamos uma estimativa separada
@@ -352,12 +358,12 @@ export function CardsPanel({
               multiplicar pelo número de parcelas.
             </p>
             {c.connected && (
-              <button
+              <Button
                 type="button"
                 onClick={() => onReview(c.local_account_id)}
               >
                 Conferir movimentos deste cartão
-              </button>
+              </Button>
             )}
           </div>
         </details>
@@ -409,44 +415,43 @@ function CycleForm({
     }
   }
   return (
-    <details>
-      <summary>
-        {cycle
+    <Collapsible
+      summary={
+        cycle
           ? `Ciclo informado: fecha dia ${cycle.closing_day} · vence dia ${cycle.due_day}`
-          : "Informar fechamento e vencimento"}
-      </summary>
+          : "Informar fechamento e vencimento"
+      }
+    >
       {!reader && (
         <form onSubmit={save} className="card-cycle-form">
-          <label>
-            Próximo fechamento
+          <Field label="Próximo fechamento">
             <input
               type="date"
               name="close_date"
               required
               defaultValue={cycle?.effective_close_date}
             />
-          </label>
-          <label>
-            Vencimento dessa fatura
+          </Field>
+          <Field label="Vencimento dessa fatura">
             <input
               type="date"
               name="due_date"
               required
               defaultValue={cycle?.effective_due_date}
             />
-          </label>
+          </Field>
           <p className="fine">
             Usamos esses dias para os próximos meses. Datas específicas do
             banco, quando disponíveis, continuam separadas. Não ajustamos
             feriados automaticamente.
           </p>
-          <button disabled={busy}>
-            {busy ? "Salvando…" : "Salvar ciclo do cartão"}
-          </button>
+          <Button type="submit" busy={busy} busyLabel="Salvando…">
+            Salvar ciclo do cartão
+          </Button>
         </form>
       )}
       {message && <p role="status">{message}</p>}
-    </details>
+    </Collapsible>
   );
 }
 
@@ -502,37 +507,33 @@ function ManualCardForm({
   }
   if (reader) return null;
   return (
-    <details>
-      <summary>
-        {card.manual_bill
-          ? "Editar limite e fatura"
-          : "Informar limite e fatura"}
-      </summary>
+    <Collapsible
+      summary={
+        card.manual_bill ? "Editar limite e fatura" : "Informar limite e fatura"
+      }
+    >
       <form className="card-cycle-form" onSubmit={save}>
         <p className="fine">
           Fatura com vencimento em {month.slice(5)}/{month.slice(0, 4)}. Ao
           salvar novamente, atualizamos a mesma fatura deste mês.
         </p>
-        <label>
-          Limite total (R$)
+        <Field label="Limite total (R$)">
           <input
             name="limit"
             inputMode="decimal"
             placeholder="Ex.: 5.000,00"
             defaultValue={value(card.manual_limit_cents)}
           />
-        </label>
-        <label>
-          Valor da fatura (R$)
+        </Field>
+        <Field label="Valor da fatura (R$)">
           <input
             name="amount"
             inputMode="decimal"
             placeholder="Ex.: 850,00"
             defaultValue={value(card.manual_bill?.amount_cents)}
           />
-        </label>
-        <label>
-          Vencimento da fatura
+        </Field>
+        <Field label="Vencimento da fatura">
           <input
             name="due_date"
             type="date"
@@ -544,7 +545,7 @@ function ManualCardForm({
               .slice(0, 10)}
             defaultValue={card.manual_bill?.due_date ?? ""}
           />
-        </label>
+        </Field>
         <label className="manual-card-paid">
           <input
             name="paid"
@@ -558,11 +559,11 @@ function ManualCardForm({
           cria uma segunda despesa. Informe as compras separadamente quando
           quiser detalhar categorias.
         </p>
-        <button disabled={busy}>
-          {busy ? "Salvando…" : "Salvar limite e fatura"}
-        </button>
+        <Button type="submit" busy={busy} busyLabel="Salvando…">
+          Salvar limite e fatura
+        </Button>
       </form>
       {message && <p role="status">{message}</p>}
-    </details>
+    </Collapsible>
   );
 }

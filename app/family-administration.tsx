@@ -1,6 +1,9 @@
 "use client";
 import { useState } from "react";
 import { useAsyncAction } from "./use-async-action";
+import { Field } from "./field";
+import { Collapsible } from "./collapsible";
+import { Button } from "./button";
 type Family = {
   id: string;
   name: string;
@@ -31,8 +34,8 @@ export function FamilyAdministration() {
         Só seu perfil pode liberar novos casais. Cada casal terá seu próprio
         espaço, separado das finanças de vocês. Até 30 pessoas no total.
       </p>
-      <button
-        disabled={busy}
+      <Button
+        busy={busy}
         onClick={() =>
           void run(async () => {
             setFamilies((await request()).families);
@@ -40,7 +43,7 @@ export function FamilyAdministration() {
         }
       >
         Ver famílias cadastradas
-      </button>
+      </Button>
       {families?.map((f) => (
         <div key={f.id}>
           <h3>{f.name}</h3>
@@ -54,8 +57,7 @@ export function FamilyAdministration() {
         </div>
       ))}
       {families?.length === 0 && <p>Nenhum outro casal cadastrado ainda.</p>}
-      <details>
-        <summary>Adicionar um casal</summary>
+      <Collapsible summary="Adicionar um casal">
         <form
           autoComplete="off"
           onSubmit={(e) => {
@@ -87,24 +89,21 @@ export function FamilyAdministration() {
             );
           }}
         >
-          <label>
-            Nome da família
+          <Field label="Nome da família">
             <input name="familyName" required maxLength={120} />
-          </label>
+          </Field>
           {(["first", "second"] as const).map((prefix, i) => (
             <fieldset key={prefix}>
               <legend>{i === 0 ? "Primeira pessoa" : "Segunda pessoa"}</legend>
-              <label>
-                Nome
+              <Field label="Nome">
                 <input
                   name={prefix + "Name"}
                   required
                   maxLength={120}
                   autoComplete="off"
                 />
-              </label>
-              <label>
-                E-mail
+              </Field>
+              <Field label="E-mail">
                 <input
                   name={prefix + "Email"}
                   type="email"
@@ -112,9 +111,8 @@ export function FamilyAdministration() {
                   maxLength={200}
                   autoComplete="off"
                 />
-              </label>
-              <label>
-                Senha inicial
+              </Field>
+              <Field label="Senha inicial">
                 <input
                   name={prefix + "Password"}
                   type="password"
@@ -123,11 +121,10 @@ export function FamilyAdministration() {
                   maxLength={128}
                   autoComplete="new-password"
                 />
-              </label>
+              </Field>
             </fieldset>
           ))}
-          <label>
-            Sua senha para autorizar
+          <Field label="Sua senha para autorizar">
             <input
               name="currentPassword"
               type="password"
@@ -136,19 +133,17 @@ export function FamilyAdministration() {
               maxLength={128}
               autoComplete="current-password"
             />
-          </label>
+          </Field>
           <p className="fine">
             Os dois acessos são criados juntos. As senhas não ficam visíveis na
             lista de famílias. Entregue cada acesso à pessoa correspondente por
             um canal privado.
           </p>
-          <button disabled={busy}>
-            {busy
-              ? "Criando acessos…"
-              : "Criar família e liberar os dois acessos"}
-          </button>
+          <Button type="submit" busy={busy} busyLabel="Criando acessos…">
+            Criar família e liberar os dois acessos
+          </Button>
         </form>
-      </details>
+      </Collapsible>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
     </section>

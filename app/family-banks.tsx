@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAsyncAction } from "./use-async-action";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
+import { Field } from "./field";
 import { reviewGroups, type ReviewGroup } from "../src/domain/bank-analysis.ts";
 import type { readBanks, renewBank } from "../src/server/banks.ts";
 import { pluggyItemId, bankSetupStage } from "../src/domain/bank-onboarding.ts";
@@ -239,14 +242,14 @@ export function BankPanel({
                       transferências. As condições e a frequência de atualização
                       dependem do plano da Pluggy e do banco.
                     </p>
-                    <button
+                    <Button
                       type="button"
-                      className="primary"
+                      variant="primary"
                       disabled={busy}
                       onClick={() => setGuideStep(2)}
                     >
                       Já autorizei meus bancos · continuar
-                    </button>
+                    </Button>
                   </>
                 )}
                 {step === 2 && (
@@ -271,12 +274,15 @@ export function BankPanel({
                       necessário gerar outro a cada banco.
                     </p>
                     {!reader && (
-                      <details className="bank-setup" open>
-                        <summary>
-                          {data.hasCredentials
+                      <Collapsible
+                        className="bank-setup"
+                        defaultOpen
+                        summary={
+                          data.hasCredentials
                             ? "Atualizar meu acesso à API"
-                            : "Configurar meu acesso à API"}
-                        </summary>
+                            : "Configurar meu acesso à API"
+                        }
+                      >
                         <p className="fine">
                           Credenciais da API da Pluggy. Nunca informe senha
                           bancária. Elas serão cifradas e não poderão ser vistas
@@ -298,8 +304,7 @@ export function BankPanel({
                             }, "Seu acesso foi protegido. Agora adicione o itemId de cada banco.");
                           }}
                         >
-                          <label>
-                            Client ID
+                          <Field label="Client ID">
                             <input
                               name="clientId"
                               autoComplete="off"
@@ -307,9 +312,8 @@ export function BankPanel({
                               minLength={8}
                               maxLength={300}
                             />
-                          </label>
-                          <label>
-                            Client Secret
+                          </Field>
+                          <Field label="Client Secret">
                             <input
                               name="clientSecret"
                               type="password"
@@ -318,20 +322,21 @@ export function BankPanel({
                               minLength={8}
                               maxLength={500}
                             />
-                          </label>
+                          </Field>
                           <label className="bank-consent">
                             <input name="consent" type="checkbox" required />
                             Autorizo consultar minhas contas e compartilhar os
                             movimentos com esta família no Entre Nós.
                           </label>
-                          <button
-                            className="primary"
+                          <Button
+                            type="submit"
+                            variant="primary"
                             disabled={busy || !data.storageReady}
                           >
                             Proteger meu acesso
-                          </button>
+                          </Button>
                         </form>
-                      </details>
+                      </Collapsible>
                     )}
                     {data.hasCredentials && (
                       <button
@@ -379,8 +384,11 @@ export function BankPanel({
                       </p>
                     )}
                     {data.hasCredentials && !reader && (
-                      <details className="bank-setup" open>
-                        <summary>Identificar meu banco</summary>
+                      <Collapsible
+                        className="bank-setup"
+                        defaultOpen
+                        summary="Identificar meu banco"
+                      >
                         <form
                           onSubmit={(e) => {
                             const v = fields(e),
@@ -397,17 +405,15 @@ export function BankPanel({
                             }, "Conexão identificada, reutilizando o vínculo se já existia. Vincule as contas antes de ler os movimentos.");
                           }}
                         >
-                          <label>
-                            Nome para identificar
+                          <Field label="Nome para identificar">
                             <input
                               name="label"
                               required
                               maxLength={120}
                               placeholder="Ex.: meu Nubank…"
                             />
-                          </label>
-                          <label>
-                            itemId ou link da conexão no painel Pluggy
+                          </Field>
+                          <Field label="itemId ou link da conexão no painel Pluggy">
                             <input
                               name="item_id"
                               required
@@ -415,9 +421,8 @@ export function BankPanel({
                               spellCheck={false}
                               maxLength={2048}
                             />
-                          </label>
-                          <label>
-                            Começar a conferir por
+                          </Field>
+                          <Field label="Começar a conferir por">
                             <input
                               name="start_date"
                               type="date"
@@ -430,20 +435,21 @@ export function BankPanel({
                                   .slice(0, 7) + "-01"
                               }
                             />
-                          </label>
+                          </Field>
                           <label className="bank-consent">
                             <input name="consent" type="checkbox" required />
                             Sou titular desta conexão e autorizei a leitura pelo
                             Meu Pluggy.
                           </label>
-                          <button
-                            className="primary"
+                          <Button
+                            type="submit"
+                            variant="primary"
                             disabled={busy || !data.storageReady}
                           >
                             Adicionar banco
-                          </button>
+                          </Button>
                         </form>
-                      </details>
+                      </Collapsible>
                     )}
                   </>
                 )}
@@ -483,16 +489,16 @@ export function BankPanel({
                         </li>
                       ))}
                     </ul>
-                    <button
+                    <Button
                       type="button"
-                      className="primary"
+                      variant="primary"
                       disabled={
                         busy || !ownAccounts.length || unmapped.length > 0
                       }
                       onClick={() => setGuideStep(5)}
                     >
                       Contas vinculadas · continuar
-                    </button>
+                    </Button>
                   </>
                 )}
                 {step === 5 && (
@@ -532,8 +538,7 @@ export function BankPanel({
                   </>
                 )}
               </div>
-              <details className="bank-help">
-                <summary>Preciso de ajuda</summary>
+              <Collapsible className="bank-help" summary="Preciso de ajuda">
                 <p>
                   <strong>Não achei o itemId:</strong> abra a conexão criada em
                   Demo no painel da Pluggy e copie o link que contém itemId.
@@ -555,7 +560,7 @@ export function BankPanel({
                   nossas consultas. Para revogar o compartilhamento, use o Meu
                   Pluggy ou o banco. Os registros anteriores permanecem no app.
                 </p>
-              </details>
+              </Collapsible>
             </section>
           )}
           {!data.connections.length && (
@@ -658,8 +663,7 @@ export function BankPanel({
                             );
                           }}
                         >
-                          <label>
-                            Conta correspondente no Entre Nós
+                          <Field label="Conta correspondente no Entre Nós">
                             <select name="account_id" defaultValue="" required>
                               <option value="">Escolher correspondência</option>
                               <option value="__new__">
@@ -681,15 +685,14 @@ export function BankPanel({
                                   </option>
                                 ))}
                             </select>
-                          </label>
-                          <label>
-                            Nome, se for criar uma conta
+                          </Field>
+                          <Field label="Nome, se for criar uma conta">
                             <input
                               name="name"
                               maxLength={120}
                               defaultValue={a.label}
                             />
-                          </label>
+                          </Field>
                           <button disabled={busy}>Vincular esta conta</button>
                         </form>
                       )
@@ -805,8 +808,7 @@ export function BankPanel({
             da conta de destino.
           </p>
           <div className="bank-analysis-toolbar">
-            <label>
-              Conta ou cartão
+            <Field label="Conta ou cartão">
               <select
                 value={account}
                 disabled={busy}
@@ -823,9 +825,8 @@ export function BankPanel({
                   </option>
                 ))}
               </select>
-            </label>
-            <label>
-              Revisar por grupo
+            </Field>
+            <Field label="Revisar por grupo">
               <select
                 value={group}
                 disabled={busy}
@@ -847,7 +848,7 @@ export function BankPanel({
                   </option>
                 ))}
               </select>
-            </label>
+            </Field>
             {!reader && (
               <button
                 disabled={busy}
@@ -990,8 +991,7 @@ export function BankPanel({
                                   );
                                 }}
                               >
-                                <label>
-                                  Possível movimento já salvo
+                                <Field label="Possível movimento já salvo">
                                   <select name="event_id" required>
                                     {row.candidates.events.map((event) => (
                                       <option value={event.id} key={event.id}>
@@ -1001,10 +1001,14 @@ export function BankPanel({
                                       </option>
                                     ))}
                                   </select>
-                                </label>
-                                <button className="primary" disabled={busy}>
+                                </Field>
+                                <Button
+                                  type="submit"
+                                  variant="primary"
+                                  disabled={busy}
+                                >
                                   Vincular ao existente
-                                </button>
+                                </Button>
                               </form>
                             )}
                             {!!row.candidates.transfer.length && (
@@ -1018,8 +1022,7 @@ export function BankPanel({
                                 ponta ao mesmo movimento.
                               </p>
                             )}
-                            <details>
-                              <summary>Registrar como movimento novo</summary>
+                            <Collapsible summary="Registrar como movimento novo">
                               <NewBankMovement
                                 row={row}
                                 categories={categories}
@@ -1033,11 +1036,10 @@ export function BankPanel({
                                   );
                                 }}
                               />
-                            </details>
+                            </Collapsible>
                           </>
                         )}
-                      <details>
-                        <summary>Deixar fora dos totais</summary>
+                      <Collapsible summary="Deixar fora dos totais">
                         <form
                           onSubmit={(e) => {
                             const v = fields(e);
@@ -1053,20 +1055,19 @@ export function BankPanel({
                             );
                           }}
                         >
-                          <label>
-                            Motivo
+                          <Field label="Motivo">
                             <input
                               name="note"
                               required
                               minLength={8}
                               maxLength={1000}
                             />
-                          </label>
+                          </Field>
                           <button disabled={busy}>
                             Manter fora dos totais
                           </button>
                         </form>
-                      </details>
+                      </Collapsible>
                     </>
                   )}
                 </div>
@@ -1150,8 +1151,7 @@ function NewBankMovement({
         });
       }}
     >
-      <label>
-        O que aconteceu?
+      <Field label="O que aconteceu?">
         <select value={kind} onChange={(e) => setKind(e.target.value)}>
           {!isCard && (
             <>
@@ -1167,12 +1167,15 @@ function NewBankMovement({
           <option value="investment_sell">Resgate</option>
           {!isCard && <option value="yield">Rendimento</option>}
         </select>
-      </label>
+      </Field>
       {paired ? (
-        <label>
-          {isCard && kind === "card_payment"
-            ? "Conta que pagou a fatura"
-            : "Outra conta da operação"}
+        <Field
+          label={
+            isCard && kind === "card_payment"
+              ? "Conta que pagou a fatura"
+              : "Outra conta da operação"
+          }
+        >
           <select name="counter_account_id" required>
             <option value="">Escolher conta</option>
             {accounts
@@ -1185,10 +1188,9 @@ function NewBankMovement({
                 </option>
               ))}
           </select>
-        </label>
+        </Field>
       ) : (
-        <label>
-          Categoria
+        <Field label="Categoria">
           <select name="category_id" required>
             <option value="">Escolher categoria</option>
             {categories.map((c) => (
@@ -1197,11 +1199,10 @@ function NewBankMovement({
               </option>
             ))}
           </select>
-        </label>
+        </Field>
       )}
       {!!row.candidates.staged.length && (
-        <label>
-          Evidência do extrato já enviado
+        <Field label="Evidência do extrato já enviado">
           <select name="staged_id">
             <option value="">Não corresponde a uma linha anterior</option>
             {row.candidates.staged.map((s) => (
@@ -1210,7 +1211,7 @@ function NewBankMovement({
               </option>
             ))}
           </select>
-        </label>
+        </Field>
       )}
       {(!!row.candidates.events.length || !!row.candidates.staged.length) && (
         <label className="bank-consent">
@@ -1219,22 +1220,21 @@ function NewBankMovement({
           registrados.
         </label>
       )}
-      <label>
-        Observação ou justificativa
+      <Field label="Observação ou justificativa">
         <textarea
           name="note"
           maxLength={1000}
           placeholder="Explique as coincidências, se houver…"
         />
-      </label>
+      </Field>
       <p className="fine">
         Estornos sem a origem comprovada devem continuar para revisão. Marcar
         uma conta planejada como paga é uma ação separada, para não duplicar
         despesas.
       </p>
-      <button disabled={busy} className="primary">
+      <Button type="submit" disabled={busy} variant="primary">
         Conferi · salvar movimento
-      </button>
+      </Button>
     </form>
   );
 }
@@ -1255,8 +1255,7 @@ function RenewBank({
     [error, setError] = useState(""),
     [working, setWorking] = useState(false);
   return (
-    <details>
-      <summary>Renovar autorização sem criar outras contas</summary>
+    <Collapsible summary="Renovar autorização sem criar outras contas">
       <p className="fine">
         Depois de renovar no Meu Pluggy e autorizar novamente no painel, informe
         o novo itemId. Confira as correspondências; finais iguais e nomes
@@ -1287,8 +1286,7 @@ function RenewBank({
             }
           }}
         >
-          <label>
-            Novo itemId
+          <Field label="Novo itemId">
             <input
               name="item_id"
               required
@@ -1296,7 +1294,7 @@ function RenewBank({
               autoComplete="off"
               spellCheck={false}
             />
-          </label>
+          </Field>
           <button disabled={busy || working || !ready}>
             Conferir nova autorização
           </button>
@@ -1327,9 +1325,15 @@ function RenewBank({
           }}
         >
           {preview.previous.map((old) => (
-            <label key={old.id}>
-              {old.label}
-              {old.last_four ? " · final " + old.last_four : ""}
+            <Field
+              key={old.id}
+              label={
+                <>
+                  {old.label}
+                  {old.last_four ? " · final " + old.last_four : ""}
+                </>
+              }
+            >
               <select name={old.id} required defaultValue="">
                 <option value="">
                   Escolha a mesma conta na nova autorização
@@ -1347,16 +1351,16 @@ function RenewBank({
                     </option>
                   ))}
               </select>
-            </label>
+            </Field>
           ))}
           <label className="bank-consent">
             <input type="checkbox" required />
             Conferi que são as mesmas contas. Quero preservar os vínculos e o
             histórico.
           </label>
-          <button className="primary" disabled={busy || working}>
+          <Button type="submit" variant="primary" disabled={busy || working}>
             Confirmar renovação dos vínculos
-          </button>
+          </Button>
           <button
             type="button"
             disabled={working}
@@ -1366,6 +1370,6 @@ function RenewBank({
           </button>
         </form>
       )}
-    </details>
+    </Collapsible>
   );
 }

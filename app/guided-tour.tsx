@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
+import { Button } from "./button";
 import { useAsyncAction } from "./use-async-action";
 import { tourLayout } from "../src/domain/tour-layout";
 import type { Preferences } from "../src/domain/preferences";
@@ -223,45 +224,46 @@ export function GuidedTour({
           <span>
             Conheça seu espaço · {step + 1}/{steps.length}
           </span>
-          <button
+          <Button
             type="button"
             disabled={busy}
             aria-label="Fechar apresentação"
             onClick={() => void finish()}
           >
             ×
-          </button>
+          </Button>
         </div>
         <h2 id="guided-title">{steps[step].title}</h2>
         <p id="guided-description">{steps[step].text}</p>
         <div className="guided-actions">
           {step > 0 && (
-            <button
+            <Button
               type="button"
               disabled={busy}
               onClick={() => setStep(step - 1)}
             >
               Voltar
-            </button>
+            </Button>
           )}
           {step < steps.length - 1 ? (
-            <button
+            <Button
               type="button"
-              className="primary"
+              variant="primary"
               disabled={busy}
               onClick={() => setStep(step + 1)}
             >
               Próximo
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
-              className="primary"
-              disabled={busy}
+              variant="primary"
+              busy={busy}
+              busyLabel="Salvando…"
               onClick={() => void finish()}
             >
-              {busy ? "Salvando…" : "Entendi"}
-            </button>
+              Entendi
+            </Button>
           )}
         </div>
         {error && <p role="alert">{error}</p>}

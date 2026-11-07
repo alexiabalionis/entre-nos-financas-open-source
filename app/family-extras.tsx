@@ -1,5 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
+import { Field } from "./field";
 import type { readInvestments } from "../src/server/future.ts";
 import type { MonthlyItem } from "../src/server/routine.ts";
 import { formatted, brDate } from "../src/domain/format.ts";
@@ -64,8 +67,7 @@ export function ThemeControl() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
   return (
-    <label className="family-theme">
-      Aparência
+    <Field className="family-theme" label="Aparência">
       <select
         aria-label="Aparência"
         value={theme}
@@ -81,7 +83,7 @@ export function ThemeControl() {
         <option value="light">Claro</option>
         <option value="dark">Escuro</option>
       </select>
-    </label>
+    </Field>
   );
 }
 async function read<T>(url: string, signal: AbortSignal): Promise<T> {
@@ -144,9 +146,9 @@ export function FuturePanel({
         {error && (
           <p role="alert">
             {error}{" "}
-            <button onClick={() => setRetry((n) => n + 1)}>
+            <Button onClick={() => setRetry((n) => n + 1)}>
               Tentar novamente
-            </button>
+            </Button>
           </p>
         )}
         {!data && !error && <p role="status">Buscando investimentos…</p>}
@@ -211,29 +213,28 @@ export function FuturePanel({
           Rendimentos aqui incluem registros desta natureza em todas as contas,
           e não representam a rentabilidade da carteira.
         </p>
-        <details>
-          <summary>Registrar aporte, resgate ou rendimento</summary>
+        <Collapsible summary="Registrar aporte, resgate ou rendimento">
           <div className="family-actions">
             {[
               ["investment_buy", "Aporte"],
               ["investment_sell", "Resgate"],
               ["yield", "Rendimento"],
             ].map(([kind, label]) => (
-              <button key={kind} disabled={reader} onClick={() => record(kind)}>
+              <Button key={kind} disabled={reader} onClick={() => record(kind)}>
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
           <p className="fine">
             A operação será registrada apenas após conferir conta, valor e data.
           </p>
-        </details>
+        </Collapsible>
       </section>
       <div className="family-section">
         <h2>Nossas reservas do mês</h2>
-        <button disabled={reader} onClick={plan}>
+        <Button disabled={reader} onClick={plan}>
           Planejar
-        </button>
+        </Button>
       </div>
       {goals.map((g) => {
         const target = BigInt(g.planned_cents ?? "0"),
@@ -283,9 +284,9 @@ export function FuturePanel({
           </p>
         </section>
       )}
-      <button className="family-wide" onClick={panorama}>
+      <Button className="family-wide" onClick={panorama}>
         Ver panorama do mês e nossas contas
-      </button>
+      </Button>
     </>
   );
 }
