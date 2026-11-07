@@ -12,6 +12,9 @@ import {
 } from "../src/domain/movements.ts";
 import { CategoryIcon } from "./family-categories";
 import { FamilyIcon } from "./family-extras";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
+import { Field } from "./field";
 
 const filters: [MovementFilter, string][] = [
   ["all", "Todos"],
@@ -134,7 +137,7 @@ export function MovementsPanel({
             <strong>{totals.review} a conferir</strong>
             <small>Guardados para revisão, sem confirmar lançamentos.</small>
           </span>
-          <button
+          <Button
             type="button"
             onClick={() => {
               setFilter("review");
@@ -142,7 +145,7 @@ export function MovementsPanel({
             }}
           >
             Ver
-          </button>
+          </Button>
         </aside>
       )}
       <section
@@ -150,8 +153,7 @@ export function MovementsPanel({
         aria-label="Buscar e filtrar movimentos"
       >
         <div className="movement-search-row">
-          <label>
-            <span className="sr-only">Buscar movimentos</span>
+          <Field label={<span className="sr-only">Buscar movimentos</span>}>
             <input
               type="search"
               value={query}
@@ -161,16 +163,17 @@ export function MovementsPanel({
               }}
               placeholder="Buscar descrição, conta ou categoria"
             />
-          </label>
-          <button
+          </Field>
+          <Button
             type="button"
-            className="primary movement-add"
+            variant="primary"
+            className="movement-add"
             disabled={reader}
             onClick={onRecord}
             aria-label="Registrar movimento"
           >
             ＋
-          </button>
+          </Button>
         </div>
         <div
           className="movement-chips"
@@ -178,7 +181,7 @@ export function MovementsPanel({
           aria-label="Tipo de movimento"
         >
           {filters.map(([value, label]) => (
-            <button
+            <Button
               key={value}
               type="button"
               aria-pressed={filter === value}
@@ -188,13 +191,14 @@ export function MovementsPanel({
               }}
             >
               {label}
-            </button>
+            </Button>
           ))}
         </div>
-        <details className="movement-account-filter">
-          <summary>Filtrar por conta{account ? " · " + account : ""}</summary>
-          <label>
-            Conta
+        <Collapsible
+          className="movement-account-filter"
+          summary={<>Filtrar por conta{account ? " · " + account : ""}</>}
+        >
+          <Field label="Conta">
             <select
               value={account}
               onChange={(e) => {
@@ -207,8 +211,8 @@ export function MovementsPanel({
                 <option key={a}>{a}</option>
               ))}
             </select>
-          </label>
-        </details>
+          </Field>
+        </Collapsible>
       </section>
       <div className="movement-history-heading">
         <h2>Histórico do mês</h2>
@@ -226,7 +230,7 @@ export function MovementsPanel({
               : "Os registros deste mês vão aparecer aqui."}
           </p>
           {rows.length > 0 && (
-            <button
+            <Button
               onClick={() => {
                 setQuery("");
                 setAccount("");
@@ -234,7 +238,7 @@ export function MovementsPanel({
               }}
             >
               Limpar filtros
-            </button>
+            </Button>
           )}
         </section>
       )}
@@ -263,56 +267,61 @@ export function MovementsPanel({
               ].includes(row.kind ?? "");
               const amount = BigInt(row.amount);
               return (
-                <details className="movement-entry" key={row.id}>
-                  <summary>
-                    <span
-                      className="movement-symbol"
-                      data-tone={
-                        row.review
-                          ? "review"
-                          : neutral
+                <Collapsible
+                  className="movement-entry"
+                  key={row.id}
+                  summary={
+                    <>
+                      <span
+                        className="movement-symbol"
+                        data-tone={
+                          row.review
+                            ? "review"
+                            : neutral
+                              ? "neutral"
+                              : amount > 0n
+                                ? "income"
+                                : "expense"
+                        }
+                      >
+                        {type === "transfer" ? (
+                          <FamilyIcon name="movements" />
+                        ) : row.review ? (
+                          <span aria-hidden="true">?</span>
+                        ) : row.category ? (
+                          <CategoryIcon name={row.category} />
+                        ) : (
+                          <span aria-hidden="true">
+                            {neutral ? "↔" : amount > 0n ? "↙" : "↗"}
+                          </span>
+                        )}
+                      </span>
+                      <span className="movement-entry-name">
+                        <strong>{row.description}</strong>
+                        <small>{row.account}</small>
+                        {row.review && (
+                          <em>
+                            {row.duplicate
+                              ? "Possível repetição · a conferir"
+                              : "A conferir"}
+                          </em>
+                        )}
+                      </span>
+                      <strong
+                        className="movement-amount"
+                        data-tone={
+                          row.review || neutral
                             ? "neutral"
                             : amount > 0n
                               ? "income"
                               : "expense"
-                      }
-                    >
-                      {type === "transfer" ? (
-                        <FamilyIcon name="movements" />
-                      ) : row.review ? (
-                        <span aria-hidden="true">?</span>
-                      ) : row.category ? (
-                        <CategoryIcon name={row.category} />
-                      ) : (
-                        <span aria-hidden="true">
-                          {neutral ? "↔" : amount > 0n ? "↙" : "↗"}
-                        </span>
-                      )}
-                    </span>
-                    <span className="movement-entry-name">
-                      <strong>{row.description}</strong>
-                      <small>{row.account}</small>
-                      {row.review && (
-                        <em>
-                          {row.duplicate
-                            ? "Possível repetição · a conferir"
-                            : "A conferir"}
-                        </em>
-                      )}
-                    </span>
-                    <strong
-                      className="movement-amount"
-                      data-tone={
-                        row.review || neutral
-                          ? "neutral"
-                          : amount > 0n
-                            ? "income"
-                            : "expense"
-                      }
-                    >
-                      {money(row.amount)}
-                    </strong>
-                  </summary>
+                        }
+                      >
+                        {money(row.amount)}
+                      </strong>
+                    </>
+                  }
+                >
                   <dl className="movement-entry-detail">
                     <div>
                       <dt>Tipo</dt>
@@ -339,19 +348,19 @@ export function MovementsPanel({
                       </dd>
                     </div>
                   </dl>
-                </details>
+                </Collapsible>
               );
             })}
           </div>
         </section>
       ))}
       {filtered.length > limit && (
-        <button
+        <Button
           className="movement-more"
           onClick={() => setLimit((value) => value + 40)}
         >
           Ver mais {Math.min(40, filtered.length - limit)} movimentos
-        </button>
+        </Button>
       )}
       <p className="family-footnote">
         Toque em um movimento para ver os detalhes. Os dois lados de

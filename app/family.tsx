@@ -38,6 +38,9 @@ import { InstallApp } from "./mobile";
 import { FamilyAdministration } from "./family-administration";
 import { FamilyIcon, FuturePanel, HelpPanel } from "./family-extras";
 import { useAsyncAction } from "./use-async-action";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
+import { Field } from "./field";
 
 type Data = {
   cards: Awaited<ReturnType<typeof readCards>>;
@@ -330,26 +333,23 @@ export default function FamilyApp() {
         >
           {!auth.configured && (
             <>
-              <label>
-                Seu nome
+              <Field label="Seu nome">
                 <input name="name" autoComplete="given-name" required />
-              </label>
+              </Field>
               <input type="hidden" name="familyName" value="Nossa família" />
               {auth.hosted && (
-                <label>
-                  Código de configuração
+                <Field label="Código de configuração">
                   <input
                     name="setupToken"
                     type="password"
                     autoComplete="off"
                     required
                   />
-                </label>
+                </Field>
               )}
             </>
           )}
-          <label>
-            E-mail
+          <Field label="E-mail">
             <input
               name="email"
               type="email"
@@ -357,9 +357,8 @@ export default function FamilyApp() {
               spellCheck={false}
               required
             />
-          </label>
-          <label>
-            Senha
+          </Field>
+          <Field label="Senha">
             <input
               name="password"
               type="password"
@@ -370,10 +369,15 @@ export default function FamilyApp() {
               maxLength={128}
               required
             />
-          </label>
-          <button className="primary" disabled={busy}>
-            {busy ? "Entrando…" : "Entrar no nosso espaço"}
-          </button>
+          </Field>
+          <Button
+            type="submit"
+            variant="primary"
+            busy={busy}
+            busyLabel="Entrando…"
+          >
+            Entrar no nosso espaço
+          </Button>
         </form>
         {banner}
         <p className="fine">Acesso privado de vocês dois.</p>
@@ -771,11 +775,14 @@ export default function FamilyApp() {
                     </p>
                   )}
                   {!!reminders.missingDates.length && (
-                    <details>
-                      <summary>
-                        {reminders.missingDates.length} conta(s) sem vencimento
-                        — definir para receber alarmes
-                      </summary>
+                    <Collapsible
+                      summary={
+                        <>
+                          {reminders.missingDates.length} conta(s) sem
+                          vencimento — definir para receber alarmes
+                        </>
+                      }
+                    >
                       {reminders.missingDates.map((r) => (
                         <button
                           type="button"
@@ -792,7 +799,7 @@ export default function FamilyApp() {
                           <span>Definir data</span>
                         </button>
                       ))}
-                    </details>
+                    </Collapsible>
                   )}
                 </section>
               </HomeBlock>
@@ -1212,8 +1219,7 @@ export default function FamilyApp() {
                   </p>
                 ))}
                 {auth.user.role === "owner" && members.length === 1 && (
-                  <details>
-                    <summary>Adicionar minha esposa</summary>
+                  <Collapsible summary="Adicionar minha esposa">
                     <form
                       onSubmit={(e) => {
                         const v = values(e);
@@ -1225,26 +1231,23 @@ export default function FamilyApp() {
                         }, "Acesso individual criado.");
                       }}
                     >
-                      <label>
-                        Nome
+                      <Field label="Nome">
                         <input
                           name="name"
                           autoComplete="name"
                           required
                           maxLength={120}
                         />
-                      </label>
-                      <label>
-                        E-mail
+                      </Field>
+                      <Field label="E-mail">
                         <input
                           name="email"
                           type="email"
                           autoComplete="email"
                           required
                         />
-                      </label>
-                      <label>
-                        Senha inicial
+                      </Field>
+                      <Field label="Senha inicial">
                         <input
                           name="password"
                           type="password"
@@ -1253,10 +1256,10 @@ export default function FamilyApp() {
                           autoComplete="new-password"
                           required
                         />
-                      </label>
+                      </Field>
                       <button disabled={busy}>Criar acesso dela</button>
                     </form>
-                  </details>
+                  </Collapsible>
                 )}
               </section>
             </ProfileCard>
@@ -1310,8 +1313,7 @@ export default function FamilyApp() {
                   Marcar um compromisso como pago atualiza a lista do mês. Isso
                   não duplica um pagamento que já está no histórico.
                 </p>
-                <details>
-                  <summary>Alterar minha senha</summary>
+                <Collapsible summary="Alterar minha senha">
                   <form
                     onSubmit={(e) => {
                       const v = values(e);
@@ -1320,17 +1322,15 @@ export default function FamilyApp() {
                       }, "Senha atualizada; outros acessos foram encerrados.");
                     }}
                   >
-                    <label>
-                      Senha atual
+                    <Field label="Senha atual">
                       <input
                         name="current"
                         type="password"
                         autoComplete="current-password"
                         required
                       />
-                    </label>
-                    <label>
-                      Nova senha
+                    </Field>
+                    <Field label="Nova senha">
                       <input
                         name="password"
                         type="password"
@@ -1339,10 +1339,10 @@ export default function FamilyApp() {
                         maxLength={128}
                         required
                       />
-                    </label>
+                    </Field>
                     <button disabled={busy}>Salvar nova senha</button>
                   </form>
-                </details>
+                </Collapsible>
                 <button
                   disabled={busy}
                   onClick={() =>
@@ -1473,8 +1473,7 @@ export default function FamilyApp() {
                 ›
               </button>
             </div>
-            <label>
-              Ir para outro mês
+            <Field label="Ir para outro mês">
               <input
                 aria-label="Ir para outro mês"
                 type="month"
@@ -1486,10 +1485,10 @@ export default function FamilyApp() {
                   if (e.target.value) setMonth(e.target.value);
                 }}
               />
-            </label>
-            <button className="primary" onClick={() => setModal(null)}>
+            </Field>
+            <Button variant="primary" onClick={() => setModal(null)}>
               Ver este mês
-            </button>
+            </Button>
             <button
               onClick={() => {
                 setMonth(today().slice(0, 7));
@@ -1503,12 +1502,12 @@ export default function FamilyApp() {
         {modal === "entry" && (
           <div className="family-entry-options">
             <p>O dinheiro já entrou ou ainda está previsto?</p>
-            <button
-              className="primary"
+            <Button
+              variant="primary"
               onClick={() => open("movement", null, "income")}
             >
               Já recebi · registrar entrada
-            </button>
+            </Button>
             <button onClick={() => open("item", null, "income")}>
               Vou receber · planejar entrada
             </button>
@@ -1547,8 +1546,7 @@ export default function FamilyApp() {
               });
             }}
           >
-            <label>
-              O que vamos planejar?
+            <Field label="O que vamos planejar?">
               <input
                 name="label"
                 defaultValue={selected?.label}
@@ -1560,9 +1558,8 @@ export default function FamilyApp() {
                     : "Ex.: energia de casa…"
                 }
               />
-            </label>
-            <label>
-              Tipo
+            </Field>
+            <Field label="Tipo">
               <select
                 name="purpose"
                 value={itemPurpose}
@@ -1578,10 +1575,9 @@ export default function FamilyApp() {
               {selected && (
                 <input type="hidden" name="purpose" value={selected.purpose} />
               )}
-            </label>
+            </Field>
             {["expense", "card", "benefit"].includes(itemPurpose) && (
-              <label>
-                Como aparece no mês
+              <Field label="Como aparece no mês">
                 <select
                   name="cost_type"
                   defaultValue={selected?.cost_type ?? newCostType}
@@ -1594,10 +1590,9 @@ export default function FamilyApp() {
                     Custo variável · gasto que varia
                   </option>
                 </select>
-              </label>
+              </Field>
             )}
-            <label>
-              Valor previsto ({selected?.currency ?? currency})
+            <Field label={`Valor previsto (${selected?.currency ?? currency})`}>
               <input
                 name="amount"
                 inputMode="decimal"
@@ -1608,9 +1603,8 @@ export default function FamilyApp() {
                 }
                 placeholder="0,00"
               />
-            </label>
-            <label>
-              Vencimento (opcional)
+            </Field>
+            <Field label="Vencimento (opcional)">
               <input
                 name="due_date"
                 type="date"
@@ -1618,7 +1612,7 @@ export default function FamilyApp() {
                 max={moveMonth(month, 1) + "-01"}
                 defaultValue={selected?.due_date ?? ""}
               />
-            </label>
+            </Field>
             {["expense", "benefit"].includes(
               selected?.purpose ?? itemPurpose,
             ) && (
@@ -1627,14 +1621,13 @@ export default function FamilyApp() {
                 value={selected?.category_id}
               />
             )}
-            <label>
-              Observações
+            <Field label="Observações">
               <textarea
                 name="notes"
                 maxLength={1000}
                 defaultValue={selected?.notes}
               />
-            </label>
+            </Field>
             {selected?.source_note && (
               <p className="fine">Na planilha: {selected.source_note}</p>
             )}
@@ -1649,12 +1642,15 @@ export default function FamilyApp() {
                 . Não gera um novo movimento.
               </p>
             )}
-            <button
-              className="primary"
-              disabled={busy || auth.user?.role === "reader"}
+            <Button
+              type="submit"
+              variant="primary"
+              busy={busy}
+              busyLabel="Salvando…"
+              disabled={auth.user?.role === "reader"}
             >
-              {busy ? "Salvando…" : "Salvar no nosso mês"}
-            </button>
+              Salvar no nosso mês
+            </Button>
           </form>
         )}
         {modal === "check" && selected && (
@@ -1679,8 +1675,7 @@ export default function FamilyApp() {
             <p>
               <strong>{selected.label}</strong>
             </p>
-            <label>
-              Como está?
+            <Field label="Como está?">
               <select
                 name="status"
                 defaultValue={selected.status === "done" ? "open" : "done"}
@@ -1697,9 +1692,8 @@ export default function FamilyApp() {
                 </option>
                 <option value="open">Em aberto</option>
               </select>
-            </label>
-            <label>
-              Valor realizado (opcional)
+            </Field>
+            <Field label="Valor realizado (opcional)">
               <input
                 name="amount"
                 inputMode="decimal"
@@ -1712,18 +1706,16 @@ export default function FamilyApp() {
                 }
                 placeholder="0,00"
               />
-            </label>
-            <label>
-              Data (opcional)
+            </Field>
+            <Field label="Data (opcional)">
               <input
                 type="date"
                 name="date"
                 defaultValue={selected.paid_date ?? today()}
               />
-            </label>
+            </Field>
             {selected.candidates.length > 0 && (
-              <label>
-                Vincular a movimento já registrado (opcional)
+              <Field label="Vincular a movimento já registrado (opcional)">
                 <select name="event_id" defaultValue={selected.event_id ?? ""}>
                   <option value="">Apenas atualizar a lista</option>
                   {selected.candidates.map((e) => (
@@ -1733,15 +1725,20 @@ export default function FamilyApp() {
                     </option>
                   ))}
                 </select>
-              </label>
+              </Field>
             )}
             <p className="fine">
               Atualiza o acompanhamento do mês sem repetir os movimentos
               bancários. Uma coincidência de valor é sugestão, não confirmação.
             </p>
-            <button className="primary" disabled={busy}>
-              {busy ? "Salvando…" : "Atualizar compromisso"}
-            </button>
+            <Button
+              type="submit"
+              variant="primary"
+              busy={busy}
+              busyLabel="Salvando…"
+            >
+              Atualizar compromisso
+            </Button>
           </form>
         )}
         {modal === "movement" && (
@@ -1825,8 +1822,7 @@ function MovementForm({
         });
       }}
     >
-      <label>
-        O que aconteceu?
+      <Field label="O que aconteceu?">
         <select value={kind} onChange={(e) => setKind(e.target.value)}>
           <option value="expense">Gasto fora do plano</option>
           <option value="income">Entrada extra</option>
@@ -1837,22 +1833,24 @@ function MovementForm({
           <option value="investment_sell">Resgate de investimento</option>
           <option value="yield">Rendimento</option>
         </select>
-      </label>
-      <label>
-        Descrição
+      </Field>
+      <Field label="Descrição">
         <input
           name="description"
           required
           maxLength={180}
           placeholder="Ex.: passeio em família…"
         />
-      </label>
-      <label>
-        {kind === "investment_sell"
-          ? "Conta que recebeu o resgate"
-          : paired
-            ? "Saiu de"
-            : "Conta"}
+      </Field>
+      <Field
+        label={
+          kind === "investment_sell"
+            ? "Conta que recebeu o resgate"
+            : paired
+              ? "Saiu de"
+              : "Conta"
+        }
+      >
         <select
           name="account_id"
           required
@@ -1875,10 +1873,15 @@ function MovementForm({
               </option>
             ))}
         </select>
-      </label>
+      </Field>
       {paired && (
-        <label>
-          {kind === "investment_sell" ? "Investimento resgatado" : "Foi para"}
+        <Field
+          label={
+            kind === "investment_sell"
+              ? "Investimento resgatado"
+              : "Foi para"
+          }
+        >
           <select
             name="counter_account_id"
             value={to}
@@ -1903,10 +1906,9 @@ function MovementForm({
                 </option>
               ))}
           </select>
-        </label>
+        </Field>
       )}
-      <label>
-        Valor {account?.currency ?? currency}
+      <Field label={`Valor ${account?.currency ?? currency}`}>
         <input
           name="amount"
           inputMode="decimal"
@@ -1914,10 +1916,9 @@ function MovementForm({
           placeholder="0,00"
           required
         />
-      </label>
+      </Field>
       {kind === "fx" && (
-        <label>
-          Valor recebido em {counter?.currency ?? "outra moeda"}
+        <Field label={`Valor recebido em ${counter?.currency ?? "outra moeda"}`}>
           <input
             name="counter_amount"
             inputMode="decimal"
@@ -1925,12 +1926,11 @@ function MovementForm({
             placeholder="0,00"
             required
           />
-        </label>
+        </Field>
       )}
-      <label>
-        Data
+      <Field label="Data">
         <input name="date" type="date" required defaultValue={today()} />
-      </label>
+      </Field>
       {!paired && <CategoryPicker categories={categories} required />}
       {paired && (
         <p className="fine">
@@ -1938,9 +1938,9 @@ function MovementForm({
           dinheiro não cria renda nem consumo.
         </p>
       )}
-      <button className="primary" disabled={busy}>
-        {busy ? "Salvando…" : "Registrar para nós dois"}
-      </button>
+      <Button type="submit" variant="primary" busy={busy} busyLabel="Salvando…">
+        Registrar para nós dois
+      </Button>
     </form>
   );
 }

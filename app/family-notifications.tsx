@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
 import { useAsyncAction } from "./use-async-action";
 
 type Config = {
@@ -208,8 +210,10 @@ export function NotificationsPanel() {
         </p>
       )}
       <div className="family-actions">
-        <button
-          className="primary"
+        <Button
+          variant="primary"
+          busy={busy}
+          busyLabel="Aguarde…"
           disabled={
             busy ||
             !config ||
@@ -219,9 +223,9 @@ export function NotificationsPanel() {
           }
           onClick={() => void work(enable)}
         >
-          {busy ? "Aguarde…" : "Ativar neste aparelho"}
-        </button>
-        <button
+          Ativar neste aparelho
+        </Button>
+        <Button
           disabled={
             busy || !device?.subscribed || device.permission !== "granted"
           }
@@ -241,8 +245,8 @@ export function NotificationsPanel() {
           }
         >
           Enviar teste
-        </button>
-        <button
+        </Button>
+        <Button
           disabled={busy || !device?.subscribed}
           onClick={() =>
             void work(async () => {
@@ -260,8 +264,8 @@ export function NotificationsPanel() {
           }
         >
           Desativar neste aparelho
-        </button>
-        <button
+        </Button>
+        <Button
           disabled={busy}
           onClick={() =>
             void work(async () => {
@@ -271,10 +275,9 @@ export function NotificationsPanel() {
           }
         >
           Verificar configuração
-        </button>
+        </Button>
       </div>
-      <details>
-        <summary>O teste não apareceu?</summary>
+      <Collapsible summary="O teste não apareceu?">
         <ul>
           <li>
             No iPhone, use o app instalado na Tela de Início. Confira Ajustes →
@@ -294,7 +297,7 @@ export function NotificationsPanel() {
             aparelho. Cada instalação tem sua própria inscrição.
           </li>
         </ul>
-      </details>
+      </Collapsible>
       <p className="fine">
         O lembrete diário é agendado para a janela entre 9h e 10h, no horário de
         Brasília. A entrega depende da conexão, do serviço de push e dos ajustes

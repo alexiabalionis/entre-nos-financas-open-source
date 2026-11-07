@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
 export function MobileNav({
   current,
   items,
@@ -25,22 +27,22 @@ export function MobileNav({
     <>
       <nav className="mobile-nav" aria-label="Navegação móvel">
         {primary.map(([id, name, icon]) => (
-          <button
+          <Button
             key={id}
             aria-current={current === id ? "page" : undefined}
             onClick={() => select(id)}
           >
             <span aria-hidden="true">{icon}</span>
             {name}
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
           aria-expanded={more}
           aria-haspopup="dialog"
           onClick={() => setMore(true)}
         >
           <span aria-hidden="true">☰</span>Mais
-        </button>
+        </Button>
       </nav>
       <dialog
         className="mobile-menu"
@@ -51,13 +53,13 @@ export function MobileNav({
       >
         <div className="section-title">
           <h2 id="mobile-menu-title">Seu espaço financeiro</h2>
-          <button onClick={() => setMore(false)} aria-label="Fechar menu">
+          <Button onClick={() => setMore(false)} aria-label="Fechar menu">
             ✕
-          </button>
+          </Button>
         </div>
         <nav aria-label="Todas as áreas">
           {items.map(([id, name, icon]) => (
-            <button
+            <Button
               key={id}
               aria-current={current === id ? "page" : undefined}
               onClick={() => {
@@ -67,7 +69,7 @@ export function MobileNav({
             >
               <span aria-hidden="true">{icon}</span>
               {name}
-            </button>
+            </Button>
           ))}
         </nav>
         <p className="fine">Acesso individual · finanças compartilhadas</p>
@@ -108,8 +110,11 @@ export function InstallApp() {
         <p role="status">O Entre Nós já está aberto como app neste aparelho.</p>
       )}
       {!standalone && (
-        <details className="install-guide" open>
-          <summary>Instalar no iPhone ou outro celular</summary>
+        <Collapsible
+          className="install-guide"
+          defaultOpen
+          summary="Instalar no iPhone ou outro celular"
+        >
           <p>
             {ios
               ? "No Safari, toque em Compartilhar, depois em Adicionar à Tela de Início e ative Abrir como App."
@@ -120,7 +125,7 @@ export function InstallApp() {
             HTTPS da versão hospedada. O endereço 127.0.0.1 pertence apenas ao
             aparelho em que foi aberto.
           </p>
-        </details>
+        </Collapsible>
       )}
     </>
   );

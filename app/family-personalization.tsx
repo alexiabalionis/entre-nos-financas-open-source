@@ -7,6 +7,8 @@ import {
   type FormEvent,
 } from "react";
 import { type HomeCardId, type Preferences } from "../src/domain/preferences";
+import { Field } from "./field";
+import { Button } from "./button";
 export function HomeBlock({
   children,
 }: {
@@ -187,8 +189,7 @@ export function PreferencesPanel({
             ) : (
               <span aria-hidden="true">{name.charAt(0)}</span>
             )}
-            <label>
-              Adicionar ou trocar foto
+            <Field label="Adicionar ou trocar foto">
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
@@ -213,7 +214,7 @@ export function PreferencesPanel({
                   }
                 }}
               />
-            </label>
+            </Field>
           </div>
           {photoUrl && (
             <button
@@ -231,14 +232,13 @@ export function PreferencesPanel({
             A foto é salva ao escolher. Ela é reduzida antes do envio e seus
             metadados são removidos. Ela não tem link público.
           </p>
-          <label>
-            Cor de destaque
+          <Field label="Cor de destaque">
             <input
               type="color"
               value={draft.accent}
               onChange={(e) => setDraft({ ...draft, accent: e.target.value })}
             />
-          </label>
+          </Field>
           <div className="personal-swatches">
             {["#c5ab8b", "#8cb5a1", "#a9b7d7", "#c6a2bf", "#d6b178"].map(
               (color) => (
@@ -253,8 +253,7 @@ export function PreferencesPanel({
               ),
             )}
           </div>
-          <label>
-            Aparência
+          <Field label="Aparência">
             <select
               value={draft.theme}
               onChange={(e) =>
@@ -268,7 +267,7 @@ export function PreferencesPanel({
               <option value="light">Claro</option>
               <option value="dark">Escuro</option>
             </select>
-          </label>
+          </Field>
         </fieldset>
         <div className="personal-layout-link">
           <strong>Organização da tela principal</strong>
@@ -280,13 +279,13 @@ export function PreferencesPanel({
             Organizar minha tela principal
           </button>
         </div>
-        <button className="primary" disabled={busy || processing}>
+        <Button type="submit" variant="primary" busy={busy || processing}>
           {processing
             ? "Preparando foto…"
             : busy
               ? "Salvando…"
               : "Salvar meu espaço"}
-        </button>
+        </Button>
         {message && <p role="status">{message}</p>}
       </form>
       <button type="button" onClick={onTour}>

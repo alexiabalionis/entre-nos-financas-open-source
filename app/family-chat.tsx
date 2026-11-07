@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
 import type { Currency } from "../src/domain/finance.ts";
 
 import type {
@@ -486,7 +488,7 @@ export function HelpPanel({
   return (
     <section className="family-chat" aria-label="Conversa com Judite">
       <header className="chat-toolbar">
-        <button
+        <Button
           className="chat-mode"
           aria-expanded={settings}
           onClick={() => setSettings((s) => !s)}
@@ -501,8 +503,8 @@ export function HelpPanel({
             </small>
           </span>
           <span aria-hidden="true">⌄</span>
-        </button>
-        <button
+        </Button>
+        <Button
           className="chat-history-toggle"
           aria-label="Histórico de conversas"
           aria-expanded={historyOpen}
@@ -513,8 +515,8 @@ export function HelpPanel({
           }}
         >
           Histórico
-        </button>
-        <button
+        </Button>
+        <Button
           className="chat-new"
           disabled={busy || !!saving || loading || hidden}
           aria-label="Nova conversa"
@@ -522,18 +524,18 @@ export function HelpPanel({
           onClick={() => void newConversation()}
         >
           ＋
-        </button>
+        </Button>
       </header>
       {historyOpen && !hidden && (
         <section className="chat-history" aria-label="Suas conversas salvas">
           <div className="family-section">
             <h2>Suas conversas</h2>
-            <button
+            <Button
               aria-label="Fechar histórico"
               onClick={() => setHistoryOpen(false)}
             >
               ×
-            </button>
+            </Button>
           </div>
           <p>
             Privadas para o seu acesso. Novas conversas não apagam as
@@ -543,7 +545,7 @@ export function HelpPanel({
             <p>A primeira conversa ficará salva aqui.</p>
           ) : (
             conversations.map((c) => (
-              <button
+              <Button
                 key={c.id}
                 className="chat-history-item"
                 aria-current={c.id === conversation?.id ? "true" : undefined}
@@ -554,16 +556,16 @@ export function HelpPanel({
                 <small>
                   {c.month} · {c.currency}
                 </small>
-              </button>
+              </Button>
             ))
           )}
           {hasMore && (
-            <button
+            <Button
               disabled={loading}
               onClick={() => void list(true).catch((e) => setError(e.message))}
             >
               Carregar mais conversas
-            </button>
+            </Button>
           )}
         </section>
       )}
@@ -601,7 +603,7 @@ export function HelpPanel({
                 : "A IA externa ainda não está configurada. As consultas locais continuam disponíveis."}
             </p>
           )}
-          <button onClick={() => setSettings(false)}>Pronto</button>
+          <Button onClick={() => setSettings(false)}>Pronto</Button>
         </div>
       )}
       {hidden ? (
@@ -630,13 +632,13 @@ export function HelpPanel({
             }}
           >
             {hasOlder && (
-              <button
+              <Button
                 className="chat-older"
                 disabled={loading}
                 onClick={() => void older()}
               >
                 Carregar mensagens anteriores
-              </button>
+              </Button>
             )}
             {loading && (
               <p className="chat-loading" role="status">
@@ -664,19 +666,19 @@ export function HelpPanel({
                         ]
                       : ["Como estão nossos investimentos?"]),
                   ].map((q) => (
-                    <button key={q} disabled={busy} onClick={() => void ask(q)}>
+                    <Button key={q} disabled={busy} onClick={() => void ask(q)}>
                       {q}
                       <span aria-hidden="true">↗</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 {!external && ready && !reader && (
-                  <button
+                  <Button
                     className="chat-enable"
                     onClick={() => setSettings(true)}
                   >
                     Ativar conversa com IA
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -720,8 +722,8 @@ export function HelpPanel({
                             datas.
                           </p>
                           <div className="chat-action-buttons">
-                            <button
-                              className="primary"
+                            <Button
+                              variant="primary"
                               disabled={
                                 !!saving ||
                                 busy ||
@@ -736,8 +738,8 @@ export function HelpPanel({
                               {saving === m.action.id
                                 ? "Processando…"
                                 : "Confirmar e salvar"}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               disabled={
                                 !!saving ||
                                 busy ||
@@ -750,18 +752,20 @@ export function HelpPanel({
                               }
                             >
                               Cancelar
-                            </button>
+                            </Button>
                           </div>
                         </>
                       )}
                     </section>
                   )}
                   {m.source && (
-                    <details className="chat-sources">
-                      <summary>Fontes e limites da resposta</summary>
+                    <Collapsible
+                      className="chat-sources"
+                      summary="Fontes e limites da resposta"
+                    >
                       <p>{m.source}</p>
                       <p>{m.coverage}</p>
-                    </details>
+                    </Collapsible>
                   )}
                 </div>
               </article>
@@ -776,25 +780,25 @@ export function HelpPanel({
             {referenceOnly && (
               <p className="family-footnote">
                 Esta conversa em {conversation?.currency} fica como referência.{" "}
-                <button
+                <Button
                   disabled={loading}
                   onClick={() => void newConversation()}
                 >
                   Conversar em reais
-                </button>
+                </Button>
               </p>
             )}
             {error && (
               <p className="family-error" role="alert">
                 {error}{" "}
                 {conversation && (
-                  <button
+                  <Button
                     type="button"
                     disabled={busy || loading}
                     onClick={() => void choose(conversation.id)}
                   >
                     Atualizar conversa
-                  </button>
+                  </Button>
                 )}
               </p>
             )}
@@ -805,7 +809,7 @@ export function HelpPanel({
                 void ask(draft);
               }}
             >
-              <button
+              <Button
                 type="button"
                 className="chat-attach"
                 aria-label="Abrir formulário de movimento"
@@ -816,7 +820,7 @@ export function HelpPanel({
                 onClick={record}
               >
                 ＋
-              </button>
+              </Button>
               <label className="sr-only" htmlFor="chat-draft">
                 Mensagem para Judite
               </label>
@@ -839,16 +843,17 @@ export function HelpPanel({
                 }
               />
               {busy ? (
-                <button
+                <Button
                   type="button"
                   className="chat-send"
                   onClick={stop}
                   aria-label="Parar resposta"
                 >
                   ■
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
+                  type="submit"
                   className="chat-send"
                   disabled={
                     draft.trim().length < 3 ||
@@ -860,7 +865,7 @@ export function HelpPanel({
                   aria-label="Enviar mensagem"
                 >
                   ↑
-                </button>
+                </Button>
               )}
             </form>
             <p className="chat-disclaimer">
