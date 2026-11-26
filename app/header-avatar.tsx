@@ -1,12 +1,15 @@
 "use client";
 import { useState } from "react";
-import { FamilyIcon } from "./family-extras";
+import { AvatarCluster } from "./ds/avatar-cluster";
+import { personColor } from "./month/blocks/month-header";
 export function HeaderAvatar({
   hasPhoto,
   revision,
+  name,
 }: {
   hasPhoto: boolean;
   revision: number;
+  name: string;
 }) {
   const [failed, setFailed] = useState(false);
   return hasPhoto && !failed ? (
@@ -20,6 +23,6 @@ export function HeaderAvatar({
       onError={() => setFailed(true)}
     />
   ) : (
-    <FamilyIcon name="us" />
+    <AvatarCluster people={[{ initial: name.charAt(0), color: personColor(0) }]} />
   );
 }

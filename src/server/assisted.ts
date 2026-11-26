@@ -14,6 +14,7 @@ import {
   accountFor,
   addEvent,
   refreshReconciliations,
+  UserError,
   type StageRow,
 } from "./imports.ts";
 import { normalize, type Kind } from "../domain/finance.ts";
@@ -47,41 +48,118 @@ export function categoryFor(description: string): {
   strong: boolean;
 } {
   const t = normalize(description).split(/AGENCIA:| CONTA:/)[0];
+  // Lista calibrada contra o extrato real (cartão + conta corrente). A ordem
+  // importa: a primeira regex que casa vence, então receitas/neutros vêm antes
+  // dos gastos, e categorias mais específicas (seguros, saúde) antes das mais
+  // amplas. O texto já chega em MAIÚSCULA e sem acento (normalize). O que não
+  // casa aqui (comerciante local, PIX para pessoa) fica em "Outras despesas" e
+  // é resolvido pelo aprendizado por correção (merchant_rules).
   const rules: [RegExp, string][] = [
-    [/WISE CHARGES|TARIFA|TAXA|IMPOST|IOF|IPVA/, "Impostos e tarifas"],
-    [/DIZIM|JEJUM|MISSAO|OFERTA|DOAC/, "Doações"],
+    [/SALARIO|REMUNERACAO|FREELANC|SKEELO/, "Receitas profissionais"],
+    [/REND PAGO|RENDIMENTO|CASHBACK/, "Rendimentos"],
+    [/WISE CHARGES|TARIFA|TAXA|IMPOST|\bIOF\b|IPVA/, "Impostos e tarifas"],
     [
-      /SUPERMERC|MERCADO(?! PAGO| LIVRE)|HORTIFR|ACOUGUE|FEIRA/,
+      /ZURICH|ITAU SEGUROS|SEGURADORA|PORTO SEGURO|PREVIDENCIA|CORRETORA DE SEGUROS/,
+      "Seguros",
+    ],
+    [/DIZIM|JEJUM|MISSAO|OFERTA|DOAC|PAROQUIA|IGREJA/, "Doações"],
+    [
+      /UNIMED|FARMAC|DROGARIA|DROGA |RAIA\d|\bRAIA\b|RD SAUDE|GAMA PHARMA|TERAPIA|PSICO|IMPLAN|COOPART|COPART|SAUDE|REM[ÉE]D|SERVICOS MEDICOS|\bDRA?\s/,
+      "Saúde",
+    ],
+    [
+      /SUPERMERC|MERCADO(?! PAGO| LIVRE|LIVRE|\*)|HORTIFR|ACOUGUE|FEIRA|PAO DE ACUCAR|ATACADAO|SAM.?S CLUB|COVABRA|TAUSTE|DALBEN|POUPE SUPER|VAREJAO|ARIEL SUPER|REDEMIX|PADARIA|PANIFICAD|CASA DE CARNE|PEIXARIA|CACIMBA|BRASINHA|QUAGLIO|AGROCESAR/,
       "Supermercado e feira",
     ],
     [
-      /IFOOD|IFD\*|MARMITA|RESTAUR|LANCH|JANTAR|BURGER|MCDONAL|PIZZ/,
+      /IFOOD|IFD\*|MARMITA|RESTAUR|LANCH|JANTAR|BURGER|MC ?DONAL|ARCOS DOURADOS|PIZZ|SUSHI|CHURRASC|CAFFE|\bCAFE\b|GELATO|SORVETE|EMPORIO|CERVEJARIA|ADEGA|CONFRA|MILKSHAKE|DEGUST|POKE|J. C. DELIVERY|EDSAN ENTREGAS|ASSADOS|MATUTO|COCO DA LAGOA|TABUAS|LANDEL|LA GUAPA|PICCOLO|TOC TOC|TOCA DO? TATU|CARAMELLO|BASILICO|JOHNNY JOY|LUIGI|O EMBAIXADOR|CHIQUINHO|COLONIAL PADARIA|KM 64/,
       "Alimentação fora",
     ],
+    [/FRALDA|HIGIENE|LENCOS|PBKIDS|BRINQUEDO/, "Cuidados infantis"],
     [
-      /UNIMED|FARMAC|DROGARIA|TERAPIA|PSICO|IMPLAN|COOPART|COPART|SAUDE|REM[ÉE]D/,
-      "Saúde",
-    ],
-    [/FRALDA|HIGIENE|LENCOS/, "Cuidados infantis"],
-    [
-      /COMBUST|GASOLINA|POSTO |AUTO POSTO|UBER|BOLT|CARRO|CLIO|SEGURO DO CARRO/,
+      /COMBUST|GASOLINA|POSTO |AUTO POSTO|\bUBER\b|BOLT|99 ?APP|99POP|CABIFY|REAL GAS|SW - KM|AUTO BAN|MARGINAL TIETE|RODOSHOPPING|ESTACIONAMENT|SP2 ESTACION|CANDEIAS ESTAC|TAGITAU|SEM PARAR|VELOE|CONECTCAR|PEDAGIO|SEGURO DO CARRO/,
       "Transporte",
     ],
-    [/FACULDADE|UNIT(?!ED)|MATRICULA|MATERIAS|TCC/, "Educação"],
-    [/CELULAR|TELEFONICA|VIVO|TELEFON|INTERNET/, "Telefonia e internet"],
-    [/ENERG|AGUA|SANEAM|DESO|ALUGUEL|AR-COND/, "Moradia"],
+    [
+      /FACULDADE|UNIT(?!ED)|MATRICULA|MATERIAS|TCC|UNIVERSIDADE|ESCOLA|COLEGIO|CURSO |ALURA|UDEMY|EDITORA|\bLIVROS?\b|ALEPH/,
+      "Educação",
+    ],
+    [
+      /NETFLIX|SPOTIFY|DISNEY|HBO MAX|PRIME VIDEO|YOUTUBE ?PREMIUM|GOOGLE YOUTUBE|GOOGLE ONE|GOOGLE G1|DEEZER|PARAMOUNT|GLOBOPLAY|ANTHROPIC|CLAUDE|KIRO POWER|OPENAI|CHATGPT|SUBSTACK|RECORDTV|TIKTOK SHP|APPLE.COM|APPLE SERVICES/,
+      "Assinaturas e streaming",
+    ],
+    [
+      /CELULAR|TELEFONICA|\bVIVO\b|TELEFON|INTERNET|CLARO FLEX|\bCLARO\b/,
+      "Telefonia e internet",
+    ],
+    [/ENERG|\bAGUA\b|SANEAM|\bDESO\b|ALUGUEL|AR-COND|CPFL|SANASA|CONDOMINIO/, "Moradia"],
     [/CONTADOR/, "Atividade profissional"],
+    [
+      /COBASI|\bPETZ\b|PETLOVE|PET SHOP|PETSHOP|PLANETA PET|WORLDPETDOG|NEWPET|PROVODOG|VETERIN|RACAO/,
+      "Pet",
+    ],
+    [
+      /ACADEMIA|LAZER|PASSEIO|CINEPOLIS|KINOPLEX|CINEMA|SYMPLA|PARQUE DOM PEDRO|SHOPPING|GALLERIA|JAGUARA PARK|ANHEMBI|\bFEVER\b|WELLHUB|SKYFIT|LIGAFITNESS|FITNESS/,
+      "Lazer",
+    ],
     [/BABA|MESVERS|FESTA|FOTOGRAF/, "Família"],
-    [/ACADEMIA|LAZER|PASSEIO/, "Lazer"],
-    [/VESTUARIO|PESSOAL|MOCHILA|MERCADO LIVRE/, "Compras pessoais"],
-    [/SALARIO|REMUNERACAO|FREELANC/, "Receitas profissionais"],
-    [/REND PAGO|RENDIMENTO|CASHBACK/, "Rendimentos"],
-    [/PASSAPORTE|VIAGEM/, "Viagens"],
+    [
+      /VESTUARIO|PESSOAL|MOCHILA|MERCADO LIVRE|MERCADOLIVRE|MERCADO\*|\bMP \*|AMAZON|AMZN|SHOPEE|ALIEXPRESS|SHEIN|MAGALU|MAGAZINE|AMERICANAS|CASAS BAHIA|DECATHLON|CENTAURO|AUTHENTIC FEET|JDN SPORTS|\bZARA\b|INDITEX|\bFILA\b|AQUARELA|KACYUMARA|DAISO|CEA CAS|SEPHORA|BOTICARIO|COSMETICOS|MAKIBELLA|CACAU SHOW|OTICA|GLOBALE|\bZP \*|STB\*|ZIGPAY|CENTERLAR|HERMES COM/,
+      "Compras pessoais",
+    ],
+    [/PASSAPORTE|VIAGEM|HOTEL|AIRBNB|LATAM|GOL |AZUL /, "Viagens"],
   ];
   const match = rules.find(([re]) => re.test(t));
   return match
     ? { name: match[1], strong: true }
     : { name: "Outras despesas", strong: false };
+}
+/**
+ * Chave de aprendizado derivada da descrição do movimento. Limpa prefixo de
+ * operação ("Compra débito", "Pix enviado"), prefixo de agregador mantendo o
+ * nome do lojista ("MP *sabordomilho" -> "SABORDOMILHO"), datas/parcelas,
+ * sufixo cidade+UF colado do cartão ("...CAMPINASBRA") e CPF/CNPJ. Devolve o
+ * miolo em MAIÚSCULA, até 40 caracteres. É só uma SUGESTÃO: o usuário confirma
+ * ou edita a chave antes de gravar a regra (merchant_rules).
+ */
+export function merchantKey(description: string): string {
+  let t = description.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  t = t.replace(
+    /^(COMPRA DEBITO|COMPRA CREDITO|PIX ENVIADO|PIX AGENDADO|PIX RECEBIDO|PAGAMENTO DE PIX QR CODE|PAGAMENTO DE BOLETO|PAGAMENTO DE IMPOSTO|DEBITO AUTOMATICO DA|DEBITO AUTOMATICO|ENTRADA|SAIDA)\s+/,
+    "",
+  );
+  t = t.replace(
+    /^(IFD\*|MP \*|MERCADOLIVRE\*|MERCADO\*|SHOPEE \*|ZP \*+\s*|STB\*|HNA\*|DL\s*\*|EBN\*|STAFE BANK\*|WPS\*|CAPPTA \*|JIM\.COM\*|TAGITAU\s*\*?|ANTHROPIC\*)\s*/,
+    "",
+  );
+  t = t.replace(/\s*\d{2}\/\d{2}\s*$/, "");
+  t = t.replace(
+    /(SAO PAULO|CAMPINAS|PAULINIA|SAN FRANCISCO|SEATTLE|BARUERI|OSASCO|GUARULHOS|BELO HORIZON\w*|RIO DE JANEIR\w*|PORTO ALEGRE|LONDRINA|CAJAMAR|MONTE MOR|VALINHOS|AMERICANA)\s*(BRA?|USA)?\s*$/,
+    "",
+  );
+  t = t.replace(/\s*(BRA|USA|BR)\s*$/, "");
+  t = t.replace(/^\d[\d\s.\-/]{4,}\s*/, "");
+  t = t.replace(/-\d{3,}$/, "");
+  t = t.replace(/\s+/g, " ").trim();
+  return t.slice(0, 40).trim();
+}
+/**
+ * Categoria resolvida por precedência: primeiro uma merchant_rule aprendida
+ * cujo match_text está contido na descrição (a mais longa vence, mais
+ * específica), depois a regex fixa (categoryFor), senão "Outras despesas".
+ * Ponto único de decisão de categoria (DRY), usado por import, banco, PIX e
+ * cartão.
+ */
+export function resolveCategory(
+  rules: { match_text: string; category_name: string }[],
+  description: string,
+): { name: string; strong: boolean } {
+  const t = normalize(description);
+  const learned = rules
+    .filter((r) => t.includes(normalize(r.match_text)))
+    .sort((a, b) => b.match_text.length - a.match_text.length)[0];
+  if (learned) return { name: learned.category_name, strong: true };
+  return categoryFor(description);
 }
 async function category(tx: Transaction, family: string, name: string) {
   await tx.query(
@@ -556,5 +634,102 @@ export async function prepareOpenings(db: Database, user: Identity) {
     }
     await refreshReconciliations(tx, user.familyId);
     return { changed };
+  });
+}
+
+/**
+ * Grava (ou reaprende) uma merchant_rule a partir de uma correção de categoria
+ * confirmada pelo usuário. A chave (match_text) já vem confirmada/editada na
+ * UI; o backend só valida e persiste. Cria a categoria se ainda não existir.
+ * ON CONFLICT reaprende a chave existente (precisa do GRANT UPDATE da 019).
+ */
+export async function learnMerchantRule(
+  db: Database,
+  user: Identity,
+  raw: unknown,
+) {
+  if (!["owner", "editor"].includes(user.role))
+    throw new UserError("Seu acesso é somente para leitura.");
+  const input = z
+    .object({
+      match_text: z.string().trim().min(3).max(120),
+      category_name: z.string().trim().min(1).max(120),
+    })
+    .strict()
+    .parse(raw);
+  const match = input.match_text.toUpperCase();
+  return asUser(db, user.userId, async (tx) => {
+    await category(tx, user.familyId, input.category_name);
+    // RETURNING devolve o id da regra (criada ou reaproveitada no conflito),
+    // para o audit usar um uuid válido em entity_id (coluna uuid NOT NULL).
+    const ruleId = (
+      await tx.query<{ id: string }>(
+        "INSERT INTO merchant_rules(id,household_id,match_text,category_name,note) VALUES($1,$2,$3,$4,'') ON CONFLICT(household_id,match_text) DO UPDATE SET category_name=excluded.category_name RETURNING id",
+        [randomUUID(), user.familyId, match, input.category_name],
+      )
+    ).rows[0].id;
+    await recordAudit(tx, user.familyId, user.userId, "merchant.rule.learn", ruleId, {
+      category: input.category_name,
+      match_text: match,
+    });
+    return { match_text: match, category_name: input.category_name };
+  });
+}
+
+/**
+ * Recategoriza um movimento JÁ CONFIRMADO (economic_event): débito, crédito,
+ * estorno, compra de cartão, qualquer kind — categoria é ortogonal ao tipo.
+ * Só mexe em category_id (o trigger de balanceamento não é afetado, pois os
+ * ledger_entries não mudam). Cria a categoria se não existir. Opcionalmente
+ * aprende a chave (merchant_rule) para as próximas transações com o mesmo
+ * texto caírem sozinhas na categoria, como no fluxo de categorização do banco.
+ */
+export async function assignEventCategory(
+  db: Database,
+  user: Identity,
+  raw: unknown,
+) {
+  if (!["owner", "editor"].includes(user.role))
+    throw new UserError("Seu acesso é somente para leitura.");
+  const input = z
+    .object({
+      event_id: z.uuid(),
+      category_name: z.string().trim().min(1).max(120),
+      learn_match_text: z.string().trim().min(3).max(120).nullable().default(null),
+      tag_id: z.uuid().nullable().default(null),
+    })
+    .strict()
+    .parse(raw);
+  return asUser(db, user.userId, async (tx) => {
+    const categoryId = await category(tx, user.familyId, input.category_name);
+    if (input.tag_id) {
+      const tag = await tx.query(
+        "SELECT 1 FROM category_tags WHERE id=$1 AND household_id=$2 AND category_id=$3",
+        [input.tag_id, user.familyId, categoryId],
+      );
+      if (!tag.rows.length)
+        throw new UserError("Etiqueta indisponível para esta categoria.");
+    }
+    // Trocar de categoria sem etiqueta limpa a etiqueta antiga (era de outra categoria).
+    const result = await tx.query(
+      "UPDATE economic_events SET category_id=$1,tag_id=$4 WHERE id=$2 AND household_id=$3 RETURNING id",
+      [categoryId, input.event_id, user.familyId, input.tag_id],
+    );
+    if (!result.rows.length) throw new UserError("Movimento indisponível.");
+    if (input.learn_match_text) {
+      const match = input.learn_match_text.toUpperCase();
+      await tx.query(
+        "INSERT INTO merchant_rules(id,household_id,match_text,category_name,note) VALUES($1,$2,$3,$4,'') ON CONFLICT(household_id,match_text) DO UPDATE SET category_name=excluded.category_name",
+        [randomUUID(), user.familyId, match, input.category_name],
+      );
+    }
+    await recordAudit(tx, user.familyId, user.userId, "event.recategorize", input.event_id, {
+      category: input.category_name,
+    });
+    return {
+      event_id: input.event_id,
+      category_name: input.category_name,
+      tag_id: input.tag_id,
+    };
   });
 }

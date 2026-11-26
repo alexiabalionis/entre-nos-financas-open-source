@@ -3,6 +3,7 @@ import type { Database } from "./db.ts";
 import { asUser, recordAudit } from "./db.ts";
 import type { Identity } from "./auth.ts";
 import { normalize, type Currency } from "../domain/finance.ts";
+import { billPayment } from "../domain/bank-analysis.ts";
 
 export type PendingRow = {
   category_id?: string | null;
@@ -268,7 +269,7 @@ export function analyzePending(rows: PendingRow[], name = "") {
   }
   for (const r of rows) {
     const t = normalize(r.description);
-    if (r.kind === "card_payment" || /PAGAMENTO DE FATURA/.test(t)) {
+    if (r.kind === "card_payment" || billPayment(t)) {
       add(
         "Faturas",
         "Identificar cartão e titular",

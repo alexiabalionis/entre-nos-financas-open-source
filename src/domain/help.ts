@@ -2,8 +2,29 @@ import type { MonthlyItem } from "../server/routine.ts";
 import { formatted, brDate } from "./format.ts";
 import type { Currency } from "./finance.ts";
 import type { HistoryMonth } from "../server/help-history.ts";
+import type { InsightsContext, CategorySpendContext } from "./insights-facts.ts";
+import type { GoalNeedFact } from "./future-facts.ts";
+
+export type GoalFact = {
+  name: string;
+  target_cents: string;
+  saved_cents: string;
+  verified_cents: string;
+  declared_cents: string;
+  deadline_month: string | null;
+  status: string;
+  has_location: boolean;
+  /** Quanto a casa combinou guardar nesta reserva no mês atual (plano do mês). */
+  planned_this_month_cents?: string | null;
+};
 
 export type HelpContext = {
+  insights?: InsightsContext;
+  categorySpend?: CategorySpendContext;
+  goalList?: GoalFact[];
+  futureGoalNeeds?: GoalNeedFact[];
+  /** Só contagem por tipo e temas mais usados (sem texto): diz quando vale buscar. */
+  memorySummary?: { por_tipo: Record<string, number>; temas: string[] };
   month: string;
   historyMonths?: HistoryMonth[];
   currency: Currency;
@@ -50,7 +71,7 @@ export function localHelp(question: string, context: HelpContext) {
         : "Não há meses com registros disponíveis para esse período.",
       source: `Judite · histórico da família · ${c.currency}`,
       coverage:
-        "Meses sem registros não são presumidos zerados. Transferências e pagamentos de fatura não são novos gastos; previsões não são receitas confirmadas. Histórico parcial não comprova saldo bancário.",
+        "O consumo de cada mês conta as compras do cartão pelo mês em que a fatura vence, não pela data da compra. Meses sem registros não são presumidos zerados. Transferências e pagamentos de fatura não são novos gastos; previsões não são receitas confirmadas. Histórico parcial não comprova saldo bancário.",
       mode: "local" as const,
     };
   }
@@ -92,7 +113,7 @@ export function localHelp(question: string, context: HelpContext) {
             )
             .join("\n")
         : "Não há aportes, resgates ou rendimentos confirmados neste mês e moeda.") +
-      "\nEm Futuro, vocês encontram as posições conhecidas. As moedas são separadas. Esses movimentos não comprovam saldo atual ou rentabilidade da carteira; rendimentos podem incluir contas correntes.";
+      "\nNo Copiloto, vocês encontram as posições conhecidas. As moedas são separadas. Esses movimentos não comprovam saldo atual ou rentabilidade da carteira; rendimentos podem incluir contas correntes.";
   } else if (/aliment|mercado|categoria/.test(q)) {
     const wanted = c.budgets.filter((b) =>
       /alimenta|supermerc|feira/.test(normalize(b.category_name)),
@@ -106,7 +127,7 @@ export function localHelp(question: string, context: HelpContext) {
           .join("\n")
       : "Não há orçamento de alimentação nesta moeda para este mês. Vocês podem ajustar as contas no planejamento; não vou estimar um limite sem dados.";
   } else if (/gaste|gastam|consumo|gasto|entrou|receb|entrada/.test(q))
-    text = `No histórico confirmado do mês: entradas de ${m(c.income_cents)} e consumo de ${m(c.expense_cents)}. Essas cifras não são o saldo bancário nem o total marcado como pago na lista.`;
+    text = `No mês: entradas de ${m(c.income_cents)} e consumo de ${m(c.expense_cents)}. As compras do cartão contam no mês em que a fatura vence, mesmo que ainda estejam por confirmar. Essas cifras não são o saldo bancário nem o total marcado como pago na lista.`;
   else if (/sobra|sobr|guardar|cabe|disponivel|plano|planejamento/.test(q))
     text = `O plano tem ${m(income)} de entradas e ${m(planned)} de compromissos: diferença de ${m(income - planned)}. Isso é uma comparação do planejamento, antes de imprevistos, e não comprova dinheiro disponível na conta.${items.some((i) => i.planned_cents === null) ? " Existem valores a definir; o total ainda é parcial." : ""}`;
   else if (/conta|pagar|vence|venc|falta|penden/.test(q)) {

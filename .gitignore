@@ -28,3 +28,12 @@ coverage/
 *.key
 *.log
 *.tar.gz
+/prototypes/*
+!/prototypes/.gitkeep
+.next-check/
+data-from-main/
+
+# Ferramentas locais e lixo de sistema: nunca vão para o repositório público.
+.impeccable/
+.kirograph/
+.DS_Store

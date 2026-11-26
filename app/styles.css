@@ -1,0 +1,686 @@
+/* Entrada única de CSS do app.
+ *
+ * Ordem das camadas: o CSS antigo (legacy) tem a MENOR prioridade, então as
+ * classes do daisyUI/Tailwind sempre vencem quando aplicadas a um elemento.
+ * Sem o preflight do Tailwind: ele resetaria botões, títulos e listas que as
+ * telas antigas ainda usam. Conforme cada tela migrar, o CSS dela sai de legacy.
+ */
+@layer legacy, theme, base, components, utilities;
+
+@import "./globals.css" layer(legacy);
+@import "./family.css" layer(legacy);
+@import "./ds/ds-extra.css" layer(legacy);
+@import "./future/future.css" layer(legacy);
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Classes usadas em app/ e src/ entram no build. */
+@source "../app";
+@source "../src";
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* Par escuro do emerald (mesmo âmbar/verde), no lugar do "dark" roxo do daisyUI.
+ * Nome "dark" para casar com data-theme="dark" gravado pelo app. */
+@plugin "daisyui/theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: oklch(22% 0.006 285.885);
+  --color-base-200: oklch(19% 0.005 285.885);
+  --color-base-300: oklch(28% 0.006 285.885);
+  --color-base-content: oklch(95% 0.003 285.885);
+  --color-primary: oklch(76% 0.157 75.834);
+  --color-primary-content: oklch(22% 0.04 75.834);
+  --color-secondary: oklch(68% 0.18 262.881);
+  --color-secondary-content: oklch(97% 0.014 254.604);
+  --color-accent: oklch(72% 0.14 163.225);
+  --color-accent-content: oklch(20% 0.03 166.113);
+  --color-neutral: oklch(32% 0.006 286.033);
+  --color-neutral-content: oklch(96% 0 0);
+  --color-info: oklch(72% 0.13 241.966);
+  --color-info-content: oklch(20% 0.03 236.62);
+  --color-success: oklch(72% 0.17 149.214);
+  --color-success-content: oklch(20% 0.03 155.826);
+  --color-warning: oklch(76% 0.157 75.834);
+  --color-warning-content: oklch(22% 0.04 75.834);
+  --color-error: oklch(68% 0.2 17.585);
+  --color-error-content: oklch(97% 0.015 12.422);
+  --radius-selector: 0rem;
+  --radius-field: 0.625rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "emerald";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(98% 0 0);
+  --color-base-200: oklch(96% 0.001 286.375);
+  --color-base-300: oklch(92% 0.004 286.32);
+  --color-base-content: oklch(21% 0.006 285.885);
+  --color-primary: oklch(68% 0.162 75.834);
+  /* Texto escuro sobre o âmbar: o claro dava 2,6:1 (botões, balão do chat). */
+  --color-primary-content: oklch(22% 0.04 75.834);
+  --color-secondary: oklch(54% 0.245 262.881);
+  --color-secondary-content: oklch(97% 0.014 254.604);
+  --color-accent: oklch(59% 0.145 163.225);
+  --color-accent-content: oklch(97% 0.021 166.113);
+  --color-neutral: oklch(27% 0.006 286.033);
+  --color-neutral-content: oklch(98% 0 0);
+  --color-info: oklch(58% 0.158 241.966);
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: oklch(62% 0.194 149.214);
+  --color-success-content: oklch(98% 0.018 155.826);
+  --color-warning: oklch(68% 0.162 75.834);
+  --color-warning-content: oklch(22% 0.04 75.834);
+  --color-error: oklch(58% 0.253 17.585);
+  --color-error-content: oklch(96% 0.015 12.422);
+  --radius-selector: 0rem;
+  --radius-field: 0.625rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* Ponte: os tokens antigos (--family-*) passam a ler as cores do tema daisyUI.
+ * Fora de camada, então vencem as definições de family.css (claro, escuro e
+ * prefers-color-scheme) e o app todo segue o tema, migrado ou não. As cores de
+ * categoria (--family-cat-*) ficam: são dado, não tema. */
+:root,
+:root[data-theme] {
+  --family-accent: var(--color-primary);
+  --family-on-accent: var(--color-primary-content);
+  --family-accent-soft: color-mix(in oklab, var(--color-primary) 22%, var(--color-base-100));
+  --family-lime: var(--color-accent);
+  --family-on-lime: var(--color-accent-content);
+
+  --family-bg: var(--color-base-200);
+  --family-surface: var(--color-base-100);
+  --family-surface-2: var(--color-base-200);
+  --family-tint: color-mix(in oklab, var(--color-primary) 8%, var(--color-base-100));
+  --family-text: var(--color-base-content);
+  --family-muted: color-mix(in oklab, var(--color-base-content) 62%, var(--color-base-100));
+  --family-line: var(--color-base-300);
+  --family-soft: var(--color-base-200);
+  --family-track: var(--color-base-300);
+  --family-track-2: color-mix(in oklab, var(--color-base-content) 22%, var(--color-base-100));
+
+  --family-success: var(--color-success);
+  --family-success-bg: color-mix(in oklab, var(--color-success) 14%, var(--color-base-100));
+  --family-danger: var(--color-error);
+  --family-danger-bg: color-mix(in oklab, var(--color-error) 12%, var(--color-base-100));
+  --family-warn: var(--color-warning);
+  --family-warn-bg: color-mix(in oklab, var(--color-warning) 16%, var(--color-base-100));
+  --family-info: var(--color-info);
+
+  --family-chart-grid: var(--color-base-300);
+  --family-chart-axis: var(--family-track-2);
+  --family-chart-label: var(--family-muted);
+
+  --family-radius-sm: var(--radius-field);
+  --family-radius-md: var(--radius-box);
+  --family-radius-lg: var(--radius-box);
+  --family-radius-xl: var(--radius-box);
+
+  /* Texto/ícone no tom da marca sobre fundo claro tingido (botão suave, aba).
+   * O primary puro (âmbar) sobre fundo claro fica ~2,5:1; misturado ao texto
+   * base passa de 4,5:1 e continua lendo como "da marca". No escuro a mistura
+   * clareia (base-content é claro), então serve aos dois temas. */
+  --color-primary-ink: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content));
+  /* Superfície tingida da marca: fundo de grupo de abas, botão suave. */
+  --color-primary-tint: color-mix(in oklab, var(--color-primary) 12%, var(--color-base-100));
+
+  /* tokens do globals.css (telas mais antigas) */
+  --green: var(--color-primary);
+  --green-deep: color-mix(in oklab, var(--color-primary) 80%, black);
+  --mint: color-mix(in oklab, var(--color-accent) 14%, var(--color-base-100));
+  --lime: var(--color-accent);
+  --ink: var(--color-base-content);
+  --muted: var(--family-muted);
+  --line: var(--color-base-300);
+  --paper: var(--color-base-200);
+  --white: var(--color-base-100);
+  --red: var(--color-error);
+  --radius: var(--radius-box);
+}
+
+/* family.css:2583 redefine soft/line/fundo em .family-app misturando o accent
+ * (que agora é o primary âmbar) — era o bege e os blocos âmbar. Neutros aqui. */
+.family-app,
+.family-login {
+  --family-soft: var(--color-base-200);
+  --family-soft-strong: var(--color-base-300);
+  --family-line: var(--color-base-300);
+  background: var(--color-base-200);
+}
+.family-app .family-nav {
+  background: var(--color-base-100);
+}
+
+/* Campos nativos no visual do daisyUI, sem precisar de classe em cada um dos
+ * ~100 <input>/<select>/<textarea> espalhados pelas telas. */
+@layer components {
+  /* Input dentro de <label class="input"> (ícone + campo) não vira outra caixa;
+   * nem o campo do AmountStepper, que já é a caixa (ds-amount-row) e tem visual próprio. */
+  .family-app :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"], .input *, .ds-amount-field *)),
+  .family-login :where(input:not([type="checkbox"], [type="radio"], [type="hidden"])) {
+    @apply input w-full;
+  }
+  .family-app :where(select),
+  .family-login :where(select) {
+    @apply select w-full;
+  }
+  .family-app :where(textarea:not(.chat-composer textarea)) {
+    @apply textarea w-full;
+  }
+  /* O compositor do chat já é a caixa; o textarea dentro dele fica sem borda. */
+  .family-app .chat-composer textarea {
+    @apply textarea textarea-ghost border-0 bg-transparent shadow-none focus:outline-none;
+  }
+  /* min-h-0 e max-w-none: o CSS antigo dá min-height de 46px, padding e
+   * largura 100% a todo input, e isso esticava a caixinha (ficava um retângulo
+   * alto e fino com o ✓ vazando). O daisyUI dimensiona pelo --size. */
+  .family-app :where(input[type="checkbox"]:not([role="switch"])) {
+    @apply checkbox checkbox-sm min-h-0 max-w-none;
+  }
+  .family-app :where(input[type="checkbox"][role="switch"]) {
+    @apply toggle toggle-sm min-h-0 max-w-none;
+  }
+  /* Fora o rádio do tile de categoria: ele é oculto (o tile é o controle). O
+   * `radio` do daisyUI o devolvia ao fluxo (position: relative + tamanho) e
+   * empurrava o tile 23px para baixo, por cima do que vinha depois. */
+  .family-app :where(input[type="radio"]:not(.category-choice > input)) {
+    @apply radio radio-sm min-h-0 max-w-none;
+  }
+  .family-app :where(input[type="range"]) {
+    @apply range range-sm;
+  }
+  .family-app :where(input[type="file"]) {
+    @apply file-input w-full;
+  }
+}
+
+/* Sem o preflight do Tailwind, [hidden] perdia para qualquer utilitário de
+ * display (flex, grid…) e o bloco "escondido" continuava na tela. */
+@layer base {
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+}
+
+/* BASE LEGADA × COMPONENTES DO DS — causa única dos tamanhos inconsistentes.
+ *
+ * globals.css e family.css estilizam <button>/<input>/<select>/<label> pelo
+ * ELEMENTO: min-height 46px, padding 10px 16px, peso 600, justify-content
+ * center, font: inherit. Como estão na camada legacy, o daisyUI vence só nas
+ * propriedades que ele mesmo declara; as outras vazavam para todo componente:
+ *   - .btn/.input/.select com 46px em vez da altura do tema (--size-field);
+ *   - item de menu centralizado, com 44px e peso 500;
+ *   - valor do <select> herdando o peso 600 do <label> que o envolve;
+ *   - o <input> da busca com 16px dentro de uma caixa de 14px.
+ * Aqui a base legada é desfeita UMA vez para os componentes do DS. Fica em
+ * `base` (acima de legacy, abaixo do daisyUI): os modificadores de tamanho do
+ * daisyUI (btn-sm, select-sm, tabs-sm…) continuam valendo. Nenhuma tela
+ * precisa de remendo próprio de altura. */
+@layer base {
+  /* Vale para os campos com classe (.input/.select) e também para os crus
+   * (<input>/<select> sem classe), que recebem o visual do daisyUI pela regra
+   * automática em @layer components acima — o vazamento é o mesmo. */
+  .family-app :is(.btn, .tab, .input, .select, .textarea, .menu li > *),
+  .family-app :is(select, textarea),
+  .family-app input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]),
+  .family-login :is(.btn, .input, .select, select, input:not([type="checkbox"], [type="radio"], [type="hidden"])) {
+    min-height: auto;
+  }
+  .family-app .btn,
+  .family-login .btn {
+    padding-block: 0;
+  }
+  .family-app :is(.btn-circle, .btn-square) {
+    padding: 0;
+  }
+  .family-app :is(.input, .select, .textarea, select, textarea),
+  .family-app input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]),
+  .family-login :is(.input, .select, select, input) {
+    font-weight: 400;
+  }
+  /* Campo de uma linha: altura vem do tema (--size); o padding vertical
+   * legado (10–12px) só apertava o texto dentro dela. */
+  .family-app :is(.input, .select, select),
+  .family-app input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]),
+  .family-login :is(.input, .select, select, input) {
+    padding-block: 0;
+  }
+  /* O campo dentro de label.input é só texto: tamanho e peso da caixa. */
+  .family-app .input > input {
+    font-size: inherit;
+    font-weight: inherit;
+    min-height: 0;
+    background: transparent;
+    padding: 0;
+  }
+  .family-app .menu li > :is(button, a) {
+    justify-content: start;
+    text-align: start;
+    font-weight: 400;
+    border: 0;
+    background-color: transparent;
+  }
+  .family-app .tab {
+    font-weight: 500;
+  }
+  .family-app .tab.tab-active {
+    font-weight: 600;
+  }
+}
+
+/* Toque: a mesma escala, um degrau acima. Um token só (--size-field) leva
+ * botão, campo, select e aba de 40 para 44px — a área mínima de toque — e os
+ * campos ficam com 16px, abaixo disso o iOS dá zoom ao focar. Fora de camada
+ * para vencer o tamanho de letra que o daisyUI dá a cada campo. */
+@media (pointer: coarse) {
+  :root:root {
+    --size-field: 0.275rem;
+  }
+  .family-app :is(.input, .select, .textarea),
+  .family-login :is(.input, .select) {
+    font-size: 1rem;
+  }
+}
+
+/* Botão suave sem cor própria (btn-soft solto, variante quiet do Button):
+ * o daisyUI cai no cinza neutro (base-content a 8%), sem relação com a marca.
+ * Aqui o padrão vira o primary. Quem pede outra cor (btn-error…) mantém. */
+.family-app .btn-soft:not(.btn-secondary, .btn-accent, .btn-neutral, .btn-info, .btn-success, .btn-warning, .btn-error) {
+  --btn-color: var(--color-primary);
+  --btn-rest-fg: var(--color-primary-ink);
+  --btn-soft-bg: var(--color-base-100);
+}
+
+/* SELECT (app/ds/select.tsx) — o único do app. Fora de camada: precisa vencer
+ * o .select do daisyUI. A seta do daisyUI (dois gradientes de 4px) sai; entra
+ * a seta do DS, num elemento próprio, para poder girar com a lista aberta. */
+.family-app .ds-select {
+  background-image: none;
+  padding-inline: 0.75rem 2.25rem;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  transition:
+    border-color var(--ds-dur-fast) var(--ds-ease),
+    box-shadow var(--ds-dur-fast) var(--ds-ease);
+}
+.family-app .ds-select.select-sm {
+  padding-inline: 0.625rem 2rem;
+}
+/* sm = degrau de filtro, 13px como as abas do Segmented sm. Só com mouse: no
+ * toque o campo fica em 16px (regra de pointer: coarse acima, anti-zoom iOS). */
+@media (pointer: fine) {
+  .family-app .ds-select.select-sm {
+    font-size: 0.8125rem;
+  }
+}
+.family-app .ds-select:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--color-base-content) 32%, transparent);
+}
+/* Regras separadas: navegador sem :open descartaria a lista inteira. */
+.family-app .ds-select:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
+}
+.family-app .ds-select:open {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
+}
+/* Opção vazia marcada ("Todas as contas", "Escolher conta"): tom de dica. */
+.family-app .ds-select:has(option[value=""]:checked) {
+  color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+}
+.family-app .ds-select-chevron {
+  color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  transition:
+    rotate var(--ds-dur) var(--ds-ease-move),
+    color var(--ds-dur-fast) var(--ds-ease);
+}
+.family-app .ds-select-wrap:has(.ds-select:open) .ds-select-chevron {
+  rotate: 180deg;
+  color: var(--color-primary-ink);
+}
+.family-app .ds-select-wrap:has(.ds-select:disabled) .ds-select-chevron {
+  opacity: 0.4;
+}
+/* Lista aberta (só onde há appearance: base-select; o resto usa a nativa). */
+@supports (appearance: base-select) {
+  .family-app .ds-select::picker(select) {
+    margin-block: 4px;
+    padding: 4px;
+    border: 1px solid var(--color-base-300);
+    border-radius: 12px;
+    box-shadow:
+      0 12px 32px -8px color-mix(in oklab, var(--color-base-content) 22%, transparent),
+      0 2px 6px -2px color-mix(in oklab, var(--color-base-content) 12%, transparent);
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity var(--ds-dur-fast) var(--ds-ease),
+      translate var(--ds-dur-fast) var(--ds-ease),
+      overlay var(--ds-dur-fast) allow-discrete,
+      display var(--ds-dur-fast) allow-discrete;
+  }
+  @starting-style {
+    .family-app .ds-select:open::picker(select) {
+      opacity: 0;
+      translate: 0 -4px;
+    }
+  }
+  .family-app .ds-select:not(:open)::picker(select) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+  .family-app .ds-select option {
+    min-height: 2.25rem;
+    padding-block: 0.5rem;
+    padding-inline: 0.625rem;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-base-content);
+    border-radius: 8px;
+  }
+  .family-app .ds-select option:not(:disabled):hover,
+  .family-app .ds-select option:focus-visible {
+    background-color: var(--color-primary-tint);
+    outline: none;
+  }
+  .family-app .ds-select option:checked {
+    background-color: var(--color-primary-tint);
+    color: var(--color-primary-ink);
+    font-weight: 500;
+  }
+  .family-app .ds-select option::checkmark {
+    color: var(--color-primary-ink);
+  }
+}
+
+/* BUSCA EXPANSÍVEL (app/ds/expanding-search.tsx). Fechada = círculo do
+ * tamanho do campo (--size do .input: 40px, 44px no toque), lupa no tom da
+ * marca; aberta = o .input do DS.
+ * Cresce só no ESPAÇO LIVRE da linha (flex-grow 0 → 1), ancorada à direita:
+ * quem está à esquerda não é coberto nem se mexe. A base sobe para 12rem para
+ * caber o texto; se a linha não tiver isso livre (celular), o vizinho
+ * .ds-search-sibling cede largura rolando por dentro, sem sumir. */
+.family-app .ds-search {
+  --ds-search-size: calc(var(--size-field, 0.25rem) * 10);
+  flex: 0 0 var(--ds-search-size);
+  min-width: var(--ds-search-size);
+  margin-inline-start: auto;
+  gap: 0;
+  /* (círculo − ícone) / 2, menos a borda de 1px de cada lado. */
+  padding-inline: calc((var(--ds-search-size) - 18px) / 2 - 1px);
+  border-color: transparent;
+  border-radius: 999px;
+  background-color: var(--color-primary-tint);
+  box-shadow: none;
+  color: var(--color-primary-ink);
+  cursor: pointer;
+  transition:
+    flex-grow var(--ds-dur-move) var(--ds-ease-move),
+    flex-basis var(--ds-dur-move) var(--ds-ease-move),
+    padding var(--ds-dur-move) var(--ds-ease-move),
+    border-radius var(--ds-dur-move) var(--ds-ease-move),
+    background-color var(--ds-dur) var(--ds-ease),
+    border-color var(--ds-dur) var(--ds-ease);
+}
+.family-app .ds-search:hover:not([data-open]) {
+  background-color: color-mix(in oklab, var(--color-primary) 20%, var(--color-base-100));
+}
+.family-app .ds-search[data-open] {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: min(12rem, 100%);
+  gap: 0.5rem;
+  padding-inline: 0.75rem 0.375rem;
+  border-color: var(--color-primary);
+  border-radius: var(--radius-field);
+  background-color: var(--color-base-100);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
+  color: var(--color-base-content);
+  cursor: text;
+}
+/* Aberta com texto mas sem foco: borda normal, sem anel. */
+.family-app .ds-search[data-open]:not(:focus-within) {
+  border-color: var(--color-base-300);
+  box-shadow: none;
+}
+.family-app .ds-search[data-open] .ds-search-icon {
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+.family-app .ds-search:focus-within {
+  outline: none;
+}
+.family-app .ds-search .ds-search-field {
+  flex: 0 0 0;
+  width: 0;
+  opacity: 0;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease);
+}
+.family-app .ds-search[data-open] .ds-search-field {
+  flex: 1 1 auto;
+  opacity: 1;
+  transition-delay: calc(var(--ds-dur-move) / 3);
+}
+.family-app .ds-search .ds-search-field:focus,
+.family-app .ds-search .ds-search-field:focus-visible {
+  outline: none;
+}
+.family-app .ds-search .ds-search-field::-webkit-search-cancel-button {
+  appearance: none;
+}
+/* Vizinho da busca: largura do próprio conteúdo; só encolhe (rolando por
+ * dentro) quando a busca aberta precisa da base de 12rem. */
+.family-app .ds-search-sibling {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+/* Com espaço (≥640px) o vizinho não cede nada: a busca fica com o que sobra
+ * (ela encolhe abaixo dos 12rem se preciso). No celular, cede rolando. */
+@media (min-width: 640px) {
+  .family-app .ds-search-sibling {
+    flex-shrink: 0;
+  }
+}
+
+/* Grupo de abas (Segmented e afins): trilho tingido da marca (o base-200
+ * padrão era um cinza quase branco, solto do resto da tela) e a opção marcada
+ * numa pílula clara (base-100) com sombra curta. */
+.family-app .tabs-box {
+  background-color: var(--color-primary-tint);
+  box-shadow: none;
+}
+.family-app .tabs-box > .tab:not(.tab-active) {
+  color: color-mix(in oklab, var(--color-base-content) 72%, transparent);
+}
+.family-app .tabs-box > .tab:not(.tab-active):hover {
+  color: var(--color-primary-ink);
+}
+.family-app .tabs-box > .tab.tab-active,
+.family-app .ds-seg-pill {
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--color-base-content) 12%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--color-primary) 18%, transparent);
+}
+/* Segmented: a pílula é um elemento só, que DESLIZA até a opção marcada (as
+ * abas ficam transparentes por cima dela). Transform + largura, nos tokens de
+ * movimento do DS — que zeram com "reduzir movimento". A cor do texto da aba
+ * troca no mesmo ritmo, para não "acender" antes da pílula chegar. */
+.family-app .ds-seg-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  border-radius: var(--radius-field);
+  pointer-events: none;
+  will-change: transform, width;
+  transition:
+    transform var(--ds-dur) var(--ds-ease-move),
+    width var(--ds-dur) var(--ds-ease-move);
+}
+.family-app .ds-seg[data-pill] > .tab {
+  transition: color var(--ds-dur) var(--ds-ease-move);
+}
+.family-app .ds-seg[data-pill] > .tab.tab-active {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.family-app .tabs > .tab {
+  padding-block: 0;
+  align-items: center;
+  border: 0;
+  border-radius: var(--radius-field);
+}
+.family-app .tabs > .tab:not(.tab-active) {
+  background: transparent;
+}
+/* label {display:flex; column; 12px/600} do globals.css empilhava ícone e campo. */
+.family-app label.input {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-base-content);
+}
+/* Label que envolve checkbox, rádio ou interruptor: caixinha e texto na mesma
+ * linha (o label do globals.css empilha em coluna). Fora o tile de categoria:
+ * lá o rádio é invisível e o tile inteiro é o botão — virar linha centralizada
+ * encolhia cada tile ao tamanho do texto (larguras irregulares na grade).
+ * Em `base` (vence o legado, perde para utilitário): rótulo de várias linhas
+ * pede `items-start` e o utilitário precisa poder vencer. */
+@layer base {
+  .family-app label:not(.category-choice):has(> input[type="checkbox"], > input[type="radio"]) {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 400;
+  }
+  /* Legenda do DS: usada em ~160 lugares e nunca definida — saía no tamanho e
+   * na cor do corpo. 13px, entrelinha folgada, tom apagado, sem margem própria
+   * (o espaçamento é do contêiner). Utilitários na mesma tag continuam valendo. */
+  .family-app .ds-caption {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+  }
+}
+
+/* Botão secundário (variante padrão do Button): o .btn sem cor do daisyUI é
+ * um bloco cinza (base-200) com sombra — pesado e sem relação com a marca.
+ * Aqui vira contornado: fundo da superfície, borda da linha, sem sombra; o
+ * hover tinge de leve na marca. */
+.family-app .ds-button.ds-secondary {
+  --btn-bg: var(--color-base-100);
+  --btn-border: var(--color-base-300);
+  --btn-shadow: none;
+  --btn-noise: none;
+}
+.family-app .ds-button.ds-secondary:hover:not(:disabled) {
+  --btn-bg: var(--color-primary-tint);
+  --btn-border: color-mix(in oklab, var(--color-primary) 30%, var(--color-base-300));
+}
+/* Conteúdo de painel alinha com o título do painel: linhas de lista e o stat
+ * embutido (Caminho do saldo) perdem o recuo lateral próprio do daisyUI. */
+.family-app .ds-panel .list-row {
+  padding-inline: 0;
+}
+.family-app .ds-panel .list-row::after {
+  inset-inline: 0;
+}
+.family-app .ds-panel .stats > .stat {
+  padding-inline: 0;
+}
+
+/* Movimento: expandir/recolher e barras no mesmo ritmo dos tokens --ds-*
+ * (eram 650ms + barras esperando até 1,2s para começar). */
+.family-app .ds-stat-expand-wrap,
+.family-app .ds-collapse {
+  transition-duration: var(--ds-dur-move);
+  transition-timing-function: var(--ds-ease-move);
+}
+.family-app .ds-stat-expand-body,
+.family-app .ds-collapse-body {
+  transition-duration: var(--ds-dur);
+}
+.family-app .ds-segbar {
+  border-radius: 999px;
+}
+.family-app .ds-segbar span {
+  animation-duration: var(--ds-dur-shape);
+  animation-timing-function: var(--ds-ease);
+}
+.family-app .ds-segbar span:nth-child(1) { animation-delay: 220ms; }
+.family-app .ds-segbar span:nth-child(2) { animation-delay: 160ms; }
+.family-app .ds-segbar span:nth-child(n + 3) { animation-delay: 100ms; }
+
+/* Sem o preflight do Tailwind, <dd> mantém o recuo de 40px do navegador. */
+.family-app dd {
+  margin-inline-start: 0;
+}
+.family-app ::placeholder {
+  color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+}
+
+/* Nav (dock): o indicador ativo é só o do daisyUI (barrinha + cor primária);
+ * o CSS antigo pintava um quadrado no ícone. Itens com largura máxima para
+ * não se espalharem até as bordas em tela larga. */
+.family-nav.dock {
+  justify-content: center;
+}
+.family-nav.dock > button {
+  max-width: 7.5rem;
+}
+.family-nav.dock button[aria-current] .family-svg {
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-primary);
+}
+.family-nav.dock .family-svg {
+  margin: 0;
+}
+
+/* Chat: a nav fica no fluxo (abaixo do chat) e some com o teclado aberto.
+ * O `dock` do daisyUI é fixed + flex e venceria as regras antigas. */
+.family-app.is-chat .family-nav.dock {
+  position: static;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+:root[data-chat-keyboard="open"] .family-app.is-chat .family-nav.dock {
+  display: none;
+}
+
+/* Teclado aberto (iOS): o FamilyDialog sobe para o topo. Fora de camada para
+ * vencer o place-items do modal do daisyUI. */
+:root[data-chat-keyboard="open"] .modal:has(> .family-dialog) {
+  align-items: start;
+  padding-top: calc(env(safe-area-inset-top) + 12px);
+}
+
+/* Tema "system" = sem data-theme (prefersdark decide). "light" forçado não
+ * tem tema próprio no daisyUI, então cai no emerald (default). */

@@ -4,7 +4,31 @@ import { z } from "zod";
 import { asUser, recordAudit, type Database } from "./db.ts";
 import type { Identity } from "./auth.ts";
 import { cents, dateOnly } from "../domain/finance.ts";
+import { eventName } from "../domain/event-name.ts";
 import { UserError } from "./imports.ts";
+import {
+  allowedEventKinds,
+  loadSeriesContexts,
+  suggestForSeriesItems,
+  type ItemRecurrence,
+  type SeriesContext,
+} from "./recurrence-match.ts";
+import {
+  loadCardCompetence,
+  readCardEvents,
+} from "./card-competence.ts";
+import { readBankCover, type BankCover } from "./fixed-bank-cover.ts";
+
+const coverView = (c: (BankCover & { category_id: string | null }) | undefined): BankCover | null =>
+  c
+    ? {
+        bank_transaction_id: c.bank_transaction_id,
+        source: c.source,
+        description: c.description,
+        transaction_date: c.transaction_date,
+        cents: c.cents,
+      }
+    : null;
 export type MonthlyItem = {
   id: string;
   month: string;
@@ -25,6 +49,8 @@ export type MonthlyItem = {
   event_id: string | null;
   derived: boolean;
   version: number;
+  /** Conta fixa já paga pelo banco (fatura ou Pix), ainda sem lançamento ligado. */
+  bank_cover?: BankCover | null;
   funding?: {
     expected_date: string;
     receipt_mode?: string;
@@ -49,9 +75,31 @@ export const itemSchema = z
     notes: z.string().max(1000).default(""),
   })
   .strict();
+const itemRecurrence = (
+  c: SeriesContext | undefined,
+): ItemRecurrence | null =>
+  c
+    ? {
+        id: c.id,
+        frequency: c.frequency,
+        every: c.every,
+        start_date: c.start_date,
+        end_date: c.end_date,
+        occurrence_date: c.occurrence_date,
+        card_name: c.card_name,
+      }
+    : null;
 export async function readRoutine(db: Database, user: Identity, month: string) {
   dateOnly(month + "-01");
   return asUser(db, user.userId, async (tx) => {
+    // Competência e eventos de cartão do mês, lidos UMA vez e reutilizados
+    // nos candidatos a baixa do plano.
+    const cardCtx = await loadCardCompetence(tx, user.familyId);
+    const cardEvents = await readCardEvents(tx, cardCtx, {
+      familyId: user.familyId,
+      month: month + "-01",
+      currency: "BRL",
+    });
     const items = (
       await tx.query<MonthlyItem>(
         `SELECT id,month::text,label,purpose,cost_type,currency,planned_cents::text,paid_cents::text,actual_reference_cents::text,status,due_date::text,paid_date::text,notes,source_note,source_line_id,category_id,event_id,derived,version FROM monthly_items WHERE household_id=$1 AND month=$2 AND NOT archived ORDER BY status='done',due_date NULLS LAST,label`,
@@ -68,7 +116,7 @@ export async function readRoutine(db: Database, user: Identity, month: string) {
         note: string;
         bank_transaction_id: string | null;
       }>(
-        `SELECT r.receipt_mode,o.monthly_item_id,o.expected_date::text,b.transaction_date::text AS received_date,o.state,o.note,o.bank_transaction_id FROM income_occurrences o JOIN income_rules r ON r.id=o.rule_id LEFT JOIN bank_transactions b ON b.id=o.bank_transaction_id WHERE o.household_id=$1 AND o.budget_month=$2 AND r.enabled`,
+        `SELECT CASE r.date_rule WHEN 'fifth_business_day' THEN 'business_window' ELSE 'fixed' END AS receipt_mode,o.monthly_item_id,o.expected_date::text,b.transaction_date::text AS received_date,o.match_state AS state,o.match_note AS note,o.match_bank_transaction_id AS bank_transaction_id FROM recurrence_occurrences o JOIN recurrences r ON r.household_id=o.household_id AND r.id=o.recurrence_id JOIN monthly_items i ON i.household_id=o.household_id AND i.id=o.monthly_item_id LEFT JOIN bank_transactions b ON b.id=o.match_bank_transaction_id WHERE o.household_id=$1 AND i.month=$2 AND r.purpose='income' AND NOT r.paused AND NOT i.archived`,
         [user.familyId, month + "-01"],
       )
     ).rows;
@@ -81,10 +129,16 @@ export async function readRoutine(db: Database, user: Identity, month: string) {
         kind: string;
         transaction_date: string;
       }>(
-        `SELECT id,description,amount_cents::text,currency,kind,transaction_date::text FROM economic_events WHERE household_id=$1 AND ((transaction_date>=$2::date AND transaction_date<($2::date+interval '1 month')) OR id IN (SELECT b.event_id FROM income_occurrences o JOIN bank_transactions b ON b.id=o.bank_transaction_id WHERE o.household_id=$1 AND o.budget_month=$2))`,
+        `SELECT e.id,e.description,e.amount_cents::text,e.currency,e.kind,e.transaction_date::text FROM economic_events e JOIN accounts a ON a.id=e.account_id WHERE e.household_id=$1 AND ((a.kind<>'card' AND e.transaction_date>=$2::date AND e.transaction_date<($2::date+interval '1 month')) OR e.id IN (SELECT b.event_id FROM recurrence_occurrences o JOIN recurrences r ON r.household_id=o.household_id AND r.id=o.recurrence_id JOIN monthly_items i ON i.household_id=o.household_id AND i.id=o.monthly_item_id JOIN bank_transactions b ON b.id=o.match_bank_transaction_id WHERE o.household_id=$1 AND r.purpose='income' AND i.month=$2 AND NOT i.archived))`,
         [user.familyId, month + "-01"],
       )
     ).rows;
+    // No cartão, o candidato a baixa do plano é o lançamento da competência
+    // do mês (fatura que vence nele), não o da data da compra. Reutiliza os
+    // eventos de cartão já lidos no início de readRoutine.
+    for (const e of cardEvents)
+      if (e.budget.month === month && !candidates.some((c) => c.id === e.id))
+        candidates.push(e);
     const receipts = (
       await tx.query<{
         label: string;
@@ -95,16 +149,56 @@ export async function readRoutine(db: Database, user: Identity, month: string) {
         note: string;
         amount_cents: string | null;
       }>(
-        `SELECT r.label,o.expected_date::text,b.transaction_date::text AS received_date,o.budget_month::text,o.state,o.note,b.amount_cents::text FROM income_occurrences o JOIN income_rules r ON r.id=o.rule_id LEFT JOIN bank_transactions b ON b.id=o.bank_transaction_id WHERE o.household_id=$1 AND o.pay_month=$2 AND r.enabled AND o.budget_month<>o.pay_month`,
+        `SELECT r.label,o.expected_date::text,b.transaction_date::text AS received_date,i.month::text AS budget_month,o.match_state AS state,o.match_note AS note,b.amount_cents::text FROM recurrence_occurrences o JOIN recurrences r ON r.household_id=o.household_id AND r.id=o.recurrence_id JOIN monthly_items i ON i.household_id=o.household_id AND i.id=o.monthly_item_id LEFT JOIN bank_transactions b ON b.id=o.match_bank_transaction_id WHERE o.household_id=$1 AND date_trunc('month',o.occurrence_date)=$2::date AND r.purpose='income' AND NOT r.paused AND NOT i.archived AND i.month<>date_trunc('month',o.occurrence_date)::date`,
         [user.familyId, month + "-01"],
       )
     ).rows;
+    const seriesContexts = await loadSeriesContexts(
+      tx,
+      user.familyId,
+      items.map((i) => i.id),
+    );
+    const seriesSuggestions = await suggestForSeriesItems(
+      tx,
+      user.familyId,
+      month,
+      items.filter((i) => seriesContexts.has(i.id)),
+      seriesContexts,
+    );
+    const bankCover = await readBankCover(tx, user.familyId, [month]);
+    // Apelido só para exibição: description segue intacta nos candidatos.
+    const nicks = new Map(
+      (
+        await tx.query<{ id: string; display_name: string | null; alias_name: string | null }>(
+          `SELECT e.id,e.display_name,ma.alias AS alias_name FROM economic_events e LEFT JOIN merchant_aliases ma ON ma.household_id=e.household_id AND ma.key=merchant_key(e.description) WHERE e.household_id=$1 AND e.id=ANY($2::uuid[])`,
+          [
+            user.familyId,
+            [
+              ...candidates.map((c) => c.id),
+              ...[...seriesSuggestions.values()].flat().map((c) => c.id),
+            ],
+          ],
+        )
+      ).rows.map((r) => [r.id, r] as const),
+    );
+    const named = <T extends { id: string; description: string }>(list: T[]) =>
+      list.map((e) => ({
+        ...e,
+        name: eventName({
+          display_name: nicks.get(e.id)?.display_name,
+          alias_name: nicks.get(e.id)?.alias_name,
+          description: e.description,
+        }),
+      }));
     return {
       receipts,
       items: items.map((item) => ({
         ...item,
+        recurrence: itemRecurrence(seriesContexts.get(item.id)),
         funding: funding.find((f) => f.monthly_item_id === item.id),
-        candidates: candidates
+        bank_cover: coverView(bankCover.get(item.id)),
+        candidates: named(seriesSuggestions.get(item.id) ??
+          candidates
           .filter(
             (e) =>
               e.currency === item.currency &&
@@ -118,7 +212,7 @@ export async function readRoutine(db: Database, user: Identity, month: string) {
                 ? -BigInt(e.amount_cents)
                 : BigInt(e.amount_cents)) === BigInt(item.planned_cents),
           )
-          .slice(0, 6),
+          .slice(0, 6)),
       })),
     };
   });
@@ -142,7 +236,7 @@ export async function saveItemTx(
   const id = input.id ?? randomUUID();
   if (input.id) {
     const result = await tx.query(
-      `UPDATE monthly_items SET label=$1,planned_cents=$2,due_date=$3,notes=$4,category_id=$5,cost_type=CASE WHEN $12::boolean THEN $13::text ELSE cost_type END,version=version+1,updated_at=now() WHERE id=$6 AND household_id=$7 AND version=$8 AND month=$9 AND currency=$10 AND purpose=$11 AND NOT archived RETURNING id`,
+      `UPDATE monthly_items SET label=$1,planned_cents=$2,due_date=$3,notes=$4,category_id=$5,cost_type=CASE WHEN $12::boolean THEN $13::text ELSE cost_type END,derived=false,version=version+1,updated_at=now() WHERE id=$6 AND household_id=$7 AND version=$8 AND month=$9 AND currency=$10 AND purpose=$11 AND NOT archived RETURNING id`,
       [
         input.label,
         amount,
@@ -200,6 +294,7 @@ export async function checkItemTx(
       amount: z.string().nullable().default(null),
       date: z.string().nullable().default(null),
       event_id: z.uuid().nullable().default(null),
+      allow_other_account: z.boolean().optional(),
     })
     .strict()
     .parse(raw);
@@ -215,27 +310,31 @@ export async function checkItemTx(
   ).rows[0];
   if (!item || item.version !== input.version)
     throw new UserError("O item mudou no outro aparelho. Atualize sua lista.");
+  let otherAccountAllowed = false;
   if (input.event_id) {
     const event = (
-      await tx.query<{ currency: string; kind: string }>(
-        "SELECT currency,kind FROM economic_events WHERE household_id=$1 AND id=$2",
+      await tx.query<{ currency: string; kind: string; account_id: string }>(
+        "SELECT currency,kind,account_id FROM economic_events WHERE household_id=$1 AND id=$2",
         [user.familyId, input.event_id],
       )
     ).rows[0];
-    const allowed =
-      item.purpose === "income"
-        ? ["income", "yield"]
-        : item.purpose === "card"
-          ? ["card_payment"]
-          : item.purpose === "saving"
-            ? ["transfer", "investment_buy"]
-            : ["expense", "fee", "card_purchase"];
+    const series =
+      (await loadSeriesContexts(tx, user.familyId, [item.id])).get(item.id) ??
+      null;
+    const allowed = allowedEventKinds(item.purpose, series);
     if (
       !event ||
       event.currency !== item.currency ||
       !allowed.includes(event.kind)
     )
       throw new UserError("Esse movimento não corresponde ao compromisso.");
+    if (series?.account_id && event.account_id !== series.account_id) {
+      if (input.allow_other_account !== true)
+        throw new UserError(
+          "Esse movimento é de outra conta, diferente da prevista nesta conta fixa. Confirme se quer conciliar mesmo assim.",
+        );
+      otherAccountAllowed = true;
+    }
     const duplicate = await tx.query(
       "SELECT id FROM monthly_items WHERE household_id=$1 AND event_id=$2 AND id<>$3 AND NOT archived",
       [user.familyId, input.event_id, item.id],
@@ -262,6 +361,7 @@ export async function checkItemTx(
   await recordAudit(tx, user.familyId, user.userId, "routine.check", item.id, {
     status: input.status,
     no_new_financial_event: true,
+    ...(otherAccountAllowed ? { allow_other_account: true } : {}),
   });
   return { ok: true };
 }
@@ -286,7 +386,7 @@ export async function copyMonth(db: Database, user: Identity, raw: unknown) {
     if (
       (
         await tx.query(
-          `SELECT 1 FROM monthly_items m WHERE household_id=$1 AND month=$2 AND NOT archived AND NOT (purpose='income' AND status='open' AND event_id IS NULL AND EXISTS(SELECT 1 FROM income_occurrences o WHERE o.household_id=m.household_id AND o.monthly_item_id=m.id)) LIMIT 1`,
+          `SELECT 1 FROM monthly_items m WHERE household_id=$1 AND month=$2 AND NOT archived AND NOT derived AND NOT EXISTS(SELECT 1 FROM recurrence_occurrences r JOIN recurrences s ON s.household_id=r.household_id AND s.id=r.recurrence_id WHERE r.household_id=m.household_id AND r.monthly_item_id=m.id AND s.purpose<>'income') AND NOT (purpose='income' AND status='open' AND event_id IS NULL AND EXISTS(SELECT 1 FROM recurrence_occurrences o JOIN recurrences s ON s.household_id=o.household_id AND s.id=o.recurrence_id WHERE o.household_id=m.household_id AND o.monthly_item_id=m.id AND s.purpose='income')) LIMIT 1`,
           [user.familyId, input.to + "-01"],
         )
       ).rows.length
@@ -296,7 +396,7 @@ export async function copyMonth(db: Database, user: Identity, raw: unknown) {
       );
     const items = (
       await tx.query<MonthlyItem>(
-        "SELECT *,due_date::text,planned_cents::text FROM monthly_items WHERE household_id=$1 AND month=$2 AND NOT archived",
+        "SELECT *,due_date::text,planned_cents::text FROM monthly_items m WHERE household_id=$1 AND month=$2 AND NOT archived AND NOT EXISTS(SELECT 1 FROM recurrence_occurrences o JOIN recurrences s ON s.household_id=o.household_id AND s.id=o.recurrence_id WHERE o.household_id=m.household_id AND o.monthly_item_id=m.id AND s.purpose<>'income')",
         [user.familyId, input.from + "-01"],
       )
     ).rows;
@@ -309,7 +409,7 @@ export async function copyMonth(db: Database, user: Identity, raw: unknown) {
     for (const i of items) {
       const forecast = (
         await tx.query(
-          `SELECT 1 FROM monthly_items m JOIN income_occurrences o ON o.monthly_item_id=m.id AND o.household_id=m.household_id WHERE m.household_id=$1 AND m.month=$2 AND upper(m.label)=upper($3) AND m.purpose=$4 AND NOT m.archived`,
+          `SELECT 1 FROM monthly_items m JOIN recurrence_occurrences o ON o.monthly_item_id=m.id AND o.household_id=m.household_id JOIN recurrences s ON s.household_id=o.household_id AND s.id=o.recurrence_id AND s.purpose='income' WHERE m.household_id=$1 AND m.month=$2 AND upper(m.label)=upper($3) AND m.purpose=$4 AND NOT m.archived`,
           [user.familyId, input.to + "-01", i.label, i.purpose],
         )
       ).rows.length;

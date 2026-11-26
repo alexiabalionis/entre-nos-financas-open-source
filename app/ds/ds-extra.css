@@ -1,0 +1,593 @@
+/* Camada 1 · primitivos novos do design system (spec do Copiloto Futuro).
+   Prefixo ds-. Só tokens --family-*; cor de dado vem por prop. */
+/* Toda regra começa com ":root " de propósito: soma uma classe de especificidade para as peças
+   vencerem as regras antigas por elemento de family.css (.family-app button, .family-app h2,
+   .family-app p, .family-app input…), que têm especificidade (0,1,1). Regra nova: sempre prefixe. */
+
+
+/* ---------------------------------------------------------- movimento */
+:root {
+  --ds-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-ease-move: cubic-bezier(0.22, 1, 0.36, 1);
+  --ds-dur-press: 120ms;
+  --ds-dur-fast: 200ms;
+  --ds-dur: 280ms;
+  --ds-dur-move: 380ms;
+  --ds-dur-shape: 420ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ds-dur-press: 0ms;
+    --ds-dur-fast: 0ms;
+    --ds-dur: 0ms;
+    --ds-dur-move: 0ms;
+    --ds-dur-shape: 0ms;
+  }
+}
+@keyframes ds-rise { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes ds-fade { from { opacity: 0; } }
+@keyframes ds-dock-in { from { opacity: 0; transform: translateY(24px); } }
+@keyframes ds-reach { 0% { transform: scale(0.7); } 60% { transform: scale(1.18); } }
+
+/* ---------------------------------------------------------- reset + foco
+   O Button do app (.ds-button) fica fora do reset: o visual dele é do daisyUI. */
+/* Rótulo do Button: flex, não bloco. Em bloco, um ícone (SVG inline) sentava
+   na linha de base do texto e a caixa ganhava o espaço de descendente embaixo
+   — o "+" de um botão só-ícone ficava 3px acima do centro. Especificidade
+   baixa de propósito: telas que dão outro display ao rótulo (fixed-actions:
+   grid) continuam vencendo. */
+.ds-button-label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+:root .ds-reset :where(button:not(.ds-button)),
+:root :where(button).ds-reset {
+  border: 0; background: none; padding: 0; margin: 0; border-radius: 0;
+  color: inherit; font: inherit; cursor: pointer; min-height: 0;
+  display: inline-flex; align-items: center; gap: 6px; transition: none;
+}
+:root .ds-reset :where(button:not(.ds-button)):hover,
+:root :where(button).ds-reset:hover { background: none; }
+:root .ds-reset :where(button:disabled:not(.ds-button)),
+:root :where(button:disabled).ds-reset { cursor: not-allowed; opacity: 0.45; }
+:root .ds-reset :where(h1, h2, h3, h4, p, ul, ol, dl, dd, figure),
+:root :where(h1, h2, h3, h4, p, ul, ol, dl, dd, figure).ds-reset { margin: 0; }
+:root .ds-reset :where(h1, h2, h3, h4) { font-size: inherit; font-weight: 600; line-height: 1.2; color: inherit; }
+:root .ds-reset :where(p, label, small, summary) { color: inherit; font-size: inherit; }
+:root .ds-reset :where(ul, ol),
+:root :where(ul, ol).ds-reset { padding: 0; list-style: none; }
+:root .ds-reset :where(button, a, input, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--family-accent);
+  outline-offset: 3px;
+  border-radius: var(--family-radius-sm);
+}
+
+/* ---------------------------------------------------------- Icon */
+:root .ds-icon { flex: none; }
+
+/* ---------------------------------------------------------- AnimatedMoney / ChangedText */
+:root .ds-amoney,
+:root .ds-changed {
+  border-radius: var(--family-radius-sm);
+  font-variant-numeric: tabular-nums;
+  transition: background-color var(--ds-dur-shape) var(--ds-ease);
+}
+:root .ds-amoney { font-family: var(--family-font-numeric); }
+:root .ds-amoney[data-changed],
+:root .ds-changed[data-changed] {
+  background: var(--family-tint);
+  transition: none;
+}
+
+/* ---------------------------------------------------------- AmountStepper */
+:root .ds-amount {
+  display: grid;
+  gap: 6px;
+  font-family: var(--family-font-sans);
+}
+:root .ds-amount > label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--family-text);
+}
+:root .ds-amount-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  border: 1px solid var(--family-line);
+  border-radius: var(--family-radius-pill);
+  background: var(--family-surface);
+  transition: border-color var(--ds-dur-fast) var(--ds-ease);
+}
+:root .ds-amount-row:focus-within { border-color: var(--family-accent); }
+:root .ds-amount-row > button {
+  width: 44px;
+  height: 44px;
+  justify-content: center;
+  border-radius: var(--family-radius-pill);
+  color: var(--family-muted);
+  transition:
+    color var(--ds-dur-fast) var(--ds-ease),
+    background-color var(--ds-dur-fast) var(--ds-ease),
+    transform var(--ds-dur-press) var(--ds-ease);
+}
+:root .ds-reset.ds-amount .ds-amount-row > button:hover:not(:disabled) {
+  color: var(--family-text);
+  background: var(--family-surface-2);
+}
+:root .ds-amount-row > button:active:not(:disabled) { transform: scale(0.96); }
+:root .ds-amount-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  font-family: var(--family-font-numeric);
+  font-variant-numeric: tabular-nums;
+  color: var(--family-muted);
+}
+:root .ds-amount-field input {
+  width: 100%;
+  min-width: 0;
+  max-width: 8ch;
+  min-height: 42px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: center;
+  font-family: var(--family-font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--family-text);
+}
+:root .ds-reset .ds-amount-field input:focus-visible { outline: none; }
+:root .ds-amount.is-compact .ds-amount-field input { font-size: 15px; }
+:root .ds-amount-hint {
+  font-size: 12px;
+  color: var(--family-muted);
+}
+
+/* ---------------------------------------------------------- MonthRail */
+:root .ds-mrail {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--family-font-sans);
+}
+:root .ds-mrail-nav { display: flex; justify-content: flex-end; gap: 4px; }
+/* Dentro de um Panel, as setas sobem para a linha do título do painel. */
+:root .ds-panel .card-body > .ds-mrail:first-child > .ds-mrail-nav,
+:root .ds-panel .card-body > .ds-panel-h + .ds-mrail > .ds-mrail-nav { margin-top: -40px; }
+:root .ds-mrail-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  padding: 4px 2px 12px;
+}
+:root .ds-mrail-item {
+  flex: none;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 92px;
+  min-height: 72px;
+  padding: 12px;
+  text-align: left;
+  border-radius: var(--radius-box);
+  border: 1px solid transparent;
+  background: var(--color-base-200);
+  color: var(--family-text);
+  scroll-snap-align: center;
+  transition: transform var(--ds-dur-press) var(--ds-ease);
+}
+:root .ds-reset button.ds-mrail-item { display: grid; align-items: start; }
+:root .ds-reset button.ds-mrail-item:hover:not(:disabled) { background: var(--color-base-300); }
+:root .ds-mrail-item:is(button):active { transform: scale(0.96); }
+:root .ds-mrail-item.is-selected {
+  width: min(420px, 86vw);
+  min-width: min(280px, 86vw);
+  background: var(--color-base-100);
+  border-color: var(--color-base-300);
+  gap: 12px;
+  padding: 16px;
+}
+:root .ds-mrail-item[data-tone] { box-shadow: inset 0 -3px 0 var(--tone); }
+:root .ds-mrail-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+:root .ds-mrail-label { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+:root .ds-mrail-caption { font-size: 12px; color: var(--family-muted); }
+:root .ds-mrail-marks { display: inline-flex; gap: 3px; align-items: center; }
+:root .ds-mrail-marks span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone, var(--family-accent));
+}
+:root .ds-mrail-content { min-width: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  :root .ds-mrail-content { animation: ds-rise var(--ds-dur) var(--ds-ease); }
+}
+
+/* ---------------------------------------------------------- StackedBars */
+:root .ds-bars {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  font-family: var(--family-font-sans);
+}
+:root .ds-bars-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+:root .ds-bars-scroll svg { display: block; overflow: visible; }
+:root .ds-bars-sel {
+  fill: color-mix(in srgb, var(--family-text) 5%, transparent);
+  transition: transform var(--ds-dur-move) var(--ds-ease-move);
+}
+:root .ds-bars-col { opacity: 0.62; transition: opacity var(--ds-dur) var(--ds-ease); }
+:root .ds-bars-col[data-sel] { opacity: 1; }
+:root .ds-bars-piece { cursor: pointer; transition: filter var(--ds-dur) var(--ds-ease); }
+:root .ds-bars-piece:hover,
+:root .ds-bars-piece[data-active] { filter: brightness(1.15); }
+:root .ds-bars-tip {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 8px));
+  max-width: 220px;
+  background: var(--family-surface);
+  border: 1px solid var(--family-chart-axis);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-line;
+  color: var(--family-text);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--family-text) 18%, transparent);
+  pointer-events: none;
+  z-index: 5;
+}
+:root .ds-bars-hatch { stroke: var(--family-muted); stroke-opacity: 0.35; stroke-width: 2; }
+:root .ds-bars-ghost {
+  fill: none;
+  stroke: var(--family-text);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 4;
+}
+:root .ds-bars-total {
+  font-family: var(--family-font-numeric);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--family-text);
+}
+:root .ds-bars-total.is-short { font-size: 10px; font-weight: 500; fill: var(--family-muted); }
+:root .ds-bars-base { stroke: var(--family-chart-axis); }
+:root .ds-bars-x { display: flex; }
+:root .ds-bars-x button {
+  flex: none;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 0;
+  min-height: 44px;
+  padding-top: 6px;
+  font-size: 12px;
+  color: var(--family-muted);
+  transition: transform var(--ds-dur-press) var(--ds-ease);
+}
+:root .ds-bars-x button:active { transform: scale(0.96); }
+:root .ds-bars-x button[aria-pressed="true"] { color: var(--family-text); font-weight: 700; }
+:root .ds-bars-x small {
+  font-family: var(--family-font-numeric);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--family-success);
+}
+:root .ds-bars-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12.5px;
+  color: var(--family-muted);
+}
+:root .ds-bars-legend li { display: inline-flex; align-items: center; gap: 7px; }
+:root .ds-bars-legend span {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--swatch);
+}
+:root .ds-bars-legend span.is-estimate {
+  background:
+    repeating-linear-gradient(45deg, color-mix(in srgb, var(--family-muted) 35%, transparent) 0 2px, transparent 2px 5px),
+    var(--swatch);
+}
+:root .ds-bars-legend span.is-ghost {
+  background: none;
+  border: 1.25px dashed var(--family-text);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root .ds-bars-ghost { animation: ds-fade var(--ds-dur) var(--ds-ease); }
+}
+
+/* ---------------------------------------------------------- LaneTracks */
+:root .ds-lanes {
+  --lane-label: 180px;
+  --lane-end: 200px;
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: var(--family-radius-lg);
+  background: var(--family-surface);
+  font-family: var(--family-font-sans);
+}
+:root .ds-lanes-lane {
+  display: grid;
+  grid-template-columns: calc(var(--lane-label) - 20px) minmax(0, 1fr) calc(var(--lane-end) - 20px);
+  align-items: center;
+  font-size: 14px;
+}
+:root .ds-lanes-name { font-weight: 700; padding-right: 12px; }
+:root .ds-lanes-end { padding-left: 14px; font-size: 13px; color: var(--family-muted); }
+:root .ds-lanes-track { position: relative; height: 44px; cursor: pointer; }
+:root .ds-lanes-track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: repeating-linear-gradient(to right, var(--family-track) 0 6px, transparent 6px 10px);
+}
+:root .ds-lanes-run {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: var(--family-radius-pill);
+  background: var(--lane-color);
+}
+:root .ds-lanes-flag {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  background: var(--family-surface);
+  border: 2px solid var(--lane-color);
+  color: var(--lane-color);
+  transition:
+    background-color var(--ds-dur) var(--ds-ease),
+    border-color var(--ds-dur) var(--ds-ease),
+    color var(--ds-dur) var(--ds-ease);
+}
+:root .ds-lanes-flag[data-passed] {
+  background: var(--family-lime);
+  border-color: var(--family-on-lime);
+  color: var(--family-on-lime);
+}
+:root .ds-lanes-beyond {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  margin-top: -7px;
+  color: var(--lane-color);
+}
+:root .ds-lanes-cursor {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--family-text);
+  pointer-events: none;
+}
+:root .ds-lanes-cursor::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--family-text);
+}
+/* Etiqueta do mês: a do selecionado presa ao cursor; a do mouse, mais leve. */
+:root .ds-lanes.has-tags { padding-top: 40px; }
+:root .ds-lanes.has-tags .ds-lanes-cursor { top: 34px; }
+:root .ds-lanes.has-tags .ds-lanes-cursor::before { content: none; }
+:root .ds-lanes.has-axis { padding-bottom: 34px; }
+:root .ds-lanes.has-axis .ds-lanes-cursor { bottom: 30px; }
+:root .ds-lanes-tag {
+  position: absolute;
+  top: 10px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: var(--family-radius-pill);
+  background: var(--family-text);
+  color: var(--family-surface);
+  font-family: var(--family-font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+:root .ds-lanes-tag.is-hover {
+  background: var(--family-surface);
+  color: var(--family-text);
+  box-shadow: inset 0 0 0 1px var(--family-line);
+  font-weight: 500;
+}
+:root .ds-lanes-cursor.is-hover {
+  width: 0;
+  background: none;
+  border-left: 2px dashed var(--family-muted);
+}
+:root .ds-lanes-axis { position: absolute; left: 0; right: 0; bottom: 10px; height: 16px; pointer-events: none; }
+:root .ds-lanes-axis-mark {
+  position: absolute;
+  top: 0;
+  padding-left: 5px;
+  border-left: 1px solid var(--family-line);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--family-muted);
+  font-variant-numeric: tabular-nums;
+}
+:root .ds-lanes-track[role="slider"]:focus-visible { outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  :root .ds-lanes-flag[data-passed] { animation: ds-reach var(--ds-dur-shape) var(--ds-ease); }
+  /* Ao trocar de mês, a etiqueta nova entra com um leve pulo: a seleção mudou. */
+  :root .ds-lanes-tag:not(.is-hover) { animation: ds-lane-tag var(--ds-dur-shape) var(--ds-ease); }
+}
+@keyframes ds-lane-tag { 0% { opacity: 0; transform: translateX(-50%) translateY(4px) scale(0.9); } 60% { transform: translateX(-50%) scale(1.06); } }
+@media (max-width: 599.98px) {
+  :root .ds-lanes { --lane-label: 0px; --lane-end: 0px; padding: 16px; gap: 14px; }
+  :root .ds-lanes-lane { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  :root .ds-lanes-name { padding-right: 0; }
+  :root .ds-lanes-end { padding-left: 0; }
+  :root .ds-lanes-track { height: 32px; }
+  :root .ds-lanes-cursor { top: 0; bottom: 0; }
+  :root .ds-lanes.has-tags .ds-lanes-cursor { top: 34px; bottom: 12px; }
+  :root .ds-lanes.has-axis.has-tags .ds-lanes-cursor { bottom: 30px; }
+}
+
+/* ---------------------------------------------------------- CalcList */
+:root .ds-calc {
+  display: grid;
+  font-family: var(--family-font-sans);
+  font-size: 14px;
+}
+:root .ds-calc-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 6px;
+}
+:root .ds-calc-line:first-child { border-top: 0; }
+:root .ds-calc-line dt { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+:root .ds-calc-line dd {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  white-space: nowrap;
+  font-family: var(--family-font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+:root .ds-calc-op { width: 1ch; color: var(--family-muted); font-family: var(--family-font-numeric); }
+:root .ds-calc-label { display: grid; min-width: 0; }
+:root .ds-calc-label small { font-size: 12px; color: var(--family-muted); }
+:root .ds-calc-line.is-estimate .ds-calc-label,
+:root .ds-calc-line.is-estimate dd { font-style: italic; }
+:root .ds-calc-line.is-highlight { background: var(--family-tint); }
+/* Detalhe da linha de cima: alinha com o rótulo dela (padding + operador + gap). */
+:root .ds-calc-line.is-nested {
+  padding: 2px 6px 6px calc(6px + 1ch + 8px + 12px);
+  border-top: 0;
+  font-size: 13px;
+  color: var(--family-muted);
+}
+:root .ds-calc-line.is-total {
+  margin-top: 4px;
+  border-top: 1px solid var(--color-base-300);
+  padding-top: 12px;
+  font-weight: 700;
+}
+:root .ds-calc-before { font-weight: 400; color: var(--family-muted); font-size: 12px; }
+@media (prefers-reduced-motion: no-preference) {
+  :root .ds-calc-line { animation: ds-rise var(--ds-dur) var(--ds-ease); }
+}
+
+/* ---------------------------------------------------------- DiffList */
+:root .ds-diff {
+  display: grid;
+  font-family: var(--family-font-sans);
+  font-size: 14px;
+}
+:root .ds-diff-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label delta" "values values";
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--family-line);
+}
+:root .ds-diff-row:first-child { border-top: 0; }
+:root .ds-diff-label { grid-area: label; font-weight: 600; }
+:root .ds-diff-values {
+  grid-area: values;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--family-font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+:root .ds-diff-before { color: var(--family-muted); text-decoration: line-through; }
+:root .ds-diff-values .ds-icon { color: var(--family-muted); }
+:root .ds-diff-after { font-weight: 700; }
+:root .ds-diff-delta { grid-area: delta; justify-self: end; }
+:root .ds-diff-empty { font-size: 14px; color: var(--family-muted); }
+@media (min-width: 600px) {
+  :root .ds-diff-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "label values delta";
+    gap: 12px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root .ds-diff-row {
+    animation: ds-rise var(--ds-dur) var(--ds-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+}
+
+/* ---------------------------------------------------------- DraftBar */
+:root .ds-draftbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border: 1px solid color-mix(in srgb, var(--family-accent) 40%, var(--family-line));
+  border-radius: var(--family-radius-lg);
+  background: var(--family-surface);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--family-text) 16%, transparent);
+  font-family: var(--family-font-sans);
+  font-size: 14px;
+}
+:root .ds-draftbar-view {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+:root .ds-draftbar-text { flex: 1 1 240px; min-width: 0; font-weight: 600; }
+:root .ds-draftbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (max-width: 599.98px) {
+  :root .ds-draftbar { max-width: none; border-radius: var(--family-radius-lg) var(--family-radius-lg) 0 0; }
+  :root .ds-draftbar-actions { width: 100%; justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root .ds-draftbar { animation: ds-dock-in var(--ds-dur-move) var(--ds-ease); }
+  :root .ds-draftbar-view { animation: ds-fade var(--ds-dur-fast) var(--ds-ease); }
+}
+/* Nota da primeira e da última coluna não sai da área do gráfico. */
+:root .ds-bars-x button:first-child small { justify-self: start; }
+:root .ds-bars-x button:last-child small { justify-self: end; }
+/* "Ocultar valores" em texto: borrão com o mesmo tamanho do texto real. */
+:root .ds-veil { filter: blur(6px); user-select: none; pointer-events: none; opacity: 0.7; }

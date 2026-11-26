@@ -1,5 +1,15 @@
 "use client";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Button } from "./button";
+import { takeJuditeQuestion } from "./chat/handoff.ts";
+import {
+  JuditeAvatar,
+  JuditeInProgress,
+  JuditeWaiting,
+} from "./chat/judite-waiting.tsx";
+import { Panel } from "./ds/panel.tsx";
+import { Icon } from "./ds/icon.tsx";
+import { cx } from "./ds/shared.ts";
 import type { Currency } from "../src/domain/finance.ts";
 
 import type {
@@ -170,6 +180,13 @@ export function HelpPanel({
       if (sequence === selectSequence.current) setLoading(false);
     }
   }
+  // Pergunta pronta vinda de outra tela (ex.: "Conversar com a Judite" no Simular).
+  // Só depois de abrir a conversa: abrir limpa o rascunho.
+  useEffect(() => {
+    if (!active || loading) return;
+    const q = takeJuditeQuestion();
+    if (q) setDraft(q);
+  }, [active, loading]);
   useEffect(() => {
     const c = new AbortController();
     void fetch("/api/help/status", { cache: "no-store", signal: c.signal })
@@ -485,25 +502,40 @@ export function HelpPanel({
   }
   return (
     <section className="family-chat" aria-label="Conversa com Judite">
-      <header className="chat-toolbar">
+      {/* Cabeçalho: quem é (avatar, nome, modo — abre as configurações) à
+          esquerda; ações da conversa, discretas, à direita. Sem caixas: a
+          conversa é o conteúdo, o topo só orienta. */}
+      <header className="chat-toolbar flex items-center gap-1 border-b border-base-300 pb-2">
         <button
-          className="chat-mode"
+          type="button"
+          className="btn btn-ghost h-auto min-h-0 min-w-0 flex-1 justify-start gap-2.5 px-2 py-1.5 text-left font-normal"
           aria-expanded={settings}
           onClick={() => setSettings((s) => !s)}
         >
-          <span className="chat-spark" aria-hidden="true">
-            ✧
-          </span>
-          <span>
-            <strong>Judite</strong>
-            <small>
-              Histórico da família · {external ? "Com IA" : "Sem envio externo"}
+          <JuditeAvatar working={busy || pending} />
+          <span className="flex min-w-0 flex-col">
+            <strong className="text-sm leading-tight font-semibold">
+              Judite
+            </strong>
+            <small className="truncate text-xs leading-tight text-base-content/70">
+              {busy || pending
+                ? "Respondendo…"
+                : "Histórico da família · " +
+                  (external ? "Com IA" : "Sem envio externo")}
             </small>
           </span>
-          <span aria-hidden="true">⌄</span>
+          <Icon
+            name="down"
+            size={14}
+            className={cx(
+              "shrink-0 opacity-70 transition-transform duration-(--ds-dur)",
+              settings && "rotate-180",
+            )}
+          />
         </button>
         <button
-          className="chat-history-toggle"
+          type="button"
+          className="btn btn-ghost btn-sm shrink-0 px-2.5 text-[0.8125rem] font-medium text-base-content/70 aria-expanded:bg-[var(--color-primary-tint)] aria-expanded:text-[var(--color-primary-ink)]"
           aria-label="Histórico de conversas"
           aria-expanded={historyOpen}
           disabled={busy || !!saving || hidden}
@@ -515,73 +547,94 @@ export function HelpPanel({
           Histórico
         </button>
         <button
-          className="chat-new"
+          type="button"
+          className="btn btn-ghost btn-sm btn-circle shrink-0 text-base-content/70"
           disabled={busy || !!saving || loading || hidden}
           aria-label="Nova conversa"
           title="Nova conversa"
           onClick={() => void newConversation()}
         >
-          ＋
+          <Icon name="plus" size={18} />
         </button>
       </header>
       {historyOpen && !hidden && (
-        <section className="chat-history" aria-label="Suas conversas salvas">
-          <div className="family-section">
-            <h2>Suas conversas</h2>
-            <button
-              aria-label="Fechar histórico"
-              onClick={() => setHistoryOpen(false)}
-            >
-              ×
-            </button>
-          </div>
-          <p>
-            Privadas para o seu acesso. Novas conversas não apagam as
-            anteriores.
-          </p>
-          {!conversations.length ? (
-            <p>A primeira conversa ficará salva aqui.</p>
-          ) : (
-            conversations.map((c) => (
+        <div role="region" aria-label="Suas conversas salvas">
+          <Panel title="Suas conversas">
+            <div className="flex items-start justify-between gap-2">
+              <p className="ds-caption">
+                Privadas para o seu acesso. Novas conversas não apagam as
+                anteriores.
+              </p>
               <button
-                key={c.id}
-                className="chat-history-item"
-                aria-current={c.id === conversation?.id ? "true" : undefined}
-                disabled={loading}
-                onClick={() => void choose(c.id)}
+                type="button"
+                className="btn btn-ghost btn-sm btn-circle -mt-1 shrink-0 text-base-content/60"
+                aria-label="Fechar histórico"
+                onClick={() => setHistoryOpen(false)}
               >
-                <strong>{c.title}</strong>
-                <small>
-                  {c.month} · {c.currency}
-                </small>
+                <Icon name="close" size={16} />
               </button>
-            ))
-          )}
-          {hasMore && (
-            <button
-              disabled={loading}
-              onClick={() => void list(true).catch((e) => setError(e.message))}
-            >
-              Carregar mais conversas
-            </button>
-          )}
-        </section>
+            </div>
+            {!conversations.length ? (
+              <p className="ds-caption">
+                A primeira conversa ficará salva aqui.
+              </p>
+            ) : (
+              // Lista simples: título (1 linha) e mês embaixo; a conversa
+              // aberta ganha o fundo tingido da marca, as outras só no hover.
+              // Sem list-row (grade de colunas do daisyUI: recuava o item).
+              <ul className="-mx-2 m-0 flex list-none flex-col gap-0.5 p-0">
+                {conversations.map((c) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost h-auto min-h-0 w-full flex-col items-start justify-start gap-0.5 px-2 py-2 text-left font-normal hover:bg-[var(--color-primary-tint)] aria-[current=true]:border-transparent aria-[current=true]:bg-[var(--color-primary-tint)]"
+                      aria-current={
+                        c.id === conversation?.id ? "true" : undefined
+                      }
+                      disabled={loading}
+                      onClick={() => void choose(c.id)}
+                    >
+                      <span className="w-full truncate text-sm leading-snug font-medium">
+                        {c.title}
+                      </span>
+                      <span className="text-xs leading-snug text-base-content/70 tabular-nums">
+                        {c.month} · {c.currency}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {hasMore && (
+              <Button
+                disabled={loading}
+                onClick={() =>
+                  void list(true).catch((e) => setError(e.message))
+                }
+              >
+                Carregar mais conversas
+              </Button>
+            )}
+          </Panel>
+        </div>
       )}
       {settings && !historyOpen && (
-        <div className="chat-settings">
-          <p>
+        <Panel>
+          <p className="ds-caption">
             Consulte todos os meses da família. Diga o período na pergunta para
             focar ou comparar meses. Para alterações, informe mês, valor e data.
           </p>
-          <p>
+          <p className="ds-caption">
             Suas conversas ficam salvas no banco privado, vinculadas ao seu
             acesso. Você pode retomá-las em outro aparelho; a outra pessoa da
             família tem seu próprio histórico.
           </p>
           {ready && !reader ? (
-            <label className="family-consent">
+            // items-start: rótulo de 4 linhas, a caixinha fica na 1ª linha.
+            <label className="family-consent m-0 flex items-start gap-2.5 rounded-box bg-base-200/60 p-3 text-[0.8125rem] leading-normal">
               <input
                 type="checkbox"
+                className="checkbox checkbox-sm mt-px shrink-0"
                 checked={external}
                 disabled={busy}
                 onChange={(e) => setExternal(e.target.checked)}
@@ -595,18 +648,28 @@ export function HelpPanel({
               </span>
             </label>
           ) : (
-            <p>
+            <p className="ds-caption">
               {reader
                 ? "Seu acesso permite apenas consultas locais."
                 : "A IA externa ainda não está configurada. As consultas locais continuam disponíveis."}
             </p>
           )}
-          <button onClick={() => setSettings(false)}>Pronto</button>
-        </div>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="quiet"
+              onClick={() => setSettings(false)}
+            >
+              Pronto
+            </Button>
+          </div>
+        </Panel>
       )}
       {hidden ? (
         <div className="chat-empty">
-          <span aria-hidden="true">◌</span>
+          <span className="chat-emblem" aria-hidden="true">
+            <Icon name="eye" size={24} />
+          </span>
           <h2>Conversa protegida</h2>
           <p>Mostre os valores no topo para continuar.</p>
         </div>
@@ -630,23 +693,28 @@ export function HelpPanel({
             }}
           >
             {hasOlder && (
-              <button
+              <Button
                 className="chat-older"
                 disabled={loading}
                 onClick={() => void older()}
               >
                 Carregar mensagens anteriores
-              </button>
+              </Button>
             )}
             {loading && (
               <p className="chat-loading" role="status">
+                <span className="chat-dots" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
                 Carregando conversa…
               </p>
             )}
             {!messages.length && !loading && (
               <div className="chat-empty">
                 <span className="chat-emblem" aria-hidden="true">
-                  ✧
+                  <Icon name="sparkle" size={28} />
                 </span>
                 <h2>O que vamos cuidar hoje?</h2>
                 <p>
@@ -655,6 +723,9 @@ export function HelpPanel({
                 </p>
                 <div className="chat-suggestions">
                   {[
+                    ...(external
+                      ? ["Analise nossas finanças e me diga onde melhorar"]
+                      : []),
                     "O que falta pagar neste mês?",
                     "Quanto sobra no planejamento?",
                     ...(external
@@ -664,142 +735,227 @@ export function HelpPanel({
                         ]
                       : ["Como estão nossos investimentos?"]),
                   ].map((q) => (
-                    <button key={q} disabled={busy} onClick={() => void ask(q)}>
+                    <Button key={q} disabled={busy} onClick={() => void ask(q)}>
                       {q}
-                      <span aria-hidden="true">↗</span>
-                    </button>
+                      <Icon
+                        name="right"
+                        size={14}
+                        className="shrink-0 opacity-70"
+                      />
+                    </Button>
                   ))}
                 </div>
+                {external && (
+                  <p>
+                    Para uma análise completa, peça com palavras como
+                    “analise”, “o que poderia fazer diferente”, “onde dá para
+                    economizar” ou “o que está pesando nas finanças”.
+                  </p>
+                )}
                 {!external && ready && !reader && (
-                  <button
+                  <Button
                     className="chat-enable"
                     onClick={() => setSettings(true)}
                   >
                     Ativar conversa com IA
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
             {messages.map((m) => (
               <article
-                className={`chat-message chat-${m.role}`}
+                className={`chat-message chat-${m.role} chat ${m.role === "user" ? "chat-end" : "chat-start"}`}
                 key={m.id}
                 aria-label={m.role === "user" ? "Você" : "Judite"}
               >
                 {m.role === "assistant" && (
-                  <span className="chat-avatar" aria-hidden="true">
-                    ✧
-                  </span>
+                  // Mesmo avatar do cabeçalho; no topo da mensagem (self-start),
+                  // não no pé — em resposta longa ele ficava longe do começo.
+                  <JuditeAvatar
+                    size="sm"
+                    working={m.pending}
+                    className="chat-image self-start"
+                  />
                 )}
-                <div className="chat-message-body">
-                  <MessageText text={m.text} />
+                <div
+                  className={cx(
+                    "chat-message-body chat-bubble",
+                    m.role === "user"
+                      ? "chat-bubble-primary"
+                      : "bg-base-200 text-base-content",
+                  )}
+                >
+                  {m.pending ? (
+                    <JuditeInProgress />
+                  ) : m.error ? (
+                    <div className="flex items-start gap-2">
+                      <Icon
+                        name="alert"
+                        size={16}
+                        className="mt-[0.3rem] shrink-0 text-error"
+                      />
+                      <MessageText text={m.text} />
+                    </div>
+                  ) : (
+                    <MessageText text={m.text} />
+                  )}
+                  {m.contas && (
+                    <details className="chat-sources group mt-2 text-xs text-base-content/70">
+                      <summary className="inline-flex min-h-0 cursor-pointer list-none items-center gap-1 rounded py-1 hover:text-base-content [&::-webkit-details-marker]:hidden">
+                        Ver as contas
+                        <Icon
+                          name="down"
+                          size={12}
+                          className="transition-transform duration-(--ds-dur) group-open:rotate-180"
+                        />
+                      </summary>
+                      <p className="m-0 mt-1 whitespace-pre-line leading-relaxed text-inherit">
+                        {m.contas}
+                      </p>
+                    </details>
+                  )}
                   {m.action && (
-                    <section
-                      className="chat-action"
+                    <div
+                      role="region"
                       aria-label="Prévia da alteração"
+                      className="mt-3"
                     >
-                      <small>
-                        {m.action.status === "confirmed"
-                          ? "✓ SALVO"
-                          : m.action.status === "cancelled"
-                            ? "CANCELADO"
-                            : m.action.status === "expired"
-                              ? "PRÉVIA EXPIRADA"
-                              : "PRÉVIA · AINDA NÃO SALVO"}
-                      </small>
-                      <h3>{m.action.title}</h3>
-                      <ul>
-                        {m.action.details.map((d, i) => (
-                          <li key={i}>{d}</li>
-                        ))}
-                      </ul>
-                      {m.action.status === "pending" && (
-                        <>
-                          <p className="fine">
-                            Válida por 30 minutos. Confira valores, contas e
-                            datas.
-                          </p>
-                          <div className="chat-action-buttons">
-                            <button
-                              className="primary"
-                              disabled={
-                                !!saving ||
-                                busy ||
-                                reader ||
-                                referenceOnly ||
-                                loading
-                              }
-                              onClick={() =>
-                                void resolve(m.action!.id, "confirm")
-                              }
+                      <Panel
+                        title={m.action.title}
+                        meta={
+                          m.action.status === "confirmed"
+                            ? "✓ SALVO"
+                            : m.action.status === "cancelled"
+                              ? "CANCELADO"
+                              : m.action.status === "expired"
+                                ? "PRÉVIA EXPIRADA"
+                                : "PRÉVIA · AINDA NÃO SALVO"
+                        }
+                      >
+                        {/* Dados da prévia: linhas de 1 informação, então
+                            lista compacta (8px) — o RowList (54px por linha)
+                            é para linhas com título e detalhe. */}
+                        <ul className="m-0 flex list-none flex-col divide-y divide-base-300 p-0 text-sm">
+                          {m.action.details.map((d, i) => (
+                            <li
+                              key={i}
+                              className="py-2 leading-snug [overflow-wrap:anywhere]"
                             >
-                              {saving === m.action.id
-                                ? "Processando…"
-                                : "Confirmar e salvar"}
-                            </button>
-                            <button
-                              disabled={
-                                !!saving ||
-                                busy ||
-                                reader ||
-                                referenceOnly ||
-                                loading
-                              }
-                              onClick={() =>
-                                void resolve(m.action!.id, "cancel")
-                              }
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </section>
+                              {d}
+                            </li>
+                          ))}
+                        </ul>
+                        {m.action.status === "pending" && (
+                          <>
+                            <p className="ds-caption">
+                              Válida por 30 minutos. Confira valores, contas e
+                              datas.
+                            </p>
+                            <div className="chat-action-buttons flex flex-wrap gap-2">
+                              <Button
+                                variant="primary"
+                                disabled={
+                                  !!saving ||
+                                  busy ||
+                                  reader ||
+                                  referenceOnly ||
+                                  loading
+                                }
+                                onClick={() =>
+                                  void resolve(m.action!.id, "confirm")
+                                }
+                              >
+                                {saving === m.action.id
+                                  ? "Processando…"
+                                  : "Confirmar e salvar"}
+                              </Button>
+                              <Button
+                                variant="quiet"
+                                disabled={
+                                  !!saving ||
+                                  busy ||
+                                  reader ||
+                                  referenceOnly ||
+                                  loading
+                                }
+                                onClick={() =>
+                                  void resolve(m.action!.id, "cancel")
+                                }
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </Panel>
+                    </div>
+                  )}
+                  {m.origem && (
+                    <p className="ds-caption mt-2">
+                      {m.origem.externo
+                        ? m.origem.modelo
+                          ? `Com IA · ${m.origem.modelo}`
+                          : "Com IA"
+                        : "Sem envio externo"}
+                    </p>
                   )}
                   {m.source && (
-                    <details className="chat-sources">
-                      <summary>Fontes e limites da resposta</summary>
-                      <p>{m.source}</p>
-                      <p>{m.coverage}</p>
+                    // Metadado da resposta, não conteúdo: link pequeno que
+                    // abre o texto, sem caixa (era um bloco de 49px).
+                    <details className="chat-sources group mt-2 text-xs text-base-content/70">
+                      <summary className="inline-flex min-h-0 cursor-pointer list-none items-center gap-1 rounded py-1 hover:text-base-content [&::-webkit-details-marker]:hidden">
+                        Fontes e limites da resposta
+                        <Icon
+                          name="down"
+                          size={12}
+                          className="transition-transform duration-(--ds-dur) group-open:rotate-180"
+                        />
+                      </summary>
+                      <div className="mt-1 flex flex-col gap-1 leading-relaxed">
+                        <p className="m-0 text-inherit">{m.source}</p>
+                        <p className="m-0 text-inherit">{m.coverage}</p>
+                      </div>
                     </details>
                   )}
                 </div>
               </article>
             ))}
-            {busy && (
-              <div className="chat-thinking" role="status">
-                <span aria-hidden="true">✧</span> Pensando no seu pedido…
-              </div>
-            )}
+            {busy && <JuditeWaiting onStop={stop} />}
           </div>
           <div className="chat-compose-wrap">
             {referenceOnly && (
-              <p className="family-footnote">
+              <p className="ds-caption">
                 Esta conversa em {conversation?.currency} fica como referência.{" "}
-                <button
+                <Button
                   disabled={loading}
                   onClick={() => void newConversation()}
                 >
                   Conversar em reais
-                </button>
+                </Button>
               </p>
             )}
             {error && (
-              <p className="family-error" role="alert">
+              <p
+                className="family-error alert alert-soft alert-error"
+                role="alert"
+              >
                 {error}{" "}
                 {conversation && (
-                  <button
+                  <Button
                     type="button"
                     disabled={busy || loading}
                     onClick={() => void choose(conversation.id)}
                   >
                     Atualizar conversa
-                  </button>
+                  </Button>
                 )}
               </p>
             )}
+            {/* Compositor: uma pílula só. Anexar (discreto) · texto que cresce
+                com o conteúdo (1 a ~6 linhas) · enviar (primário). Botões no
+                pé (items-end): com várias linhas, ficam junto da última. */}
             <form
-              className="chat-composer"
+              className="chat-composer m-0 flex items-end gap-1 rounded-[1.375rem] border border-base-300 bg-base-100 p-1 shadow-none transition-[border-color,box-shadow] duration-(--ds-dur-fast) focus-within:border-primary focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-primary)_22%,transparent)]"
               onSubmit={(e) => {
                 e.preventDefault();
                 void ask(draft);
@@ -807,7 +963,7 @@ export function HelpPanel({
             >
               <button
                 type="button"
-                className="chat-attach"
+                className="btn btn-ghost btn-circle shrink-0 text-base-content/70"
                 aria-label="Abrir formulário de movimento"
                 title="Registrar pelo formulário"
                 disabled={
@@ -815,7 +971,7 @@ export function HelpPanel({
                 }
                 onClick={record}
               >
-                ＋
+                <Icon name="plus" size={20} />
               </button>
               <label className="sr-only" htmlFor="chat-draft">
                 Mensagem para Judite
@@ -827,7 +983,10 @@ export function HelpPanel({
                 enterKeyHint="enter"
                 disabled={loading || referenceOnly}
                 ref={input}
-                rows={2}
+                rows={1}
+                // field-sizing: cresce com o texto, sem JS; 40px = altura dos
+                // botões, então 1 linha fica centrada entre eles.
+                className="min-h-[calc(var(--size-field,0.25rem)*10)] max-h-36 flex-1 resize-none px-1 py-2 text-[0.9375rem] leading-6 [field-sizing:content]"
                 maxLength={600}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -841,15 +1000,20 @@ export function HelpPanel({
               {busy ? (
                 <button
                   type="button"
-                  className="chat-send"
+                  className="btn btn-circle shrink-0 border-0 bg-base-content text-base-100"
                   onClick={stop}
-                  aria-label="Parar resposta"
+                  aria-label="Parar a espera"
+                  title="Parar a espera"
                 >
-                  ■
+                  <span
+                    className="size-3 rounded-[3px] bg-current"
+                    aria-hidden="true"
+                  />
                 </button>
               ) : (
                 <button
-                  className="chat-send"
+                  type="submit"
+                  className="btn btn-primary btn-circle shrink-0 disabled:bg-base-200 disabled:text-base-content/30"
                   disabled={
                     draft.trim().length < 3 ||
                     !!saving ||
@@ -859,11 +1023,11 @@ export function HelpPanel({
                   }
                   aria-label="Enviar mensagem"
                 >
-                  ↑
+                  <Icon name="up" size={18} />
                 </button>
               )}
             </form>
-            <p className="chat-disclaimer">
+            <p className="chat-disclaimer m-0 mt-1.5 px-2 text-center text-xs leading-snug text-base-content/70">
               {external
                 ? "A IA pode errar. Alterações só são salvas ao confirmar."
                 : "Ajuda local para consultas. Ative a IA acima para pedir registros e edições."}

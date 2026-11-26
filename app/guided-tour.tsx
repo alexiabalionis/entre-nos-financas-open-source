@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
+import { Button } from "./button";
+import { useAsyncAction } from "./use-async-action";
 import { tourLayout } from "../src/domain/tour-layout";
 import type { Preferences } from "../src/domain/preferences";
 const steps = [
@@ -21,7 +23,7 @@ const steps = [
   {
     target: "navigation",
     title: "O resto está sempre aqui",
-    text: "Movimentos guarda o histórico. Futuro reúne investimentos e objetivos. Judite conversa com vocês sobre o histórico e os planos da família.",
+    text: "Movimentos guarda o histórico. Panorama mostra o que entra, sai e para onde vai. Copiloto ajuda a chegar até o salário e cuida das reservas. Judite conversa com vocês sobre o histórico e os planos da família.",
   },
 ];
 type Position = ReturnType<typeof tourLayout>;
@@ -42,9 +44,10 @@ export function GuidedTour({
     bubble = useRef<HTMLDivElement>(null),
     start = useRef(onStart),
     [step, setStep] = useState(0),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
     [position, setPosition] = useState<Position | null>(null);
+  const { busy, error, run } = useAsyncAction({
+    fallbackError: "Não foi possível concluir.",
+  });
   start.current = onStart;
   const open = replay || !preferences.onboarding_done,
     uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -111,10 +114,7 @@ export function GuidedTour({
     };
   }, [open, step]);
   async function finish() {
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    try {
+    const ok = await run(async () => {
       if (!preferences.onboarding_done) {
         const r = await fetch("/api/profile/onboarding", {
           method: "POST",
@@ -125,12 +125,10 @@ export function GuidedTour({
         if (!r.ok) throw new Error(p.error || "Não foi possível concluir.");
         onSaved(p);
       }
+    });
+    if (ok) {
       dialog.current?.close();
       onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Não foi possível concluir.");
-    } finally {
-      setBusy(false);
     }
   }
   return (
@@ -226,45 +224,46 @@ export function GuidedTour({
           <span>
             Conheça seu espaço · {step + 1}/{steps.length}
           </span>
-          <button
+          <Button
             type="button"
             disabled={busy}
             aria-label="Fechar apresentação"
             onClick={() => void finish()}
           >
             ×
-          </button>
+          </Button>
         </div>
         <h2 id="guided-title">{steps[step].title}</h2>
         <p id="guided-description">{steps[step].text}</p>
         <div className="guided-actions">
           {step > 0 && (
-            <button
+            <Button
               type="button"
               disabled={busy}
               onClick={() => setStep(step - 1)}
             >
               Voltar
-            </button>
+            </Button>
           )}
           {step < steps.length - 1 ? (
-            <button
+            <Button
               type="button"
-              className="primary"
+              variant="primary"
               disabled={busy}
               onClick={() => setStep(step + 1)}
             >
               Próximo
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
-              className="primary"
-              disabled={busy}
+              variant="primary"
+              busy={busy}
+              busyLabel="Salvando…"
               onClick={() => void finish()}
             >
-              {busy ? "Salvando…" : "Entendi"}
-            </button>
+              Entendi
+            </Button>
           )}
         </div>
         {error && <p role="alert">{error}</p>}
