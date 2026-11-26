@@ -1,5 +1,4 @@
 export const homeCards = [
-  ["summary", "Resumo do mês"],
   ["receipts", "Recebimentos para o próximo mês"],
   ["alerts", "Alarmes e vencimentos"],
   ["cards", "Cartões do mês"],
@@ -7,7 +6,18 @@ export const homeCards = [
   ["fixed", "Custos fixos"],
   ["variable", "Custos variáveis"],
   ["saving", "Reservas e objetivos"],
-  ["categories", "Gráfico por categoria"],
+  // Etapa 3: blocos da tela Mês (app/month/blocks/registry.ts) virando cards
+  // personalizáveis da home. Entram no fim — quem já tem card_order salvo
+  // (9 ids) recebe estes 4 ao final via normalizeHomeOrder. Labels iguais
+  // aos de MONTH_BLOCKS; mantidos aqui porque o domínio não importa de app/.
+  ["upcoming", "Vem aí"],
+  ["pending", "Precisa de você"],
+  ["path", "Caminho do saldo"],
+  ["composition", "Saídas por categoria"],
+  // Etapa 4: "summary" (Resumo do mês) e "categories" (Gráfico por categoria)
+  // saíram daqui — o topo fixo (HeroBlock) e o card "composition" acima os
+  // substituem na tela Mês. normalizeHomeOrder descarta os dois ids, que
+  // ainda podem existir em card_order salvo de usuárias antigas.
 ] as const;
 export type HomeCardId = (typeof homeCards)[number][0];
 export type Preferences = {
@@ -20,7 +30,7 @@ export type Preferences = {
   onboarding_done: boolean;
 };
 export const defaultPreferences: Preferences = {
-  accent: "#c5ab8b",
+  accent: "#5844d8",
   theme: "system",
   card_order: homeCards.map((c) => c[0]),
   hidden_cards: [],
@@ -48,6 +58,43 @@ export function reorderCard(
   next.splice(next.indexOf(target) + (after ? 1 : 0), 0, id);
   return next;
 }
+const knownCardIds: readonly HomeCardId[] = homeCards.map((c) => c[0]);
+function isKnownCardId(id: unknown): id is HomeCardId {
+  return typeof id === "string" && (knownCardIds as readonly string[]).includes(id);
+}
+// Genérica para sobreviver à etapa 4 (remoção de summary/categories): ids
+// desconhecidos (vindos de preferências futuras antigas, ou lixo) são
+// descartados; ids conhecidos faltando (blocos novos) são acrescentados no
+// fim, na ordem de homeCards. Idempotente: aplicar 2x = aplicar 1x.
+export function normalizeHomeOrder(
+  order: readonly string[],
+  hidden: readonly string[],
+): { card_order: HomeCardId[]; hidden_cards: HomeCardId[] } {
+  const seen = new Set<HomeCardId>();
+  const card_order: HomeCardId[] = [];
+  for (const id of order) {
+    if (isKnownCardId(id) && !seen.has(id)) {
+      seen.add(id);
+      card_order.push(id);
+    }
+  }
+  for (const id of knownCardIds) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      card_order.push(id);
+    }
+  }
+  const seenHidden = new Set<HomeCardId>();
+  const hidden_cards: HomeCardId[] = [];
+  for (const id of hidden) {
+    if (isKnownCardId(id) && !seenHidden.has(id)) {
+      seenHidden.add(id);
+      hidden_cards.push(id);
+    }
+  }
+  return { card_order, hidden_cards };
+}
+
 export function moveVisibleCard(
   order: HomeCardId[],
   hidden: HomeCardId[],

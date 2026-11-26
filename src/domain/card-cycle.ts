@@ -12,6 +12,29 @@ function dayInMonth(month: string, day: number) {
     last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   return month + "-" + String(Math.min(last, day)).padStart(2, "0");
 }
+// Deriva o mês de vencimento (YYYY-MM) da fatura que CONTÉM uma compra, pela
+// data da compra e o ciclo configurado. Regra única compartilhada entre a
+// projeção de faturas (cards.ts) e o orçamento por competência (state.ts) — não
+// duplicar. Testa do mês da compra até +2 para cobrir o offset do vencimento;
+// retorna null se a data não cai em nenhuma janela projetável.
+export function dueMonthFromCycle(
+  transactionDate: string,
+  cycle: { closing_day: number; due_day: number; due_month_offset: number },
+): string | null {
+  const buyMonth = transactionDate.slice(0, 7);
+  for (let d = 0; d <= 2; d++) {
+    const m = shiftMonth(buyMonth, d);
+    const p = cardCyclePeriod(
+      m,
+      cycle.closing_day,
+      cycle.due_day,
+      cycle.due_month_offset,
+    );
+    if (transactionDate >= p.start_date && transactionDate <= p.close_date)
+      return m;
+  }
+  return null;
+}
 export function cardCyclePeriod(
   month: string,
   closingDay: number,

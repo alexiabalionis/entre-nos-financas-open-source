@@ -165,6 +165,7 @@ test("API methods and segments are allowlisted; script CSP uses a nonce without 
   const id = randomUUID();
   assert.deepEqual(allowedMethods("auth/login"), ["POST"]);
   assert.deepEqual(allowedMethods("routine"), ["GET"]);
+  assert.deepEqual(allowedMethods("memories"), ["POST"]);
   assert.deepEqual(allowedMethods("imports/" + id + "/confirm"), ["POST"]);
   assert.deepEqual(allowedMethods("imports/" + id + "/confirm/extra"), []);
   assert.deepEqual(allowedMethods("unknown"), []);

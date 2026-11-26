@@ -1,0 +1,336 @@
+/* Camada 2 · Copiloto Futuro. Classes com prefixo fut-. Sem hex; só tokens --family-*. */
+/* Toda regra começa com ":root " de propósito: soma uma classe de especificidade para as peças
+   vencerem as regras antigas por elemento de family.css (.family-app button, .family-app h2,
+   .family-app p, .family-app input…), que têm especificidade (0,1,1). Regra nova: sempre prefixe. */
+
+
+/* T19 · FutureScope: Instrument Sans só na nova tela. */
+:root .fut-scope {
+  --family-font-sans: var(--family-font-future), system-ui, sans-serif;
+  font-family: var(--family-font-sans);
+}
+:root .fut-scope :where(h1, h2) { letter-spacing: -0.02em; }
+
+/* T24 · Headline e HorizonSwitch. */
+:root .fut-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--family-line);
+}
+:root .fut-headline-text { display: grid; gap: 8px; min-width: 0; flex: 1 1 360px; max-width: 760px; }
+:root .fut-headline-eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--family-muted);
+}
+:root .fut-headline-lead {
+  font-family: var(--family-font-sans);
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--family-text);
+}
+:root .fut-headline-detail { font-size: 1rem; line-height: 1.45; color: var(--family-muted); }
+:root .fut-headline-switch { max-width: 100%; overflow-x: auto; }
+
+/* T25 · GoalLanes. */
+
+/* T26 · MonthStations e StationCard. */
+:root .fut-station { display: grid; gap: 14px; min-width: 0; }
+:root .fut-station-head { display: grid; gap: 2px; }
+:root .fut-station-ahead { font-size: 0.8125rem; color: var(--family-muted); }
+:root .fut-station-marks { display: grid; gap: 6px; }
+:root .fut-station-mark {
+  /* padding: 4px 12px; */
+  border-radius: var(--family-radius-md);
+  color: var(--family-text);
+  font-size: 0.9375rem;
+}
+:root .fut-station-mark[data-missed] { background: var(--family-danger-bg); }
+:root .fut-station-mark summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 400;
+  font-size: 13px;
+}
+:root .fut-station-why { display: grid; gap: 4px; padding: 0 0 8px 24px; list-style: disc; color: var(--family-muted); font-size: 0.875rem; }
+@media (prefers-reduced-motion: no-preference) {
+  :root .fut-station-mark { animation: ds-rise var(--ds-dur) var(--ds-ease) both; }
+}
+
+/* T27 · CardBillChart e CardMonthPanel. */
+:root .fut-card-bill { display: grid; gap: 14px; min-width: 0; }
+:root .fut-card-bill-body { display: grid; gap: 20px; min-width: 0; }
+:root .fut-card-bill-chart { min-width: 0; }
+:root .fut-card-month-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: var(--family-radius-lg);
+  background: var(--family-surface);
+  border: 1px solid var(--family-line);
+}
+:root .fut-card-month-title { display: block; font-size: 1rem; font-weight: 600; color: var(--family-text); }
+:root .fut-card-month-head { align-items: center; }
+:root .fut-card-month-sum { display: grid; gap: 4px; min-width: 0; }
+:root .fut-card-month-body { display: grid; gap: 12px; padding-top: 12px; }
+:root .fut-card-month-big {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-family: var(--family-font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--family-text);
+}
+:root .fut-card-month-big small { font-size: 0.8125rem; font-weight: 500; color: var(--family-muted); }
+:root .fut-card-month-share { font-size: 0.875rem; line-height: 1.45; color: var(--family-muted); }
+
+/* T28 · PurchaseSimulator e EverydayControl. */
+:root .fut-purchase { display: grid; gap: 14px; min-width: 0; }
+:root .fut-purchase-title { font-size: 1rem; font-weight: 600; color: var(--family-text); }
+:root .fut-purchase-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+:root .fut-field { display: grid; gap: 6px; min-width: 0; }
+:root .fut-field > label { font-size: 0.8125rem; color: var(--family-muted); }
+:root .fut-purchase-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+:root .fut-purchase-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 260px;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--family-text);
+}
+:root .fut-purchase-result > svg { flex: none; margin-top: 2px; color: var(--family-muted); }
+:root .fut-everyday { min-width: 0; }
+:root .fut-everyday-empty { font-size: 0.9375rem; color: var(--family-muted); }
+@media (prefers-reduced-motion: no-preference) {
+  :root .fut-purchase-result { animation: ds-rise var(--ds-dur) var(--ds-ease) both; }
+}
+
+/* T29 · ContributionControl, DecisionList, Premises e FutureDraftBar. */
+:root .fut-contribution { min-width: 0; }
+:root .fut-premises { font-size: 0.8125rem; color: var(--family-muted); }
+:root .fut-premises > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+:root .fut-premises > ul { display: grid; gap: 6px; padding: 4px 0 0 22px; list-style: disc; max-width: 68ch; }
+:root .fut-draft-compare { display: grid; gap: 16px; }
+:root .fut-draft-describe { display: grid; gap: 6px; padding-left: 20px; list-style: disc; font-size: 0.875rem; color: var(--family-muted); }
+
+/* Tela /copiloto · FutureScreen: a ordem do A+B e o respiro entre blocos. */
+:root .fut-screen { display: grid; gap: 40px; min-width: 0; padding-bottom: 24px; }
+
+/* Aba Simular: escolhas à esquerda, efeito à direita (abaixo no celular). */
+:root .fut-sim { display: grid; gap: 16px; min-width: 0; }
+/* Abertura sem cartão, como o Headline do Futuro: a pergunta e uma linha de apoio. */
+:root .fut-sim-head { display: grid; gap: 6px; max-width: 60ch; margin-bottom: 4px; }
+:root .fut-sim-title { margin: 0; font-size: 1.5rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; color: var(--family-text); text-wrap: balance; }
+:root .fut-sim-lede { margin: 0; font-size: 0.9375rem; line-height: 1.5; color: var(--family-muted); }
+
+/* As portas: uma pergunta por linha, alvo inteiro tocável. */
+:root .fut-sim-doors { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+:root .fut-sim-door {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 76px;
+  padding: 14px 16px; text-align: left; cursor: pointer; color: var(--family-text);
+  background: var(--family-surface); border: 1px solid var(--family-line); border-radius: var(--family-radius-lg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--family-text) 6%, transparent);
+  transition: border-color var(--ds-dur-fast) var(--ds-ease), transform var(--ds-dur-press) var(--ds-ease);
+}
+:root .fut-sim-door:hover { border-color: color-mix(in srgb, var(--family-accent) 50%, var(--family-line)); }
+:root .fut-sim-door:active { transform: scale(0.99); }
+:root .fut-sim-door:focus-visible { outline: 2px solid var(--family-accent); outline-offset: 2px; }
+:root .fut-sim-door > svg:last-child { flex: none; color: var(--family-muted); }
+:root .fut-sim-door-icon {
+  display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--family-tint); color: var(--family-accent);
+}
+:root .fut-sim-door-text { display: grid; gap: 3px; flex: 1; min-width: 0; }
+:root .fut-sim-door-title { display: flex; align-items: center; gap: 8px; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; }
+:root .fut-sim-door-count {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+  background: var(--family-tint); color: var(--family-text); font-size: 0.75rem; font-weight: 700;
+  font-family: var(--family-font-numeric); font-variant-numeric: tabular-nums;
+}
+:root .fut-sim-door-sub { font-size: 0.875rem; line-height: 1.4; color: var(--family-muted); overflow-wrap: anywhere; }
+:root .fut-sim-other { margin: 0; }
+
+/* Estado da tela inicial: teste em aberto e plano salvo. */
+:root .fut-sim-pending {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+  padding: 12px 14px; border-radius: var(--family-radius-lg); background: var(--family-tint);
+}
+:root .fut-sim-pending-text { display: grid; gap: 2px; min-width: 0; font-size: 0.875rem; line-height: 1.4; }
+:root .fut-sim-pending-actions { display: flex; gap: 8px; }
+:root .fut-sim-status { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.875rem; color: var(--family-text); }
+:root .fut-sim-status > svg { color: var(--family-success); }
+
+/* A pergunta aberta: folha de baixo no celular, painel no centro no desktop. */
+:root .fut-sim-sheet { display: grid; gap: 18px; padding: 10px 20px 0; max-height: 92dvh; }
+:root .fut-sim-grab { justify-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--family-line); }
+@media (min-width: 640px) {
+  :root .fut-sim-sheet { width: min(520px, 92vw); max-width: none; padding-top: 18px; }
+  :root .fut-sim-grab { display: none; }
+}
+/* O valor do stepper é o número da pergunta: maior que o padrão do DS. */
+:root .fut-sim-sheet .ds-amount:not(.is-compact) .ds-amount-field input { font-size: 1.5rem; }
+:root .fut-sim-sheet-title:focus { outline: none; }
+:root .fut-sim-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+:root .fut-sim-sheet-title { margin: 0; font-size: 1.0625rem; font-weight: 700; line-height: 1.3; color: var(--family-text); }
+:root .fut-sim-sheet-body { display: grid; gap: 18px; min-width: 0; }
+
+/* O veredito: a palavra, o porquê, a nota. O nível vem da palavra, do ícone e do fundo. */
+:root .fut-sim-verdict {
+  display: grid; gap: 8px; padding: 16px; border-radius: var(--family-radius-lg);
+  background: var(--family-surface-2); transition: background-color var(--ds-dur) var(--ds-ease);
+}
+:root .fut-sim-verdict[data-level="ok"] { background: var(--family-success-bg); }
+:root .fut-sim-verdict[data-level="apertado"] { background: var(--family-warn-bg); }
+:root .fut-sim-verdict[data-level="inviavel"] { background: var(--family-danger-bg); }
+:root .fut-sim-verdict-word {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  font-size: 1.875rem; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; color: var(--family-text);
+}
+:root .fut-sim-verdict { --fut-level: var(--family-text); }
+:root .fut-sim-verdict[data-level="ok"] { --fut-level: var(--family-success); }
+:root .fut-sim-verdict[data-level="apertado"] { --fut-level: var(--family-warn); }
+:root .fut-sim-verdict[data-level="inviavel"] { --fut-level: var(--family-danger); }
+/* A palavra leva a cor do nível, puxada para o texto para ler bem no fundo tingido dos dois temas
+   (o âmbar puro do aviso some no claro). O ícone usa a cor cheia. */
+:root .fut-sim-verdict-word { color: color-mix(in oklab, var(--fut-level) 62%, var(--family-text)); }
+:root .fut-sim-verdict-word > svg { color: var(--fut-level); }
+:root .fut-sim-num { font-family: var(--family-font-numeric); font-variant-numeric: tabular-nums; font-weight: 600; }
+:root .fut-sim-verdict-line { margin: 0; font-size: 0.9375rem; line-height: 1.5; color: var(--family-text); max-width: 60ch; }
+:root .fut-sim-verdict-note { margin: 0; font-size: 0.8125rem; line-height: 1.45; color: var(--family-muted); }
+:root .fut-sim-verdict-empty { margin: 0; font-size: 0.9375rem; line-height: 1.5; color: var(--family-muted); }
+@media (prefers-reduced-motion: no-preference) {
+  :root .fut-sim-verdict-word { animation: ds-rise var(--ds-dur) var(--ds-ease); }
+}
+
+/* "E se…": caminhos que cabem melhor, dentro do veredito. Cada um testa ao tocar. */
+:root .fut-sim-alts { display: grid; gap: 6px; margin-top: 4px; padding-top: 12px; border-top: 1px solid color-mix(in oklab, var(--fut-level) 22%, transparent); }
+:root .fut-sim-alts-title { margin: 0; font-size: 0.8125rem; font-weight: 600; color: var(--family-muted); }
+:root .fut-sim-alts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+:root .fut-sim-alt {
+  display: grid; gap: 2px; width: 100%; min-height: 44px; padding: 8px 12px; text-align: left;
+  border: 1px solid var(--family-line); border-radius: var(--family-radius-md); background: var(--color-base-100);
+  color: var(--family-text); cursor: pointer;
+  transition: border-color var(--ds-dur) var(--ds-ease), background-color var(--ds-dur) var(--ds-ease);
+}
+:root .fut-sim-alt:hover { border-color: color-mix(in oklab, var(--fut-level) 45%, var(--family-line)); }
+:root .fut-sim-alt:focus-visible { outline: 2px solid var(--fut-level); outline-offset: 2px; }
+:root .fut-sim-alt-label { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+:root .fut-sim-alt-detail { font-size: 0.8125rem; color: var(--family-muted); }
+
+/* Controles da pergunta. */
+:root .fut-sim-controls { display: grid; gap: 16px; min-width: 0; }
+:root .fut-sim-chips { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 8px; }
+:root .fut-sim-chips > legend { padding: 0; margin-bottom: 8px; font-size: 0.8125rem; font-weight: 600; color: var(--family-muted); }
+:root .fut-sim-chips-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+:root .fut-sim-chip {
+  position: relative; display: grid; place-items: center; min-width: 0; min-height: 44px; padding: 0 4px;
+  border: 1px solid var(--family-line); border-radius: 12px; background: var(--family-surface);
+  font-family: var(--family-font-numeric); font-variant-numeric: tabular-nums; font-size: 0.9375rem; font-weight: 600;
+  color: var(--family-text); cursor: pointer;
+  transition: border-color var(--ds-dur-fast) var(--ds-ease), background-color var(--ds-dur-fast) var(--ds-ease);
+}
+
+:root .fut-sim-chip.is-on { border-color: var(--family-accent); background: var(--family-tint); }
+:root .fut-sim-chip:has(input:focus-visible) { outline: 2px solid var(--family-accent); outline-offset: 2px; }
+:root .fut-sim-hint { margin: 0; font-size: 0.8125rem; color: var(--family-muted); font-variant-numeric: tabular-nums; }
+:root .fut-sim-selects { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px 16px; }
+
+/* "Ver os números": link discreto que abre o antes → depois do motor. */
+:root .fut-sim-link.ds-discbtn {
+  font-size: 0.875rem; font-weight: 500; color: var(--family-text);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--family-line);
+}
+:root .fut-sim-link.ds-discbtn:hover { text-decoration-color: currentColor; }
+:root .fut-sim-numbers .ds-collapse-body { padding-top: 6px; }
+
+/* Sugestões dentro da pergunta. */
+:root .fut-sim-sugs { list-style: none; margin: 0; padding: 0; display: grid; }
+:root .fut-sim-sug {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 0; border-top: 1px solid var(--family-line);
+}
+:root .fut-sim-sug:first-child { border-top: 0; padding-top: 0; }
+:root .fut-sim-sug-text { display: grid; gap: 4px; min-width: 0; flex: 1; }
+:root .fut-sim-sug-title { margin: 0; font-size: 0.9375rem; font-weight: 600; line-height: 1.4; color: var(--family-text); text-wrap: pretty; overflow-wrap: anywhere; }
+:root .fut-sim-sug-what { margin: 0; font-size: 0.8125rem; line-height: 1.45; color: var(--family-muted); }
+:root .fut-sim-sug > .ds-button { flex: none; }
+:root .fut-sim-sug-on { display: inline-flex; align-items: center; gap: 6px; flex: none; font-size: 0.875rem; font-weight: 600; color: var(--family-text); }
+:root .fut-sim-sug-on > svg { color: var(--family-success); }
+
+/* Ações, presas ao pé da folha. */
+:root .fut-sim-sheet-foot {
+  /* Preso ao pé da caixa (sem padding embaixo nela): nada rola por baixo das ações. */
+  display: grid; gap: 10px; position: sticky; bottom: 0;
+  padding: 12px 0 calc(20px + env(safe-area-inset-bottom)); background: var(--color-base-100); border-top: 1px solid var(--family-line);
+}
+:root .fut-sim-confirm { margin: 0; font-size: 0.875rem; line-height: 1.45; color: var(--family-text); }
+:root .fut-sim-actions { display: flex; gap: 10px; }
+:root .fut-sim-actions > .ds-button { flex: 1; }
+:root .fut-tabs { display: flex; justify-content: flex-start; margin-bottom: 24px; }
+/* No app, a barra de navegação fixa (.family-nav, ~70px + área segura) ocupa o rodapé:
+   a barra de rascunho para logo acima dela em vez de cobri-la. */
+:root .family-app .fut-screen .ds-draftbar {
+  bottom: calc(78px + env(safe-area-inset-bottom));
+  padding-bottom: 12px;
+}
+
+/* Mês dia a dia: frase do ponto mais baixo e os movimentos com o saldo depois. */
+:root .fut-cash { display: grid; gap: 10px; min-width: 0; }
+:root .fut-cash-summary {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 0.875rem; line-height: 1.45; font-weight: 500; color: var(--family-text);
+}
+:root .fut-cash-summary.is-negative { color: var(--family-danger); }
+:root .fut-cash-summary > svg { flex: none; margin-top: 3px; }
+:root .fut-cash-summary .ds-discbtn-icon { margin-top: -4px; }
+:root .fut-cash-summary-text { min-width: 0; }
+:root .fut-cash .ds-collapse-body { display: grid; gap: 10px; }
+/* O mês selecionado carrega a lista dia a dia: mais largo para os nomes não quebrarem em várias linhas. */
+:root .fut-sim-months { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+:root .fut-sim-months th, :root .fut-sim-months td { padding: 8px 0; text-align: right; border-top: 1px solid var(--family-line); }
+:root .fut-sim-months thead th { border-top: 0; font-size: 0.75rem; font-weight: 600; color: var(--family-muted); }
+:root .fut-sim-months :is(th, td):first-child { text-align: left; }
+:root .fut-sim-months tbody th { font-weight: 600; }
+:root .fut-sim-months td { font-family: var(--family-font-numeric); }
+:root .fut-sim-was { color: var(--family-muted); text-decoration: line-through; }
+:root .fut-sim-sug-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 6px; }
+:root .fut-sim-sug-edit { display: grid; gap: 12px; margin-top: 10px; }
+:root .fut-sim-sugs-empty { display: grid; gap: 6px; justify-items: start; }
+:root .fut-sim-sug { align-items: flex-start; }
+:root .fut-sim-alts-note { margin: 0; font-size: 0.875rem; line-height: 1.5; color: var(--family-text); max-width: 60ch; }
+
+/* "Por que aconteceu?": nota do mês num aviso de categoria. */
+:root .fut-sim-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 4px; }
+:root .fut-sim-note-text {
+  margin: 0; padding: 8px 12px; flex: 1 1 16rem; border-radius: var(--family-radius-md);
+  background: var(--family-surface-2); font-size: 0.875rem; line-height: 1.45; color: var(--family-text);
+}
+:root .fut-sim-note-label { font-weight: 600; }
+:root .fut-sim-note-edit { display: grid; gap: 6px; margin-top: 4px; }
+:root .fut-sim-note-edit > label { font-size: 0.8125rem; font-weight: 600; color: var(--family-muted); }
+:root .fut-sim-note-edit > textarea { width: 100%; min-height: 4.5rem; resize: vertical; font-size: 0.9375rem; line-height: 1.45; }
+:root .fut-sim-note-hint { margin: 0; font-size: 0.75rem; color: var(--family-muted); }
+:root .fut-sim-note-actions { display: flex; gap: 8px; align-items: center; }

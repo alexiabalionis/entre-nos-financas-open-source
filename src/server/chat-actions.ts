@@ -5,6 +5,11 @@ import type { Identity } from "./auth.ts";
 import type { MonthlyItem } from "./routine.ts";
 import { saveItemTx, checkItemTx } from "./routine.ts";
 import { createManualEventTx } from "./manual.ts";
+import { createGoalTx } from "./reserve-goal.ts";
+import { saveNoteTx, setProtectedTx } from "./context-notes.ts";
+import { archiveMemoryTx, saveMemoryTx } from "./ai-assistant-memories.ts";
+import { memoryIntents, memoryPayload, type MemoryCatalog } from "./chat-memory-actions.ts";
+import { addMovementTx } from "./reserve-movements.ts";
 import { UserError } from "./imports.ts";
 import { cents, dateOnly, postings, type Currency } from "../domain/finance.ts";
 import { plainMoney, formatted, brDate } from "../domain/format.ts";
@@ -63,6 +68,49 @@ export const chatIntent = z.discriminatedUnion("type", [
       ]),
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("goal_create"),
+      name: z.string().trim().min(1).max(80),
+      target_cents: amount,
+      deadline_month: z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("goal_contribute"),
+      target: z.string(),
+      kind: z.enum(["deposit", "withdrawal"]),
+      amount_cents: amount,
+      date: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("note_save"),
+      scope: z.enum(["household", "category", "category_month"]),
+      category: z.string().nullable(),
+      // Opcional: o modelo costuma omitir o mês quando o escopo não usa.
+      month: z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .nullable()
+        .optional()
+        .transform((v) => v ?? null),
+      note: z.string().trim().min(1).max(500),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("category_protect"),
+      category: z.string(),
+      protected: z.boolean(),
+    })
+    .strict(),
+  ...memoryIntents,
 ]);
 export type ActionView = {
   id: string;
@@ -74,7 +122,28 @@ export type ChatCatalog = {
   items: MonthlyItem[];
   accounts: { id: string; name: string; kind: string; currency: Currency }[];
   categories: { id: string; name: string }[];
+  goals?: {
+    id: string;
+    name: string;
+    location: string | null;
+    status: string;
+    target_cents: string;
+    saved_cents: string;
+    planned_this_month_cents?: string | null;
+  }[];
+  /** Memórias lidas por search_memory nesta pergunta (m0, m1...). */
+  memoryRefs?: MemoryCatalog["memoryRefs"];
 };
+export function resolveRef<T>(value: string, prefix: string, values: T[]): T {
+  if (
+    !new RegExp(`^${prefix}(0|[1-9]\\d*)$`).test(value) ||
+    !values[Number(value.slice(1))]
+  )
+    throw new UserError(
+      "Não identifiquei esse registro com segurança. Informe o nome completo.",
+    );
+  return values[Number(value.slice(1))];
+}
 export function actionCatalog(c: ChatCatalog, currency: Currency) {
   return {
     items: c.items.map((i, n) => ({
@@ -92,6 +161,16 @@ export function actionCatalog(c: ChatCatalog, currency: Currency) {
       currency: a.currency,
     })),
     categories: c.categories.map((a, n) => ({ ref: `c${n}`, name: a.name })),
+    goals: (c.goals ?? []).map((g, n) => ({
+      ref: `g${n}`,
+      name: g.name,
+      status: g.status,
+      target_cents: g.target_cents,
+      saved_cents: g.saved_cents,
+      has_location: g.location !== null,
+      // "Quanto combinamos guardar este mês" na reserva é este plano, não memória.
+      planned_this_month_cents: g.planned_this_month_cents ?? null,
+    })),
     currency,
   };
 }
@@ -116,22 +195,15 @@ export async function proposeAction(
       );
     return d;
   };
-  const ref = <T>(value: string, prefix: string, values: T[]): T => {
-    if (
-      !new RegExp(`^${prefix}(0|[1-9]\\d*)$`).test(value) ||
-      !values[Number(value.slice(1))]
-    )
-      throw new UserError(
-        "Não identifiquei esse registro com segurança. Informe o nome completo.",
-      );
-    return values[Number(value.slice(1))];
-  };
+  const ref = resolveRef;
   let payload: {
     operation: string;
     data: unknown;
     view: Omit<ActionView, "id" | "status">;
   };
-  if (a.type === "event_create") {
+  if (a.type === "memory_save" || a.type === "memory_forget") {
+    payload = await memoryPayload(db, user, a, c);
+  } else if (a.type === "event_create") {
     const account = ref(a.account, "a", c.accounts);
     const counter = a.counter_account
       ? ref(a.counter_account, "a", c.accounts)
@@ -208,6 +280,115 @@ export async function proposeAction(
           paired
             ? "Entre nossas contas: não conta como consumo."
             : "Confira se este movimento já aparece no extrato para evitar duplicidade.",
+        ],
+      },
+    };
+  } else if (a.type === "goal_create") {
+    const name = a.name;
+    if (
+      (c.goals ?? []).some(
+        (g) =>
+          g.status === "active" &&
+          g.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase(),
+      )
+    )
+      throw new UserError(
+        "Já existe um objetivo com esse nome. Use um nome diferente ou guarde no objetivo existente.",
+      );
+    payload = {
+      operation: "goal_create",
+      data: {
+        name,
+        target: plainMoney(a.target_cents),
+        deadline_month: a.deadline_month,
+      },
+      view: {
+        title: "Criar objetivo",
+        details: [
+          name,
+          formatted(a.target_cents, currency),
+          a.deadline_month
+            ? `Prazo: ${a.deadline_month.slice(5)}/${a.deadline_month.slice(0, 4)}`
+            : "Sem prazo",
+          "Cria um objetivo; não move dinheiro.",
+        ],
+      },
+    };
+  } else if (a.type === "goal_contribute") {
+    const goal = ref(a.target, "g", c.goals ?? []);
+    if (goal.status !== "active")
+      throw new UserError("Esse objetivo não está ativo.");
+    if (goal.location === null)
+      throw new UserError(
+        "Antes de guardar, diga onde esse dinheiro fica. Abra Reservas e escolha.",
+      );
+    // Reserva não é mês de planejamento: a data não é restrita ao mês de referência.
+    const date = dateOnly(a.date);
+    payload = {
+      operation: "goal_contribute",
+      data: {
+        goal_id: goal.id,
+        kind: a.kind,
+        amount: plainMoney(a.amount_cents),
+        date,
+      },
+      view: {
+        title:
+          a.kind === "deposit" ? "Guardar em objetivo" : "Retirar de objetivo",
+        details: [
+          goal.name,
+          `${formatted(a.amount_cents, currency)} · ${brDate(date)}`,
+          "Atualiza só o acompanhamento do objetivo; não faz transferência bancária.",
+        ],
+      },
+    };
+  } else if (a.type === "note_save") {
+    const ok =
+      a.scope === "household"
+        ? a.category === null && a.month === null
+        : a.scope === "category"
+          ? a.category !== null && a.month === null
+          : a.category !== null && a.month !== null;
+    if (!ok)
+      throw new UserError(
+        "Combinação inválida: casa não leva categoria nem mês; categoria leva só a categoria; categoria no mês leva os dois.",
+      );
+    const category = a.category ? ref(a.category, "c", c.categories) : null;
+    payload = {
+      operation: "note_save",
+      data: {
+        scope: a.scope,
+        ...(category ? { category: category.name } : {}),
+        ...(a.month ? { month: a.month } : {}),
+        note: a.note,
+      },
+      view: {
+        title: "Guardar nota",
+        details: [
+          a.scope === "household"
+            ? "Vale para a casa toda"
+            : a.scope === "category"
+              ? "Vale para a categoria"
+              : "Vale para a categoria em um mês",
+          ...(category ? [`Categoria: ${category.name}`] : []),
+          ...(a.month ? [`Mês: ${a.month.slice(5)}/${a.month.slice(0, 4)}`] : []),
+          `Nota: ${a.note}`,
+          "Guarda só uma nota de contexto; não altera valores.",
+        ],
+      },
+    };
+  } else if (a.type === "category_protect") {
+    const category = ref(a.category, "c", c.categories);
+    payload = {
+      operation: "category_protect",
+      data: { category: category.name, protected: a.protected },
+      view: {
+        title: a.protected ? "Proteger categoria" : "Deixar de proteger",
+        details: [
+          `Categoria: ${category.name}`,
+          a.protected
+            ? "A assistente não vai sugerir cortes nessa categoria."
+            : "A assistente poderá voltar a sugerir cortes nessa categoria.",
         ],
       },
     };
@@ -426,6 +607,57 @@ export async function resolveAction(
           "Já há um movimento com essa conta, data, descrição e valor. Confira Movimentos; nada foi duplicado.",
         );
     }
+    if (p.operation === "goal_create") {
+      const data = p.data as { name: string };
+      await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        user.familyId + "goal" + data.name.toLowerCase(),
+      ]);
+      const duplicate = await tx.query(
+        "SELECT id FROM goals WHERE household_id=$1 AND lower(name)=lower($2) AND status='active' LIMIT 1",
+        [user.familyId, data.name],
+      );
+      if (duplicate.rows.length)
+        throw new UserError(
+          "Esse objetivo já foi criado. Atualize a tela antes de criar outro.",
+        );
+    }
+    if (p.operation === "goal_contribute") {
+      const data = p.data as {
+        goal_id: string;
+        kind: string;
+        amount: string;
+        date: string;
+      };
+      await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        user.familyId + data.goal_id + data.kind + data.date + data.amount,
+      ]);
+      const duplicate = await tx.query(
+        "SELECT id FROM reserve_movements WHERE household_id=$1 AND goal_id=$2 AND kind=$3 AND date=$4 AND cents=$5 AND voided_at IS NULL LIMIT 1",
+        [
+          user.familyId,
+          data.goal_id,
+          data.kind,
+          data.date,
+          cents(data.amount).toString(),
+        ],
+      );
+      if (duplicate.rows.length)
+        throw new UserError(
+          "Já há um movimento igual nesse objetivo, com mesma data e valor. Confira o histórico; nada foi duplicado.",
+        );
+    }
+    if (p.operation === "note_save") {
+      const data = p.data as { scope: string; category?: string; month?: string };
+      await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        user.familyId + "note" + data.scope + (data.category ?? "") + (data.month ?? ""),
+      ]);
+    }
+    if (p.operation === "category_protect") {
+      const data = p.data as { category: string };
+      await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        user.familyId + "protect" + data.category,
+      ]);
+    }
     const result =
       p.operation === "plan"
         ? await saveItemTx(tx, user, p.data)
@@ -433,7 +665,19 @@ export async function resolveAction(
           ? await checkItemTx(tx, user, p.data)
           : p.operation === "event"
             ? { id: await createManualEventTx(tx, user, p.data) }
-            : null;
+            : p.operation === "goal_create"
+              ? await createGoalTx(tx, user, p.data)
+              : p.operation === "goal_contribute"
+                ? await addMovementTx(tx, user, p.data)
+                : p.operation === "note_save"
+                  ? await saveNoteTx(tx, user, p.data)
+                  : p.operation === "category_protect"
+                    ? await setProtectedTx(tx, user, p.data)
+                    : p.operation === "memory_save"
+                      ? await saveMemoryTx(tx, user, p.data)
+                      : p.operation === "memory_forget"
+                        ? await archiveMemoryTx(tx, user, p.data)
+                        : null;
     if (!result) throw new UserError("Tipo de alteração indisponível.");
     await tx.query(
       "UPDATE chat_actions SET status='confirmed',result=$1 WHERE id=$2",

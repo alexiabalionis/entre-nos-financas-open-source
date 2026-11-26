@@ -91,7 +91,7 @@ export function QuickActions({
                 action.run();
               }}
             >
-              <span className="quick-action-circle" aria-hidden="true">
+              <span className="quick-action-circle btn btn-circle btn-soft btn-primary shadow-md" aria-hidden="true">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -124,7 +124,7 @@ export function QuickActions({
         <button
           ref={trigger}
           data-tour="quick-actions"
-          className="quick-actions-trigger"
+          className="quick-actions-trigger btn btn-primary btn-circle shadow-lg"
           type="button"
           aria-label={expanded ? "Fechar ações" : "Abrir ações"}
           aria-expanded={expanded}

@@ -18,7 +18,8 @@ const child = spawn(
     "node_modules/next/dist/bin/next",
     mode,
     "--hostname",
-    "127.0.0.1",
+    // Padrão só local. Para o celular via Tailscale: APP_HOST=$(tailscale ip -4)
+    process.env.APP_HOST || "127.0.0.1",
     "--port",
     port,
   ],

@@ -1,26 +1,22 @@
 import { economicEffect, type Kind } from "./finance.ts";
+import { isFixedBill } from "./recurrence.ts";
 
 export type PlanGroup = "income" | "fixed" | "variable" | "saving";
+// Conta fixa = despesa ligada a uma recorrência (isFixedBill). Categoria e
+// nome nunca classificam. cost_type só sobra como legado: um item antigo
+// marcado à mão sem série continua no grupo que a pessoa escolheu.
 export function planGroup(item: {
   purpose: string;
-  label: string;
   cost_type?: string | null;
+  recurrence?: { id: string } | null;
 }): PlanGroup {
   if (item.purpose === "income") return "income";
   if (item.purpose === "saving") return "saving";
+  if (isFixedBill({ recurrence_id: item.recurrence?.id, purpose: item.purpose }))
+    return "fixed";
   if (item.cost_type === "fixed" || item.cost_type === "variable")
     return item.cost_type;
-  // A suggestion for the existing plan, never a change to its amounts or payment status.
-  const label = item.label
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-  return item.purpose === "expense" &&
-    /\b(aluguel|condominio|internet|energia|luz|agua|gas|telefone|celular|seguro|escola|creche|mensalidade|financiamento|prestacao|assinatura|netflix|spotify)\b/.test(
-      label,
-    )
-    ? "fixed"
-    : "variable";
+  return "variable";
 }
 
 export function categorySpending(

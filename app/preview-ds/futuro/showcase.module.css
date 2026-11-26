@@ -1,0 +1,60 @@
+/* Estilos só da vitrine (não fazem parte do design system). Só tokens --family-*.
+   A raiz também leva .family-app, como as telas reais, para os botões do app (Button) ficarem iguais. */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--family-space-5) 16px 96px;
+  background: var(--family-bg);
+  color: var(--family-text);
+  font-family: var(--family-font-sans);
+}
+.controls {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  padding: 12px 0;
+  margin-bottom: 16px;
+  background: var(--family-bg);
+  border-bottom: 1px solid var(--family-line);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.check input { width: 20px; height: 20px; margin: 0; }
+.title { font-size: 1.5rem; font-weight: 600; margin: 0 0 4px; }
+.note { color: var(--family-muted); font-size: 0.875rem; margin: 0 0 16px; }
+.section {
+  margin: 0 0 32px;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--family-line);
+}
+.section > h2 { font-size: 1.125rem; font-weight: 600; margin: 0 0 12px; }
+.layer { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--family-muted); margin: 24px 0 0; }
+.row { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
+.card {
+  padding: 16px;
+  border: 1px solid var(--family-line);
+  border-radius: var(--family-radius-lg);
+  background: var(--family-surface);
+  min-width: 0;
+}
+.big { font-size: 1.75rem; font-weight: 600; font-family: var(--family-font-numeric); font-variant-numeric: tabular-nums; }
+.muted { color: var(--family-muted); font-size: 0.875rem; }
+.stack { display: grid; gap: 16px; }
+.status { font-family: var(--family-font-numeric); font-size: 0.8125rem; color: var(--family-muted); }
+
+/* No celular, a barra de controles da vitrine não fica presa no topo (ocuparia metade da tela). */
+@media (max-width: 600px) {
+  .controls {
+    position: static;
+  }
+}

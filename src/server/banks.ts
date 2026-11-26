@@ -1,4 +1,6 @@
-import { analyzeBanksTx, readIncomeRules } from "./bank-analysis.ts";
+import { analyzeBanksTx } from "./bank-analysis.ts";
+import { syncBankEvents, backfillBankEvents } from "./bank-card-events.ts";
+import { readIncomeRules } from "./income-rules.ts";
 import { reviewGroups, type Analysis } from "../domain/bank-analysis.ts";
 import { randomUUID, createHash } from "node:crypto";
 import { z } from "zod";
@@ -9,6 +11,13 @@ import { dateOnly } from "../domain/finance.ts";
 import { plainMoney } from "../domain/format.ts";
 import { accountFor, UserError } from "./imports.ts";
 import { createManualEventTx } from "./manual.ts";
+import { resolveCategory } from "./assisted.ts";
+import {
+  effectiveProviderStatus,
+  effectiveStatusSql,
+  settledSql,
+  settledToday,
+} from "./bank-settled.ts";
 import {
   PluggyReader,
   credentialsSchema,
@@ -21,8 +30,8 @@ import {
   type RemoteBill,
   decimalCents,
 } from "./pluggy.ts";
-type Factory = (credentials: BankCredentials) => PluggyReader;
-const realReader: Factory = (c) => new PluggyReader(c);
+export type Factory = (credentials: BankCredentials) => PluggyReader;
+export const realReader: Factory = (c) => new PluggyReader(c);
 const binding = (u: Identity) => u.familyId + ":" + u.userId;
 function writer(u: Identity) {
   if (!["owner", "editor"].includes(u.role))
@@ -33,7 +42,7 @@ export function bankToday() {
     timeZone: "America/Sao_Paulo",
   }).format(new Date());
 }
-async function credentials(db: Database, u: Identity) {
+export async function credentials(db: Database, u: Identity) {
   return asUser(db, u.userId, async (tx) => {
     const row = (
       await tx.query<{ sealed: string }>(
@@ -505,9 +514,12 @@ export async function syncBank(
           );
       }
       await analyzeBanksTx(tx, u);
+      const bankEvents = await syncBankEvents(tx, u);
       await recordAudit(tx, u.familyId, u.userId, "bank.read", connection.id, {
         observed: count,
-        financial_events_created: 0,
+        financial_events_created:
+          bankEvents.created + bankEvents.refunds + bankEvents.pairs,
+        bank_events: bankEvents,
       });
       return count;
     });
@@ -525,10 +537,16 @@ export async function syncBank(
     );
   }
 }
-function observationHash(row: BankObservation) {
-  const { provider_status: status, card_meta: metadata, ...core } = row;
+export function observationHash(row: BankObservation) {
+  const {
+    provider_status: status,
+    card_meta: metadata,
+    transaction_at: time,
+    ...core
+  } = row;
   void metadata;
   void status;
+  void time;
   return createHash("sha256").update(JSON.stringify(core)).digest("hex");
 }
 async function storeObservations(
@@ -548,11 +566,22 @@ async function storeObservations(
     seen.add(row.remote_id);
     const hash = observationHash(row);
     await tx.query(
-      `INSERT INTO bank_transactions(id,household_id,bank_account_id,local_account_id,remote_id,provider_id,transaction_date,description,amount_cents,currency,provider_status,operation_type,payload_hash,last_seen_run,card_meta)
-   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$16)
-   ON CONFLICT(bank_account_id,remote_id) DO UPDATE SET latest_snapshot=CASE WHEN bank_transactions.payload_hash<>excluded.payload_hash THEN $15::jsonb ELSE NULL END,
-   changed=(bank_transactions.payload_hash<>excluded.payload_hash OR (bank_transactions.status IN ('linked','recorded') AND excluded.provider_status<>'POSTED')),
-   provider_status=excluded.provider_status,card_meta=excluded.card_meta,missing=false,last_seen_run=excluded.last_seen_run,
+      `INSERT INTO bank_transactions(id,household_id,bank_account_id,local_account_id,remote_id,provider_id,transaction_date,description,amount_cents,currency,provider_status,operation_type,payload_hash,last_seen_run,card_meta,transaction_at)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$16,$17)
+   ON CONFLICT(bank_account_id,remote_id) DO UPDATE SET
+   /* Ainda não salvo (pending, sem evento) ou evento automático (auto_recorded,
+      o evento acompanha em syncCardEvents): segue a versão nova do banco direto,
+      sem pedir revisão. Aprovado à mão: preserva o lançamento e marca a mudança. */
+   provider_id=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN excluded.provider_id ELSE bank_transactions.provider_id END,
+   transaction_date=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN excluded.transaction_date ELSE bank_transactions.transaction_date END,
+   description=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN excluded.description ELSE bank_transactions.description END,
+   amount_cents=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN excluded.amount_cents ELSE bank_transactions.amount_cents END,
+   currency=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN excluded.currency ELSE bank_transactions.currency END,
+   operation_type=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN excluded.operation_type ELSE bank_transactions.operation_type END,
+   payload_hash=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN excluded.payload_hash ELSE bank_transactions.payload_hash END,
+   latest_snapshot=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN NULL WHEN bank_transactions.payload_hash<>excluded.payload_hash THEN $15::jsonb ELSE NULL END,
+   changed=CASE WHEN (bank_transactions.status='pending' AND bank_transactions.event_id IS NULL OR bank_transactions.auto_recorded) THEN false ELSE (bank_transactions.payload_hash<>excluded.payload_hash OR (bank_transactions.status IN ('linked','recorded') AND excluded.provider_status<>'POSTED')) END,
+   provider_status=excluded.provider_status,card_meta=excluded.card_meta,transaction_at=COALESCE(excluded.transaction_at,bank_transactions.transaction_at),missing=false,last_seen_run=excluded.last_seen_run,
    version=bank_transactions.version+CASE WHEN bank_transactions.payload_hash<>excluded.payload_hash OR bank_transactions.provider_status<>excluded.provider_status OR bank_transactions.missing THEN 1 ELSE 0 END,updated_at=now()`,
       [
         randomUUID(),
@@ -571,6 +600,7 @@ async function storeObservations(
         run,
         JSON.stringify(row),
         JSON.stringify(row.card_meta ?? {}),
+        row.transaction_at ?? null,
       ],
     );
   }
@@ -707,7 +737,7 @@ export async function readBanks(
     ).rows;
     const rows = (
       await tx.query<BankTransaction>(
-        "SELECT b.id,b.bank_account_id,b.local_account_id,b.remote_id,b.provider_id,b.transaction_date::text,b.description,b.amount_cents::text,b.currency,b.provider_status,b.operation_type,b.status,b.event_id,b.version,b.changed,b.missing,b.latest_snapshot,b.analysis,a.name AS account_name,c.owner_label FROM bank_transactions b JOIN bank_accounts ba ON ba.id=b.bank_account_id JOIN bank_connections c ON c.id=ba.connection_id JOIN accounts a ON a.id=b.local_account_id WHERE b.household_id=$1 AND (b.status='pending' OR b.changed OR b.missing) AND ($3='' OR b.analysis->>'group'=$3) AND ($4::uuid IS NULL OR b.local_account_id=$4) ORDER BY b.transaction_date DESC,b.id LIMIT 31 OFFSET $2",
+        `SELECT b.id,b.bank_account_id,b.local_account_id,b.remote_id,b.provider_id,b.transaction_date::text,b.description,b.amount_cents::text,b.currency,${effectiveStatusSql("b")} AS provider_status,b.operation_type,b.status,b.event_id,b.version,b.changed,b.missing,b.latest_snapshot,b.analysis,a.name AS account_name,c.owner_label FROM bank_transactions b JOIN bank_accounts ba ON ba.id=b.bank_account_id JOIN bank_connections c ON c.id=ba.connection_id JOIN accounts a ON a.id=b.local_account_id WHERE b.household_id=$1 AND (b.status='pending' OR b.changed OR b.missing) AND ($3='' OR b.analysis->>'group'=$3) AND ($4::uuid IS NULL OR b.local_account_id=$4) ORDER BY b.transaction_date DESC,b.id LIMIT 31 OFFSET $2`,
         [u.familyId, offset, group, account || null],
       )
     ).rows;
@@ -773,6 +803,10 @@ export async function reviewBankTransaction(
       note: z.string().trim().max(1000).default(""),
       distinct: z.boolean().default(false),
       duplicate: z.boolean().default(false),
+      // Categorizar + aprender num passo (caminho 1): nome da categoria escolhida
+      // (resolvida/criada no servidor) e, opcionalmente, a chave a aprender.
+      category_name: z.string().trim().min(1).max(120).nullable().default(null),
+      learn_match_text: z.string().trim().min(3).max(120).nullable().default(null),
     })
     .strict()
     .parse(raw);
@@ -790,6 +824,7 @@ export async function reviewBankTransaction(
       throw new UserError(
         "Esse movimento já está vinculado. Alterações posteriores do banco exigem conciliação; nenhum lançamento foi modificado.",
       );
+    let eventId: string | null = null;
     if (input.decision === "refresh") {
       if (!row.changed || !row.latest_snapshot || row.missing)
         throw new UserError("Não há uma nova versão disponível para revisar.");
@@ -812,20 +847,17 @@ export async function reviewBankTransaction(
         ],
       );
     } else if (input.decision === "ignore") {
-      if (input.note.length < 8)
-        throw new UserError(
-          "Explique por que este movimento deve ficar fora dos totais.",
-        );
+      // Remover é a única ação sobre o que o banco leu; o motivo é opcional.
       await tx.query(
         "UPDATE bank_transactions SET status='ignored',changed=false,missing=false,review_note=$1,version=version+1 WHERE id=$2",
-        [input.note, row.id],
+        [input.note || "Removido em Movimentos.", row.id],
       );
     } else {
       if (
         row.status !== "pending" ||
         row.changed ||
         row.missing ||
-        row.provider_status !== "POSTED"
+        effectiveProviderStatus(row.provider_status, row.transaction_date, settledToday()) !== "POSTED"
       )
         throw new UserError(
           "Aguarde a confirmação do banco e revise as alterações antes de registrar.",
@@ -902,6 +934,46 @@ export async function reviewBankTransaction(
           BigInt(row.amount_cents) > 0n;
         if (cardPaymentFromCard && !input.counter_account_id)
           throw new UserError("Escolha a conta que pagou a fatura.");
+        // Sugestão automática de categoria: quando o usuário aprova sem escolher
+        // categoria, deriva pela descrição com o mesmo categorizador do app
+        // (categoryFor), reusado do import. Só para despesa/entrada; cartão,
+        // transferência e pagamento de fatura seguem a regra de categoria do
+        // createManualEventTx sem sugestão. O usuário pode trocar depois.
+        let suggestedCategory = input.category_id;
+        if (
+          !suggestedCategory &&
+          (input.kind === "expense" || input.kind === "income")
+        ) {
+          // Categoria escolhida pelo usuário (category_name) tem precedência;
+          // senão deriva por regra aprendida/descrição (resolveCategory).
+          let name = input.category_name;
+          if (!name) {
+            const merchantRules = (
+              await tx.query<{ match_text: string; category_name: string }>(
+                "SELECT match_text,category_name FROM merchant_rules WHERE household_id=$1",
+                [u.familyId],
+              )
+            ).rows;
+            name = resolveCategory(merchantRules, row.description).name;
+          }
+          await tx.query(
+            "INSERT INTO categories(id,household_id,name,essential) VALUES($1,$2,$3,false) ON CONFLICT(household_id,name) DO NOTHING",
+            [randomUUID(), u.familyId, name],
+          );
+          suggestedCategory = (
+            await tx.query<{ id: string }>(
+              "SELECT id FROM categories WHERE household_id=$1 AND name=$2",
+              [u.familyId, name],
+            )
+          ).rows[0].id;
+          // Aprende a regra no mesmo passo, quando o usuário confirmou a chave.
+          // A categoria aprendida é a escolhida (category_name) ou a derivada.
+          if (input.learn_match_text)
+            await tx.query(
+              "INSERT INTO merchant_rules(id,household_id,match_text,category_name,note) VALUES($1,$2,$3,$4,'') ON CONFLICT(household_id,match_text) DO UPDATE SET category_name=excluded.category_name",
+              [randomUUID(), u.familyId, input.learn_match_text.toUpperCase(), name],
+            );
+        }
         event = await createManualEventTx(tx, u, {
           account_id: cardPaymentFromCard
             ? input.counter_account_id!
@@ -914,7 +986,7 @@ export async function reviewBankTransaction(
               : row.amount_cents,
           ),
           kind: input.kind,
-          category_id: input.category_id,
+          category_id: suggestedCategory,
           counter_account_id: cardPaymentFromCard
             ? row.local_account_id
             : input.counter_account_id,
@@ -923,6 +995,12 @@ export async function reviewBankTransaction(
           related_event_id: null,
           request_id: row.id,
         });
+        // Leva a etiqueta escolhida na linha do banco, só se a categoria do
+        // lançamento for a da etiqueta (a FK composta garante a coerência).
+        await tx.query(
+          "UPDATE economic_events e SET tag_id=t.id FROM bank_transactions b JOIN category_tags t ON t.id=b.tag_id AND t.household_id=b.household_id WHERE b.id=$1 AND e.id=$2 AND e.household_id=$3 AND e.category_id=t.category_id",
+          [row.id, event, u.familyId],
+        );
         if (input.staged_id) {
           await tx.query(
             "INSERT INTO event_sources(household_id,event_id,staged_id) VALUES($1,$2,$3)",
@@ -973,12 +1051,71 @@ export async function reviewBankTransaction(
           row.id,
         ],
       );
+      eventId = event;
     }
     await recordAudit(tx, u.familyId, u.userId, "bank.review", row.id, {
       decision: input.decision,
     });
-    return { ok: true };
+    return { ok: true, event_id: eventId };
   });
+}
+// Registra em lote APENAS os movimentos sem ambiguidade de um mês: a análise já
+// os classificou como entrada ou despesa simples de conta corrente, sem
+// candidato de duplicata, confirmados pelo banco. Cartão, transferência,
+// investimento, duplicidade e "unclear" ficam de fora e seguem exigindo
+// revisão individual. Cada item passa pela MESMA reviewBankTransaction, então
+// toda a validação (duplicata, moeda, versão) continua valendo por item; um
+// item que tropeçar nela é apenas pulado, sem abortar o lote.
+export async function reviewBankBatch(db: Database, u: Identity, raw: unknown) {
+  writer(u);
+  const input = z
+    .object({
+      month: z.string().regex(/^\d{4}-\d{2}$/),
+      currency: z.enum(["BRL", "USD", "EUR"]),
+    })
+    .strict()
+    .parse(raw);
+  const pending = await asUser(db, u.userId, (tx) =>
+    tx.query<{ id: string; version: number; group: string }>(
+      `SELECT b.id,b.version,b.analysis->>'group' AS "group"
+       FROM bank_transactions b
+       JOIN accounts a ON a.id=b.local_account_id
+       WHERE b.household_id=$1 AND b.status='pending'
+         AND NOT b.changed AND NOT b.missing AND ${settledSql("b")}
+         AND b.currency=$2
+         AND to_char(b.transaction_date,'YYYY-MM')=$3
+         AND a.kind<>'card'
+         AND b.analysis->>'group' IN ('income','expense')
+       ORDER BY b.transaction_date,b.id`,
+      [u.familyId, input.currency, input.month],
+    ),
+  );
+  let recorded = 0;
+  let skipped = 0;
+  for (const row of pending.rows) {
+    try {
+      await reviewBankTransaction(db, u, {
+        id: row.id,
+        version: row.version,
+        decision: "record",
+        kind: row.group === "income" ? "income" : "expense",
+      });
+      recorded++;
+    } catch {
+      // Um item barrado pela validação individual (duplicata detectada entre a
+      // seleção e o registro, versão mudou, etc.) é pulado; segue para revisão manual.
+      skipped++;
+    }
+  }
+  await asUser(db, u.userId, (tx) =>
+    recordAudit(tx, u.familyId, u.userId, "bank.review_batch", randomUUID(), {
+      month: input.month,
+      currency: input.currency,
+      recorded,
+      skipped,
+    }),
+  );
+  return { recorded, skipped, eligible: pending.rows.length };
 }
 export async function syncOwnBanks(db: Database, u: Identity) {
   if (u.role === "reader" || !bankStorageReady())
@@ -991,6 +1128,42 @@ export async function syncOwnBanks(db: Database, u: Identity) {
   );
   let checked = 0,
     failed = 0;
+  // Regras de classificação novas (analysis.version) valem também para o que
+  // já foi lido: reanalisa uma vez, sem esperar a próxima leitura do banco.
+  const stale = await asUser(db, u.userId, async (tx) => {
+    const old = await tx.query(
+      "SELECT 1 FROM bank_transactions WHERE household_id=$1 AND coalesce((analysis->>'version')::int,0)<2 LIMIT 1",
+      [u.familyId],
+    );
+    if (!old.rows.length) return false;
+    // Alterações do banco ainda à espera de revisão: segue a versão nova (a
+    // mesma regra que storeObservations aplica daqui para frente).
+    const waiting = await tx.query<{ id: string; latest_snapshot: BankObservation }>(
+      "SELECT id,latest_snapshot FROM bank_transactions WHERE household_id=$1 AND status='pending' AND event_id IS NULL AND changed AND NOT missing AND latest_snapshot IS NOT NULL",
+      [u.familyId],
+    );
+    for (const { id, latest_snapshot: v } of waiting.rows)
+      await tx.query(
+        "UPDATE bank_transactions SET provider_id=$1,transaction_date=$2,description=$3,amount_cents=$4,currency=$5,operation_type=$6,payload_hash=$7,latest_snapshot=NULL,changed=false,version=version+1 WHERE id=$8",
+        [
+          v.provider_id,
+          v.transaction_date,
+          v.description,
+          v.amount_cents,
+          v.currency,
+          v.operation_type,
+          observationHash(v),
+          id,
+        ],
+      );
+    await analyzeBanksTx(tx, u);
+    return true;
+  });
+  if (stale) checked++;
+  // Carga do passado (fase 5 de docs/SPEC-FATOS-CARTAO.md): o que já estava
+  // pendente vira evento sem esperar a próxima leitura do banco. Idempotente.
+  const loaded = await backfillBankEvents(db, u);
+  if (loaded.created + loaded.refunds + loaded.pairs > 0) checked++;
   for (const row of ids.rows)
     try {
       const result = await syncBank(db, u, { id: row.id });

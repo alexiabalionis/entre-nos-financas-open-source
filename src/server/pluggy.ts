@@ -82,6 +82,14 @@ export function decimalCents(value: string) {
     throw new UserError("Valor bancário fora do limite.");
   return result * (negative ? -1n : 1n);
 }
+/** Valor convertido pelo banco pode vir com mais casas: arredonda para centavos (meio para cima). */
+export function convertedCents(value: string) {
+  const m = /^(-?)(\d{1,14})(?:\.(\d{1,8}))?$/.exec(value);
+  if (!m) throw new UserError("O banco retornou um valor que precisa de revisão.");
+  const fraction = (m[3] ?? "").padEnd(3, "0");
+  const cents = BigInt(m[2]) * 100n + BigInt(fraction.slice(0, 2)) + (Number(fraction[2]) >= 5 ? 1n : 0n);
+  return decimalCents(`${m[1]}${cents / 100n}.${String(cents % 100n).padStart(2, "0")}`);
+}
 const remoteId = z.uuid();
 const itemSchema = z.object({
   id: remoteId,
@@ -89,6 +97,11 @@ const itemSchema = z.object({
   consentExpiresAt: z.iso.datetime({ offset: true }).nullable().optional(),
   lastUpdatedAt: z.iso.datetime({ offset: true }).nullable().optional(),
   connector: z.object({ name: z.string().max(200) }).optional(),
+  /** Produtos autorizados na conexão (ACCOUNTS, CREDIT_CARDS, INVESTMENTS...). */
+  products: z.array(z.string().max(60)).max(30).nullish(),
+  statusDetail: z
+    .record(z.string(), z.object({ isUpdated: z.boolean().nullish(), lastUpdatedAt: z.string().nullish() }).passthrough().nullish())
+    .nullish(),
 });
 const accountSchema = z.object({
   id: remoteId,
@@ -108,11 +121,38 @@ const accountSchema = z.object({
     .nullish(),
 });
 export type RemoteAccount = z.infer<typeof accountSchema>;
+const investmentSchema = z.object({
+  id: remoteId,
+  itemId: remoteId.optional(),
+  name: z.string().max(300),
+  type: z.string().max(60).nullish(),
+  subtype: z.string().max(60).nullish(),
+  status: z.string().max(60).nullish(),
+  currencyCode: z.string().max(10).nullish(),
+  balance: z.string().nullish(),
+  amount: z.string().nullish(),
+  date: z.string().max(40).nullish(),
+  dueDate: z.string().max(40).nullish(),
+});
+export type RemoteInvestment = z.infer<typeof investmentSchema>;
+const investmentMoveSchema = z.object({
+  id: z.string().min(1).max(200),
+  type: z.string().max(60).nullish(),
+  movementType: z.string().max(60).nullish(),
+  description: z.string().max(1000).nullish(),
+  amount: z.string().nullish(),
+  value: z.string().nullish(),
+  date: z.string().max(40).nullish(),
+  tradeDate: z.string().max(40).nullish(),
+});
+export type RemoteInvestmentMove = z.infer<typeof investmentMoveSchema>;
 const transactionSchema = z.object({
   id: z.string().min(1).max(200),
   accountId: remoteId,
   description: z.string().min(1).max(1000),
   amount: z.string(),
+  /** Compra internacional: o valor já convertido na moeda da conta (o que entra na fatura). */
+  amountInAccountCurrency: z.string().nullish(),
   date: z.string().min(10).max(40),
   type: z.enum(["CREDIT", "DEBIT"]),
   status: z.enum(["POSTED", "PENDING"]),
@@ -132,6 +172,7 @@ export type BankObservation = {
   remote_id: string;
   provider_id: string | null;
   transaction_date: string;
+  transaction_at: string | null;
   description: string;
   amount_cents: string;
   currency: string;
@@ -153,15 +194,23 @@ export function normalizeObservation(
     throw new UserError(
       "A resposta do banco trouxe uma conta diferente da solicitada.",
     );
-  const amount = decimalCents(t.amount),
+  // Compra em outra moeda com o valor convertido pelo banco: vale o valor na
+  // moeda da conta, que é o que entra na fatura. Sem conversão, a moeda
+  // estrangeira segue e a leitura recusa a conta (nada é inventado).
+  const converted =
+    t.currencyCode !== undefined &&
+    t.currencyCode !== account.currencyCode &&
+    t.amountInAccountCurrency != null;
+  const amount = converted ? convertedCents(t.amountInAccountCurrency!) : decimalCents(t.amount),
     absolute = amount < 0n ? -amount : amount;
   return {
     remote_id: t.id,
     provider_id: t.providerId ?? null,
     transaction_date: dateOnly(t.date.slice(0, 10)),
+    transaction_at: /T\d/.test(t.date) && !Number.isNaN(Date.parse(t.date)) ? t.date : null,
     description: t.description,
     amount_cents: (absolute * (t.type === "DEBIT" ? -1n : 1n)).toString(),
-    currency: t.currencyCode ?? account.currencyCode,
+    currency: converted ? account.currencyCode : (t.currencyCode ?? account.currencyCode),
     provider_status: t.status,
     operation_type: t.operationType ?? "",
     ...(account.type === "CREDIT" && t.creditCardMetadata
@@ -206,7 +255,7 @@ export class PluggyReader {
   private async request(path: string, auth = false): Promise<unknown> {
     if (
       !(auth && path === "/auth") &&
-      !/^\/(?:items\/[0-9a-f-]{36}|accounts\?|bills\?|v2\/transactions\?)/i.test(
+      !/^\/(?:items\/[0-9a-f-]{36}|accounts\?|bills\?|v2\/transactions\?|investments\?|investments\/[0-9a-f-]{36}\/transactions\?)/i.test(
         path,
       )
     )
@@ -257,7 +306,7 @@ export class PluggyReader {
     try {
       return JSON.parse(
         body.replace(
-          /(?<!\\)("(?:amount|balance|totalAmount|creditLimit|availableCreditLimit)"\s*:\s*)(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+          /(?<!\\)("(?:amount|amountInAccountCurrency|balance|totalAmount|creditLimit|availableCreditLimit|value|amountOriginal|amountProfit|amountWithdrawal|quantity)"\s*:\s*)(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
           '$1"$2"',
         ),
       );
@@ -273,6 +322,40 @@ export class PluggyReader {
   }
   async item(id: string) {
     return itemSchema.parse(await this.request("/items/" + remoteId.parse(id)));
+  }
+  /** Investimentos da conexão (caixinhas do Nubank, CDB, fundos). Só leitura. */
+  async investments(itemId: string): Promise<RemoteInvestment[]> {
+    const r = z
+      .object({ results: z.array(investmentSchema).max(200), total: z.number().optional() })
+      .parse(
+        await this.request(
+          "/investments?" + new URLSearchParams({ itemId: remoteId.parse(itemId) }),
+        ),
+      );
+    if (r.results.some((i) => i.itemId !== undefined && i.itemId !== itemId))
+      throw new UserError("A conexão retornou investimentos de outra autorização.");
+    return r.results;
+  }
+  /** Movimentos de um investimento (aplicação, resgate, rendimento). Só leitura, até 20 páginas. */
+  async investmentTransactions(investmentId: string): Promise<RemoteInvestmentMove[]> {
+    const rows: RemoteInvestmentMove[] = [];
+    for (let page = 1; page <= 20; page++) {
+      const r = z
+        .object({
+          page: z.number().int().optional(),
+          totalPages: z.number().int().min(0).max(20).optional(),
+          results: z.array(investmentMoveSchema).max(500),
+        })
+        .parse(
+          await this.request(
+            `/investments/${remoteId.parse(investmentId)}/transactions?` +
+              new URLSearchParams({ page: String(page), pageSize: "500" }),
+          ),
+        );
+      rows.push(...r.results);
+      if (!r.totalPages || page >= r.totalPages) break;
+    }
+    return rows;
   }
   async accounts(itemId: string) {
     const r = z

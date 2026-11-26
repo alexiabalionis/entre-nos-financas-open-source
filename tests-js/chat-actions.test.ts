@@ -5,6 +5,7 @@ import { openDatabase, asUser } from "../src/server/db.ts";
 import { createFamily, type Identity } from "../src/server/auth.ts";
 import { readRoutine, saveItem } from "../src/server/routine.ts";
 import { askHelp } from "../src/server/help.ts";
+import { listContext } from "../src/server/context-notes.ts";
 import {
   proposeAction,
   resolveAction,
@@ -350,6 +351,151 @@ test("chat proposals require explicit confirmation, isolate users, reject tamper
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;
     }
+    await db.close();
+  }
+});
+
+test("chat context actions: note_save per scope, category_protect, guard rails, idempotent confirmation", async () => {
+  const db = await openDatabase();
+  try {
+    const userId = await createFamily(db, {
+      name: "Pessoa fictícia",
+      familyName: "Teste",
+      email: "ctx@example.invalid",
+      password: "SenhaFicticia!2026",
+    });
+    const familyId = (
+      await db.query<{ household_id: string }>(
+        "SELECT household_id FROM members WHERE user_id=$1",
+        [userId],
+      )
+    ).rows[0].household_id;
+    const user: Identity = {
+      userId,
+      familyId,
+      name: "Pessoa",
+      email: "ctx@example.invalid",
+      role: "owner",
+    };
+    const categoryId = randomUUID();
+    await asUser(db, userId, (tx) =>
+      tx.query(
+        "INSERT INTO categories(id,household_id,name,essential) VALUES($1,$2,'Mercado fictício',true)",
+        [categoryId, familyId],
+      ),
+    );
+    const catalog: ChatCatalog = {
+      items: [],
+      accounts: [],
+      categories: [{ id: categoryId, name: "Mercado fictício" }],
+    };
+    const propose = (raw: unknown, u = user) =>
+      proposeAction(db, u, raw, catalog, "2026-10", "BRL");
+    const resolve = (
+      id: string,
+      decision: "confirm" | "cancel" = "confirm",
+      u = user,
+    ) => resolveAction(db, u, { id, decision });
+
+    // household
+    const h = await propose({
+      type: "note_save",
+      scope: "household",
+      category: null,
+      month: null,
+      note: "Reforma da casa em 2026",
+    });
+    assert.equal(h.title, "Guardar nota");
+    assert.equal((await listContext(db, user)).household, null);
+    await Promise.all([resolve(h.id), resolve(h.id)]);
+    assert.equal((await listContext(db, user)).household, "Reforma da casa em 2026");
+
+    // category
+    const c = await propose({
+      type: "note_save",
+      scope: "category",
+      category: "c0",
+      month: null,
+      note: "Inclui produtos de limpeza",
+    });
+    assert.ok(c.details.includes("Categoria: Mercado fictício"));
+    await resolve(c.id);
+    assert.equal(
+      (await listContext(db, user)).categories.find((x) => x.name === "Mercado fictício")
+        ?.note,
+      "Inclui produtos de limpeza",
+    );
+
+    // category_month
+    const m = await propose({
+      type: "note_save",
+      scope: "category_month",
+      category: "c0",
+      month: "2026-09",
+      note: "Compra grande de festa",
+    });
+    assert.ok(m.details.includes("Mês: 09/2026"));
+    await resolve(m.id);
+    assert.deepEqual((await listContext(db, user)).monthNotes, [
+      { name: "Mercado fictício", month: "2026-09", note: "Compra grande de festa" },
+    ]);
+
+    // combinações inválidas e referência desconhecida
+    for (const bad of [
+      { scope: "household", category: "c0", month: null },
+      { scope: "category", category: null, month: null },
+      { scope: "category", category: "c0", month: "2026-09" },
+      { scope: "category_month", category: "c0", month: null },
+    ])
+      await assert.rejects(
+        propose({ type: "note_save", note: "x", ...bad }),
+        /Combinação inválida/,
+      );
+    await assert.rejects(
+      propose({ type: "note_save", scope: "category", category: "c9", month: null, note: "x" }),
+      /Não identifiquei/,
+    );
+    await assert.rejects(
+      propose({ type: "category_protect", category: "c9", protected: true }),
+      /Não identifiquei/,
+    );
+
+    // category_protect: ida e volta
+    const on = await propose({ type: "category_protect", category: "c0", protected: true });
+    assert.equal(on.title, "Proteger categoria");
+    await Promise.all([resolve(on.id), resolve(on.id)]);
+    assert.equal(
+      (await listContext(db, user)).categories.find((x) => x.name === "Mercado fictício")
+        ?.protected,
+      true,
+    );
+    const off = await propose({ type: "category_protect", category: "c0", protected: false });
+    assert.equal(off.title, "Deixar de proteger");
+    await resolve(off.id);
+    assert.equal(
+      (await listContext(db, user)).categories.find((x) => x.name === "Mercado fictício")
+        ?.protected,
+      false,
+    );
+
+    // leitor não confirma nem propõe
+    const pending = await propose({
+      type: "note_save",
+      scope: "household",
+      category: null,
+      month: null,
+      note: "Outra nota",
+    });
+    await assert.rejects(resolve(pending.id, "confirm", { ...user, role: "reader" }), /leitura/);
+    await assert.rejects(
+      propose(
+        { type: "category_protect", category: "c0", protected: true },
+        { ...user, role: "reader" },
+      ),
+      /leitura/,
+    );
+    assert.equal((await listContext(db, user)).household, "Reforma da casa em 2026");
+  } finally {
     await db.close();
   }
 });

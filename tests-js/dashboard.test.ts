@@ -7,21 +7,24 @@ import { saveItem, readRoutine, copyMonth } from "../src/server/routine.ts";
 
 test("plan groups keep income and savings separate and respect explicit choices", () => {
   assert.equal(
-    planGroup({
-      purpose: "income",
-      label: "Aluguel recebido",
-      cost_type: "fixed",
-    }),
+    planGroup({ purpose: "income", cost_type: "fixed" }),
     "income",
   );
-  assert.equal(planGroup({ purpose: "saving", label: "Reserva" }), "saving");
-  assert.equal(planGroup({ purpose: "expense", label: "Água" }), "fixed");
-  assert.equal(planGroup({ purpose: "expense", label: "Mercado" }), "variable");
+  assert.equal(planGroup({ purpose: "saving" }), "saving");
   assert.equal(
-    planGroup({ purpose: "expense", label: "Internet", cost_type: "variable" }),
+    planGroup({ purpose: "expense", cost_type: "variable" }),
     "variable",
   );
-  assert.equal(planGroup({ purpose: "card", label: "Fatura" }), "variable");
+  assert.equal(planGroup({ purpose: "card" }), "variable");
+  // Legado: item antigo marcado à mão como fixo, sem série, segue como a pessoa marcou.
+  assert.equal(planGroup({ purpose: "expense", cost_type: "fixed" }), "fixed");
+});
+
+test("4a: planGroup não adivinha por nome nem por categoria, só pela série", () => {
+  // Antes: "Água" e "Internet" caíam em fixo pelo palpite do rótulo.
+  assert.equal(planGroup({ purpose: "expense" }), "variable");
+  assert.equal(planGroup({ purpose: "expense", recurrence: null }), "variable");
+  assert.equal(planGroup({ purpose: "expense", recurrence: { id: "r1" } }), "fixed");
 });
 test("pie counts consumption once, nets refunds, includes uncategorized and excludes own movements", () => {
   const base = { category_id: "food", category_name: "Alimentação" };
@@ -115,4 +118,15 @@ test("cost classification persists, survives omitted-field edits and copies with
   } finally {
     await db.close();
   }
+});
+
+test("despesa de série vai para custos fixos, vença ou não o tipo e o nome", () => {
+  const recurrence = { id: "r1" };
+  assert.equal(planGroup({ purpose: "expense", recurrence }), "fixed");
+  assert.equal(
+    planGroup({ purpose: "expense", cost_type: "variable", recurrence }),
+    "fixed",
+  );
+  assert.equal(planGroup({ purpose: "income", recurrence }), "income");
+  assert.equal(planGroup({ purpose: "expense", recurrence: null }), "variable");
 });
