@@ -82,7 +82,7 @@ async function buildG5(db: Database, n: number) {
 // ------------------------------------------------------------ G6 perfil na memória
 
 /** Café e padaria todo dia útil (como F09), faxina 4 x 150 e terapia 4 x 200 por mês, e o aprendizado de perfil. */
-export const G6 = { memory: "Tenho TDAH; anotar todo dia não funciona pra mim. Faxina e terapia não se cortam.", faxina: 150, terapia: 200 };
+export const G6 = { memory: "Tenho pouca energia no fim do dia; anotar todo dia não funciona pra mim. Faxina e terapia não se cortam.", faxina: 150, terapia: 200 };
 async function buildG6(db: Database, n: number) {
   const f = await family(db, n, "g6", 5, 8000);
   const [cafe, casa, saude] = [await f.category("Café e padaria"), await f.category("Faxina"), await f.category("Terapia")];
@@ -165,7 +165,7 @@ export const LACUNAS_SCENARIOS: Scenario[] = [
   },
   {
     id: "G6",
-    label: "G6: comprinhas diárias, TDAH e o que não se corta",
+    label: "G6: comprinhas diárias, pouca energia e o que não se corta",
     build: buildG6,
     questions: [ask("G6a", { must: [LOW_EFFORT], mustNot: [LOG_EVERY_DAY, CUT_ESSENTIAL] })],
   },

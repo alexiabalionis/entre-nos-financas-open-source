@@ -286,7 +286,7 @@ Regressão: `npm test`, `npm run typecheck`, `npm run lint` verdes; nenhum teste
 Trabalhar numa branch própria; o working tree principal tem mudanças não commitadas em `app/copilot/*`
 que não fazem parte desta tarefa.
 
-## 11. Perguntas em aberto (decidir com a dona do produto, não bloquear)
+## 11. Perguntas em aberto (decidir com quem mantém o produto, não bloquear)
 
 - Valor liberado por parcela que termina: default `"folga"` está ok ou deve ir para objetivos?
 - `essentialsMonthly`: usar fixas + dia a dia (proposta) ou uma marcação de categorias essenciais?

@@ -10,7 +10,7 @@ web
 
 ## Users
 
-Casais e famílias que dividem as contas da casa, em pt-BR. O recorte explícito é ajudar quem tem dificuldade de organização e constância financeira: a dona do produto tem TDAH. O usuário típico administra o dinheiro de forma improvisada, pode ter dívidas e parcelamentos, ainda não tem (ou está começando) uma reserva de emergência e tem dificuldade em transformar metas abstratas em ações mensais.
+Casais e famílias que dividem as contas da casa, em pt-BR. O recorte explícito é ajudar quem tem dificuldade de organização e constância financeira, inclusive pessoas com pouca energia ou dificuldade de atenção para rotinas de controle. O usuário típico administra o dinheiro de forma improvisada, pode ter dívidas e parcelamentos, ainda não tem (ou está começando) uma reserva de emergência e tem dificuldade em transformar metas abstratas em ações mensais.
 
 ## Product Purpose
 
@@ -55,4 +55,4 @@ Nenhum dado real de usuário no repositório. Protótipos usam cenários fictíc
 
 ## Accessibility & Inclusion
 
-Baixa carga cognitiva (TDAH) sem virar app clínico ou infantil. Navegação por teclado, foco visível, `prefers-reduced-motion`, feedback que não depende só de cor, nada que dependa de hover no mobile.
+Baixa carga cognitiva, pensada para quem tem pouca energia ou dificuldade de manter rotina, sem virar app clínico ou infantil. Navegação por teclado, foco visível, `prefers-reduced-motion`, feedback que não depende só de cor, nada que dependa de hover no mobile.

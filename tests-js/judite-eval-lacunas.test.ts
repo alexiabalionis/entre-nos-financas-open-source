@@ -70,7 +70,7 @@ test("G5: delivery depois do mercado grande tem índice acima de 1,5", async () 
   assert.ok(out.sequencia.indice > 1.5, `indice ${out.sequencia.indice}`);
 });
 
-test("G6: o aprendizado de perfil entra no prefetch e a busca devolve o TDAH", async () => {
+test("G6: o aprendizado de perfil entra no prefetch e a busca devolve o perfil", async () => {
   const ctx = await ctxOf("G6");
   const prefetch = initialPrefetch({ question: OPEN_QUESTION, activeMemories: 1, diagnostic: true });
   const profile = prefetch.find((c) => c.name === "search_memory");
