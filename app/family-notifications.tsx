@@ -1,5 +1,9 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
+import { Panel } from "./ds/panel";
+import { useAsyncAction } from "./use-async-action";
 
 type Config = {
   publicKey: string;
@@ -54,9 +58,9 @@ async function readyWorker() {
 export function NotificationsPanel() {
   const [config, setConfig] = useState<Config | null>(null);
   const [device, setDevice] = useState<Device | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
+  const { busy, error, notice, setError, setNotice, run } = useAsyncAction({
+    fallbackError: "Tente novamente.",
+  });
   const refresh = useCallback(async () => {
     const ios =
       /iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -98,19 +102,8 @@ export function NotificationsPanel() {
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);
   }, [refresh]);
-  async function work(action: () => Promise<void>) {
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await action();
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Tente novamente.");
-    } finally {
-      setBusy(false);
-    }
+  function work(action: () => Promise<void>) {
+    void run(action, refresh);
   }
   async function enable() {
     if (!device || !config || !device.supported || device.needsInstall)
@@ -155,29 +148,26 @@ export function NotificationsPanel() {
     );
   }
   return (
-    <section
-      className="family-card notification-settings"
-      aria-label="Configurar notificações"
-    >
-      <h2>Notificações</h2>
-      <p>
+    <div role="region" aria-label="Configurar notificações" className="notification-settings">
+    <Panel title="Notificações">
+      <p className="ds-caption text-xs opacity-60">
         Receba um lembrete diário quando houver contas para conferir. Nomes e
         valores ficam protegidos dentro do app.
       </p>
       {error && (
-        <p className="family-error" role="alert">
+        <p className="family-error alert alert-soft alert-error" role="alert">
           {error}
         </p>
       )}
       {notice && (
-        <p className="family-notice" role="status">
+        <p className="family-notice alert alert-soft alert-info" role="status">
           {notice}
         </p>
       )}
       {device && (
-        <div className="notification-device" role="status">
-          <strong>{device.platform} · este aparelho</strong>
-          <p>
+        <div className="notification-device alert alert-soft alert-info flex flex-col items-start gap-1" role="status">
+          <strong className="font-semibold">{device.platform} · este aparelho</strong>
+          <p className="m-0 text-sm">
             {device.needsInstall
               ? "Falta abrir o app pela Tela de Início."
               : !device.supported
@@ -193,14 +183,14 @@ export function NotificationsPanel() {
         </div>
       )}
       {device?.needsInstall && (
-        <p className="fine">
+        <p className="ds-caption text-xs opacity-60">
           No iPhone/iPad com iOS 16.4 ou mais recente: Safari → Compartilhar →
           Adicionar à Tela de Início. Abra pelo ícone do Entre Nós e toque em
           Ativar neste aparelho.
         </p>
       )}
       {config && (
-        <p className="fine">
+        <p className="ds-caption text-xs opacity-60">
           {config.enabledDevices} aparelho(s) ativado(s) neste acesso.{" "}
           {config.lastDelivery
             ? "Último lembrete aceito pelo serviço de push: " +
@@ -212,14 +202,16 @@ export function NotificationsPanel() {
         </p>
       )}
       {config && !config.schedulerReady && (
-        <p role="status" className="family-notice">
+        <p role="status" className="family-notice alert alert-soft alert-info">
           O agendamento diário precisa ser ativado pelo administrador. Você já
           pode ativar este aparelho e testar a entrega.
         </p>
       )}
-      <div className="family-actions">
-        <button
-          className="primary"
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="primary"
+          busy={busy}
+          busyLabel="Aguarde…"
           disabled={
             busy ||
             !config ||
@@ -229,9 +221,9 @@ export function NotificationsPanel() {
           }
           onClick={() => void work(enable)}
         >
-          {busy ? "Aguarde…" : "Ativar neste aparelho"}
-        </button>
-        <button
+          Ativar neste aparelho
+        </Button>
+        <Button
           disabled={
             busy || !device?.subscribed || device.permission !== "granted"
           }
@@ -243,7 +235,15 @@ export function NotificationsPanel() {
                 throw new Error(
                   "Ative primeiro as notificações neste aparelho.",
                 );
-              await request("notifications/test", { endpoint: sub.endpoint });
+              try {
+                await request("notifications/test", {
+                  endpoint: sub.endpoint,
+                });
+              } catch (e) {
+                // Falha esperada (limite, serviço recusou): mostra na tela sem estourar o overlay do dev.
+                setError(e instanceof Error ? e.message : "Tente novamente.");
+                return;
+              }
               setNotice(
                 "Teste aceito pelo serviço de push. Confira a notificação neste aparelho; isso não confirma que ela já apareceu na tela.",
               );
@@ -251,8 +251,8 @@ export function NotificationsPanel() {
           }
         >
           Enviar teste
-        </button>
-        <button
+        </Button>
+        <Button
           disabled={busy || !device?.subscribed}
           onClick={() =>
             void work(async () => {
@@ -270,8 +270,8 @@ export function NotificationsPanel() {
           }
         >
           Desativar neste aparelho
-        </button>
-        <button
+        </Button>
+        <Button
           disabled={busy}
           onClick={() =>
             void work(async () => {
@@ -281,11 +281,10 @@ export function NotificationsPanel() {
           }
         >
           Verificar configuração
-        </button>
+        </Button>
       </div>
-      <details>
-        <summary>O teste não apareceu?</summary>
-        <ul>
+      <Collapsible summary="O teste não apareceu?">
+        <ul className="list-disc space-y-1 pl-5 text-sm">
           <li>
             No iPhone, use o app instalado na Tela de Início. Confira Ajustes →
             Notificações → Entre Nós e os modos Foco.
@@ -304,12 +303,13 @@ export function NotificationsPanel() {
             aparelho. Cada instalação tem sua própria inscrição.
           </li>
         </ul>
-      </details>
-      <p className="fine">
+      </Collapsible>
+      <p className="ds-caption text-xs opacity-60">
         O lembrete diário é agendado para a janela entre 9h e 10h, no horário de
         Brasília. A entrega depende da conexão, do serviço de push e dos ajustes
         do aparelho; não é um alarme com horário exato.
       </p>
-    </section>
+    </Panel>
+    </div>
   );
 }

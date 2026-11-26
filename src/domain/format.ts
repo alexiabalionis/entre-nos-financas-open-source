@@ -20,3 +20,17 @@ export function brDate(day: string): string {
 export function privateText(value: string, hidden: boolean): string {
   return hidden ? value.replace(/[-+]?\d[\d.]*,\d{2}/g, "••••") : value;
 }
+/** Nome de estabelecimento legível: "IFOOD *REST" vira "Ifood *Rest". */
+export function readable(merchant: string): string {
+  return merchant
+    .toLowerCase()
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Tira sequências longas de dígitos (CPF, CNPJ, cartão, conta) de um texto que
+ * vai ao provedor de IA ou fica guardado. Não remove nomes nem emails.
+ */
+export function maskLongNumbers(text: string): string {
+  return text.replace(/\d[\d./-]{5,}\d/g, "…").replace(/\s+/g, " ").trim();
+}

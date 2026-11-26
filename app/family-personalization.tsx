@@ -7,68 +7,25 @@ import {
   type FormEvent,
 } from "react";
 import { type HomeCardId, type Preferences } from "../src/domain/preferences";
+import { Button } from "./ds/button";
+import { preparePhoto, saveProfile } from "./profile-photo";
+import { ProfileAppearance } from "./profile-appearance";
+import { ProfileGreeting } from "./profile-greeting";
+import { ProfilePhotoField } from "./profile-photo-field";
 export function HomeBlock({
   children,
 }: {
   cardId: HomeCardId;
   caption?: string;
+  // Read by HomeLayout: false renders the block always open, without the
+  // collapsible HomeDisclosure wrapper (default true).
+  collapsible?: boolean;
   children: ReactNode;
 }) {
   return <>{children}</>;
 }
 export { HomeLayout } from "./home-editor";
-async function request(path: string, body: unknown): Promise<Preferences> {
-  const r = await fetch("/api/profile/" + path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.error || "Não foi possível salvar.");
-  return data;
-}
-async function preparePhoto(file: File) {
-  if (!file.type.startsWith("image/") || file.size > 12 * 1024 * 1024)
-    throw new Error("Escolha uma foto de até 12 MB.");
-  try {
-    // data: images are permitted by the app CSP; blob: URLs deliberately are not.
-    const url = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("Não foi possível ler a foto."));
-      reader.onload = () =>
-        typeof reader.result === "string"
-          ? resolve(reader.result)
-          : reject(new Error("Foto inválida."));
-      reader.readAsDataURL(file);
-    });
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error();
-    const size = Math.min(img.naturalWidth, img.naturalHeight);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, 256, 256);
-    ctx.drawImage(
-      img,
-      (img.naturalWidth - size) / 2,
-      (img.naturalHeight - size) / 2,
-      size,
-      size,
-      0,
-      0,
-      256,
-      256,
-    );
-    return canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
-  } catch {
-    throw new Error(
-      "Não foi possível abrir essa foto. Tente JPG, PNG ou WebP.",
-    );
-  }
-}
+
 export function PreferencesPanel({
   preferences,
   onSaved,
@@ -109,7 +66,7 @@ export function PreferencesPanel({
     setBusy(true);
     setMessage("");
     try {
-      const p = await request("preferences", {
+      const p = await saveProfile("preferences", {
         revision: preferences.revision,
         accent: draft.accent,
         theme: draft.theme,
@@ -132,7 +89,7 @@ export function PreferencesPanel({
     setPhoto(value);
     setMessage("");
     try {
-      const p = await request("preferences", {
+      const p = await saveProfile("preferences", {
         revision: preferences.revision,
         photo: value,
       });
@@ -155,6 +112,20 @@ export function PreferencesPanel({
       setBusy(false);
     }
   }
+  async function pickPhoto(file: File) {
+    const seq = ++photoSequence.current;
+    setProcessing(true);
+    setMessage("");
+    try {
+      const result = await preparePhoto(file);
+      if (seq === photoSequence.current) await savePhoto(result);
+    } catch (error) {
+      if (seq === photoSequence.current)
+        setMessage(error instanceof Error ? error.message : "Foto inválida.");
+    } finally {
+      if (seq === photoSequence.current) setProcessing(false);
+    }
+  }
   const photoUrl = photo
     ? "data:image/jpeg;base64," + photo
     : photo === null
@@ -163,136 +134,80 @@ export function PreferencesPanel({
         ? "/api/profile/photo?v=" + preferences.revision
         : null;
   return (
-    <section
-      className="family-card personalization"
+    <div
+      role="region"
       aria-label="Minha personalização"
+      className="personalization flex flex-col gap-3"
     >
-      <h2>Do meu jeito</h2>
-      <p className="fine">
-        Olá, {name.split(" ")[0]}. Estas escolhas são só suas e acompanham sua
-        conta em outros aparelhos. Os dados financeiros continuam compartilhados
-        com a família.
-      </p>
-      <form onSubmit={save}>
-        <fieldset disabled={busy}>
-          <legend>Meu perfil e aparência</legend>
-          <div className="personal-photo">
-            {photoUrl ? (
-              <img
-                src={photoUrl}
-                alt="Sua foto de perfil"
-                width="64"
-                height="64"
-              />
-            ) : (
-              <span aria-hidden="true">{name.charAt(0)}</span>
-            )}
-            <label>
-              Adicionar ou trocar foto
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  const seq = ++photoSequence.current;
-                  setProcessing(true);
-                  setMessage("");
-                  try {
-                    const result = await preparePhoto(f);
-                    if (seq === photoSequence.current) await savePhoto(result);
-                  } catch (error) {
-                    if (seq === photoSequence.current)
-                      setMessage(
-                        error instanceof Error
-                          ? error.message
-                          : "Foto inválida.",
-                      );
-                  } finally {
-                    if (seq === photoSequence.current) setProcessing(false);
-                  }
-                }}
-              />
-            </label>
-          </div>
-          {photoUrl && (
-            <button
-              type="button"
-              onClick={() => {
+      <ProfileGreeting name={name} photoUrl={photoUrl} />
+      <form onSubmit={save} className="flex flex-col gap-3">
+        <section className="card card-border bg-base-100 shadow-sm">
+          <fieldset
+            disabled={busy}
+            className="card-body m-0 min-w-0 gap-4 border-0"
+          >
+            <legend className="float-left mb-1 w-full p-0 text-base font-semibold">
+              Meu perfil e aparência
+            </legend>
+            <ProfilePhotoField
+              photoUrl={photoUrl}
+              name={name}
+              busy={busy || processing}
+              onPick={(file) => void pickPhoto(file)}
+              onRemove={() => {
                 photoSequence.current++;
                 setProcessing(false);
                 void savePhoto(null);
               }}
-            >
-              Remover minha foto
-            </button>
-          )}
-          <p className="fine">
-            A foto é salva ao escolher. Ela é reduzida antes do envio e seus
-            metadados são removidos. Ela não tem link público.
-          </p>
-          <label>
-            Cor de destaque
-            <input
-              type="color"
-              value={draft.accent}
-              onChange={(e) => setDraft({ ...draft, accent: e.target.value })}
             />
-          </label>
-          <div className="personal-swatches">
-            {["#c5ab8b", "#8cb5a1", "#a9b7d7", "#c6a2bf", "#d6b178"].map(
-              (color) => (
-                <button
-                  type="button"
-                  key={color}
-                  aria-label={"Escolher cor " + color}
-                  aria-pressed={draft.accent === color}
-                  style={{ background: color }}
-                  onClick={() => setDraft({ ...draft, accent: color })}
-                />
-              ),
-            )}
-          </div>
-          <label>
-            Aparência
-            <select
-              value={draft.theme}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  theme: e.target.value as Preferences["theme"],
-                })
-              }
+            <ProfileAppearance
+              theme={draft.theme}
+              onTheme={(theme) => setDraft({ ...draft, theme })}
+            />
+          </fieldset>
+        </section>
+        <section className="card card-border bg-base-100 shadow-sm">
+          <div className="card-body items-start gap-2">
+            <h3 className="m-0 text-base font-semibold">
+              Organização da tela principal
+            </h3>
+            <p className="m-0 text-sm text-base-content/70">
+              Edite os próprios cards, arrastando, usando setas ou tocando na
+              lixeira. Remover da tela não apaga informações.
+            </p>
+            <Button
+              variant="quiet"
+              size="sm"
+              icon="layers"
+              onClick={onEditHome}
             >
-              <option value="system">Do aparelho</option>
-              <option value="light">Claro</option>
-              <option value="dark">Escuro</option>
-            </select>
-          </label>
-        </fieldset>
-        <div className="personal-layout-link">
-          <strong>Organização da tela principal</strong>
-          <p className="fine">
-            Edite os próprios cards, arrastando, usando setas ou tocando na
-            lixeira. Remover da tela não apaga informações.
-          </p>
-          <button type="button" onClick={onEditHome}>
-            Organizar minha tela principal
-          </button>
-        </div>
-        <button className="primary" disabled={busy || processing}>
+              Organizar minha tela principal
+            </Button>
+          </div>
+        </section>
+        <Button
+          type="submit"
+          variant="primary"
+          icon="check"
+          className="w-full"
+          busy={busy || processing}
+        >
           {processing
             ? "Preparando foto…"
             : busy
               ? "Salvando…"
               : "Salvar meu espaço"}
-        </button>
-        {message && <p role="status">{message}</p>}
+        </Button>
+        {message && (
+          <p role="status" className="alert alert-soft alert-info m-0">
+            {message}
+          </p>
+        )}
       </form>
-      <button type="button" onClick={onTour}>
+      <Button variant="quiet" size="sm" className="self-start" onClick={onTour}>
         Ver apresentação do app
-      </button>
-    </section>
+      </Button>
+    </div>
   );
 }
 export { GuidedTour as AppOverview } from "./guided-tour";

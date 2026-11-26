@@ -16,6 +16,7 @@ export type ReviewGroup = keyof typeof reviewGroups;
 export type Observation = {
   id: string;
   local_account_id: string;
+  bank_account_id?: string;
   transaction_date: string;
   amount_cents: string;
   currency: string;
@@ -38,6 +39,11 @@ export type Evidence = {
   filename?: string;
   event_id?: string | null;
   kind?: string;
+  // Contas do banco que já sustentam este evento. Outra linha da MESMA conta
+  // do banco é outro movimento (o banco não repete id na mesma conta), então o
+  // evento não conta como histórico para ela. Reconexão cria outra conta do
+  // banco e continua coincidindo.
+  bank_account_ids?: string[] | null;
 };
 export type Analysis = {
   semantic?: string;
@@ -50,7 +56,7 @@ export type Analysis = {
   staged_ids: string[];
   related_ids: string[];
   evidence: string[];
-  version: 1;
+  version: 2;
 };
 const distance = (a: string, b: string) =>
   Math.abs(Date.parse(a) - Date.parse(b)) / 86400000;
@@ -59,6 +65,35 @@ const card = (s: string) =>
   /FATURA|PAGAMENTO RECEBIDO|PAGAMENTO DE CARTAO|PAGAMENTO CARTAO/.test(s);
 const investment = (s: string) =>
   /RDB|APLICACAO|RESGATE|INVESTIMENTO|CDB/.test(s);
+/**
+ * Reconhece um débito/crédito que QUITA uma fatura de cartão (não é compra).
+ * Fonte única da verdade — os pontos que separam pagamento-de-fatura das compras
+ * (state.ts, cards.ts, pending.ts) devem chamar isto, nunca regex própria, para
+ * não divergir. Passe description e operation_type JÁ normalizados (normalize()
+ * tira acento, então "Débito automático Fatura" vira "DEBITO AUTOMATICO FATURA").
+ * Cobre: "PAGAMENTO_FATURA" (operation_type), "PAGAMENTO ... FATURA/RECEBIDO"
+ * e o "DEBITO AUTOMATICO FATURA <cartão>" do Itaú (o que faltava).
+ */
+export const billPayment = (description: string, operationType = "") =>
+  /PAGAMENTO_FATURA/.test(operationType) ||
+  /PAGAMENTO.*(FATURA|RECEBIDO)/.test(description) ||
+  /DEBITO AUTOMATICO.*FATURA/.test(description);
+/**
+ * Fragmento SQL (sobre o alias `t` de bank_transactions) que reconhece uma
+ * SAÍDA AUTOMÁTICA de serviço — a que conta como gasto do mês sem pedir
+ * aprovação. Fonte única da verdade: state.ts (soma no gasto) e a coluna
+ * autospend/scheduled do bankPending devem usar ESTA constante, nunca uma
+ * regex própria, para não divergir.
+ * Cobre:
+ *  - PIX/TED/DOC/TRANSFER de saída (operation_type), o padrão original; e
+ *  - "DEBITO AUTOMATICO" de serviço na descrição (Vivo, Enel, etc.).
+ * NÃO cobre pagamento de fatura: o débito automático de fatura cai no grupo
+ * `card` (billPayment), que os chamadores já excluem via NOT IN ('card'). Aqui
+ * exigimos ainda que a descrição não contenha FATURA, defesa em profundidade
+ * caso a análise não tenha rodado.
+ */
+export const AUTO_OUTFLOW_SQL =
+  "(t.operation_type ~* '^(PIX|TED|DOC|TRANSFER)' OR (t.description ~* 'DEBITO AUTOMATICO' AND t.description !~* 'FATURA'))";
 const similar = (a: string, b: string) => {
   const words = normalize(a)
     .split(/\W+/)
@@ -102,7 +137,8 @@ export function analyzeObservations(
   const same = (r: Observation, e: Evidence) =>
     e.account_id === r.local_account_id &&
     e.currency === r.currency &&
-    e.amount_cents === r.amount_cents;
+    e.amount_cents === r.amount_cents &&
+    !(r.bank_account_id && e.bank_account_ids?.includes(r.bank_account_id));
   for (const r of rows) {
     const text = normalize(r.description),
       exact = legs.filter(
@@ -130,6 +166,9 @@ export function analyzeObservations(
           (o.transaction_date === r.transaction_date &&
             normalize(o.description) === text)),
     );
+    // Repetição entre leituras do banco: a primeira (menor id) conta, as demais
+    // juntam-se a ela. Assim o movimento entra uma vez só, nunca zero vezes.
+    const later = repeats.some((o) => o.id < r.id);
     const a: Analysis = {
       group: "unclear",
       reason: "A descrição não permite determinar a finalidade com segurança.",
@@ -138,19 +177,13 @@ export function analyzeObservations(
       staged_ids: old.map((e) => e.id),
       related_ids: [],
       evidence: old.map((e) => e.filename || "Extrato original"),
-      version: 1,
+      version: 2,
     };
     if (exact.length) {
       a.group = "history";
       a.reason = `${exact.length} lançamento(s) com a mesma conta, data, moeda e valor.`;
       a.decision =
         "Confira a descrição e vincule ao histórico, se for o mesmo movimento. Não é uma duplicidade comprovada.";
-    } else if (old.length) {
-      a.group = "statement";
-      a.reason =
-        "O extrato original contém movimento da mesma conta, data e valor.";
-      a.decision =
-        "Confira o original antes de registrar; a prévia antiga ainda não é um lançamento.";
     } else if (near.length) {
       a.group = "duplicate";
       a.event_ids = near.map((e) => e.id);
@@ -159,15 +192,14 @@ export function analyzeObservations(
       a.decision =
         "Confira a diferença de data antes de vincular ou registrar outro movimento.";
     }
-    if (repeats.length) {
+    if (later) {
       a.group = "duplicate";
       a.related_ids = repeats.map((o) => o.id);
       a.reason =
-        "Há outros movimentos bancários com identificador ou dados iguais.";
-      a.decision =
-        "Confira se são duas operações legítimas. Nada foi descartado automaticamente.";
+        "Há outro movimento bancário com identificador ou dados iguais; conta uma vez só.";
+      a.decision = "Se forem duas operações diferentes, remova a junção.";
     }
-    if (investment(text) && !exact.length && !old.length && !repeats.length) {
+    if (investment(text) && !exact.length && !later) {
       a.group = "investment";
       a.reason = "A descrição indica aplicação ou resgate.";
       a.decision =
@@ -186,8 +218,7 @@ export function analyzeObservations(
     if (
       pair.length &&
       !exact.length &&
-      !old.length &&
-      !repeats.length &&
+      !later &&
       !investment(text)
     ) {
       a.group =
@@ -213,19 +244,17 @@ export function analyzeObservations(
           ? "Confirme a conta de origem e o cartão. Pagamento de fatura não é uma nova despesa."
           : "Confirme origem e destino. Transferência própria não é receita nem despesa.";
       a.evidence = pair.map((o) => `${o.transaction_date} · ${o.description}`);
-    } else if (card(text) && !exact.length && !old.length && !repeats.length) {
+    } else if (card(text) && !exact.length && !later) {
       a.group = "card";
       a.reason =
         "A descrição indica pagamento de cartão, mas falta confirmar a contrapartida.";
       a.decision =
         "Escolha a conta/cartão correspondente; evite contar a fatura como uma nova despesa.";
     }
+    // Sem classificação melhor, conta pelo sinal: saída é gasto, crédito é
+    // entrada. Nada fica parado esperando conferência; remover desfaz.
     if (a.group === "unclear") {
-      if (/ESTORNO|REEMBOLSO|DEVOLUCAO/.test(text)) {
-        a.reason = "Possível devolução ou estorno.";
-        a.decision =
-          "Identifique a despesa original antes de classificar como entrada.";
-      } else if (
+      if (
         BigInt(r.amount_cents) > 0n &&
         incomeRules.some(
           (rule) =>
@@ -236,21 +265,29 @@ export function analyzeObservations(
         a.group = "income";
         a.reason =
           "Entrada compatível com uma regra de recebimento desta família.";
-        a.decision =
-          "Confira valor, data e mês de destino da regra; não duplique a receita.";
-      } else if (BigInt(r.amount_cents) < 0n && !transfer(text)) {
+        a.decision = "Conta como entrada no mês de destino da regra.";
+      } else if (BigInt(r.amount_cents) > 0n) {
+        // Crédito sem transferência própria, fatura ou investimento (tratados
+        // antes): entrada, inclusive estorno.
+        a.group = "income";
+        a.reason = "Crédito sem contrapartida em outra conta de vocês.";
+        a.decision = "Conta como entrada. Se não for, remova.";
+      } else if (BigInt(r.amount_cents) < 0n) {
         a.group = "expense";
         a.reason =
-          "Saída sem indício de transferência, fatura ou investimento.";
-        a.decision = "Confira a categoria antes de registrar.";
+          "Saída sem indício de transferência própria, fatura ou investimento.";
+        a.decision = "Conta como gasto. Se não for, remova.";
       }
     }
-    if (r.provider_status !== "POSTED" || r.changed || r.missing) {
+    // Status "pendente" do banco não segura nada: só o movimento que já foi
+    // salvo e depois mudou (ou sumiu) fica marcado. Os não salvos seguem a
+    // versão nova do banco ao serem lidos (storeObservations).
+    if (r.changed || r.missing) {
       a.group = "pending";
-      a.reason =
-        "O banco ainda não confirmou o movimento ou alterou a evidência.";
-      a.decision =
-        "Aguarde ou revise a versão do banco antes de qualquer lançamento.";
+      a.reason = r.missing
+        ? "O banco deixou de retornar este movimento; ele saiu dos totais."
+        : "O banco alterou um movimento já salvo.";
+      a.decision = "Nada a fazer; o lançamento salvo foi preservado.";
     }
     a.semantic = investment(text)
       ? "Aplicação ou resgate"
@@ -261,7 +298,7 @@ export function analyzeObservations(
           : a.group === "income"
             ? "Recebimento previsto pela família"
             : /WISE|WIZE/.test(text) && BigInt(r.amount_cents) > 0n
-              ? "Recebimento via Wise: conferir vínculo com o trabalho"
+              ? "Recebimento via Wise"
               : undefined;
     result.set(r.id, a);
   }

@@ -1,49 +1,255 @@
+/* ========================================================================
+   DESIGN SYSTEM · TOKENS (fonte única de verdade). Paleta roxo+lime.
+   Os nomes --family-* legados são mantidos (produção inteira os consome) e
+   recebem os novos valores frios. As vars --family-* novas (lime, tint, herói, chart, categorias, tones, raios, espaços, fontes) alimentam os primitivos do
+   DS. --family-accent é sobrescrito em runtime por pessoa (family.tsx); o roxo
+   abaixo é só o fallback do CSS — o default real vem de defaultPreferences. */
 :root {
-  --family-accent: #c5ab8b;
-  --family-on-accent: #29251f;
-  --family-bg: #f7f4ef;
-  --family-surface: #fffcf8;
-  --family-text: #29251f;
-  --family-muted: #716759;
-  --family-line: #e6dfd4;
-  --family-soft: #ede6db;
-  --family-success: #375d45;
-  --family-success-bg: #e7ede5;
-  --family-danger: #8a4934;
-  --family-danger-bg: #f6e7df;
+  /* ação / marca (accent é trocado por pessoa em runtime) */
+  --family-accent: #5844d8;
+  --family-on-accent: #ffffff;
+  /* texto sobre as cores de categoria (--family-cat-N): branco nos dois temas,
+     por isso não é redefinido nos blocos escuros */
+  --family-on-category: #ffffff;
+  --family-accent-soft: #c6bdf2;
+  --family-lime: #c7e86a;
+  --family-on-lime: #2a3310;
+  /* superfície / texto */
+  --family-bg: #f3f2f7;
+  --family-surface: #ffffff;
+  --family-surface-2: #edecf4;
+  --family-tint: #efeafb;
+  --family-text: #1c1a24;
+  --family-muted: #6d6880;
+  --family-line: #e6e3ef;
+  --family-soft: #edecf4;
+  --family-track: #e8e5f0;
+  --family-track-2: #cfc9de;
+  /* semântica */
+  --family-success: #1f8f63;
+  --family-success-bg: #e4f2eb;
+  --family-danger: #cb4c3c;
+  --family-danger-bg: #f8e9e5;
+  /* Ouro mais limpo (menos oliva) que o tom antigo — mesma luminância, cai
+     melhor ao lado do roxo. Único consumidor hoje é month-screen.tsx. */
+  --family-warn: #be6e14;
+  --family-warn-bg: #f6edd8;
+  --family-info: #2a90ac;
+  /* chart chrome */
+  --family-chart-grid: #e8e5f0;
+  --family-chart-axis: #cfc9de;
+  --family-chart-label: #6d6880;
+  /* herói: superfície tingida do accent, no mesmo tom do resto da tela (o
+     fundo quase preto destoava dos cartões claros). Os blocos escuros não
+     redefinem estes tokens: lá tint/text/muted já são as versões escuras. */
+  --family-hero-bg: var(--family-accent-soft);
+  /* Sheen do herói: a ponta escura NUNCA passa de accent-soft (o antigo fundo
+     chapado) — só a ponta clara varia, então o cartão só pode ficar mais claro
+     que antes, nunca mais escuro. Em claro, "mais claro" = rumo a --surface
+     (branco); em escuro, --surface é quase preto (pioraria), então a ponta
+     clara ali mistura com --accent (a cor viva do tema escuro). Por isso tem
+     valor próprio nos três blocos de tema, diferente do resto dos --hero-*
+     que só herdam via var(). --family-hero-bg continua sólida (cor, não
+     gradiente) porque color-mix() abaixo não aceita gradiente como entrada. */
+  --family-hero-bg-gradient: linear-gradient(
+    135deg,
+    color-mix(
+      in srgb,
+      var(--family-accent-soft) 60%,
+      var(--family-surface) 40%
+    ),
+    var(--family-accent-soft)
+  );
+  --family-hero-fg: var(--family-text);
+  /* muted puro some sobre accent-soft; texto a 72% mantém a hierarquia e lê */
+  --family-hero-sub: color-mix(
+    in srgb,
+    var(--family-text) 72%,
+    var(--family-hero-bg)
+  );
+  --family-hero-line: var(--family-accent);
+  /* categorias (matiz alternado) */
+  --family-cat-1: #1f9d6b;
+  --family-cat-2: #d84a86;
+  --family-cat-3: #d98a2e;
+  --family-cat-4: #2a90ac;
+  --family-cat-5: #8a7fcf;
+  --family-cat-6: #5844d8;
+  /* 7..12: segunda volta da paleta, matiz alternado entre vizinhos. A cor de
+     cada categoria é fixa (categories.color_index, migration 024). */
+  --family-cat-7: #c2523c;
+  --family-cat-8: #6f8f22;
+  --family-cat-9: #3a72c9;
+  --family-cat-10: #a3489a;
+  --family-cat-11: #a8841a;
+  --family-cat-12: #2f8a78;
+  /* fatias sem categoria do banco: fatura de cartão e "sem categoria" */
+  --family-cat-cards: #4a4560;
+  --family-cat-none: #9a96a8;
+  /* raios / espaços */
+  --family-radius-sm: 11px;
+  --family-radius-md: 14px;
+  --family-radius-lg: 18px;
+  --family-radius-xl: 20px;
+  --family-radius-pill: 999px;
+  --family-space-1: 4px;
+  --family-space-2: 8px;
+  --family-space-3: 12px;
+  --family-space-4: 14px;
+  --family-space-5: 18px;
+  --family-space-6: 22px;
+  --family-space-7: 28px;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --family-bg: #181a18;
-  --family-surface: #222521;
-  --family-text: #f4eee5;
-  --family-muted: #b7b1a6;
-  --family-line: #363a34;
-  --family-soft: #30352e;
-  --family-success: #b5d2b8;
-  --family-success-bg: #2d3d30;
-  --family-danger: #e9ad91;
-  --family-danger-bg: #392b24;
+  --family-accent: #a988ff;
+  --family-on-accent: #17112b;
+  --family-accent-soft: #473d78;
+  --family-lime: #d6f786;
+  --family-on-lime: #20280c;
+  --family-bg: #141219;
+  --family-surface: #1d1b25;
+  --family-surface-2: #262330;
+  --family-tint: #241d3a;
+  --family-text: #f1eef7;
+  --family-muted: #a39db4;
+  --family-line: #2b2836;
+  --family-soft: #262330;
+  --family-track: #2b2836;
+  --family-track-2: #403a52;
+  --family-success: #53cd93;
+  --family-success-bg: #1c3429;
+  --family-danger: #ee8068;
+  --family-danger-bg: #331f1b;
+  --family-warn: #e0b45f;
+  --family-warn-bg: #332a16;
+  --family-info: #5fc3dc;
+  --family-chart-grid: #2b2836;
+  --family-chart-axis: #403a52;
+  --family-chart-label: #a39db4;
+  /* Ponta clara do sheen do herói, versão escura: ver comentário no :root —
+     aqui mistura com --accent (vivo no tema escuro) em vez de --surface
+     (quase preto, escureceria em vez de clarear). */
+  --family-hero-bg-gradient: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--family-accent-soft) 55%, var(--family-accent) 45%),
+    var(--family-accent-soft)
+  );
+  --family-cat-1: #4fcf97;
+  --family-cat-2: #f06ba3;
+  --family-cat-3: #f0a650;
+  --family-cat-4: #5fc3dc;
+  --family-cat-5: #b0a4d0;
+  --family-cat-6: #a988ff;
+  --family-cat-7: #ef7a63;
+  --family-cat-8: #a9c654;
+  --family-cat-9: #6aa5f0;
+  --family-cat-10: #d27ac8;
+  --family-cat-11: #e0bd4a;
+  --family-cat-12: #5fbfa9;
+  --family-cat-cards: #8c86a6;
+  --family-cat-none: #5d5970;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --family-bg: #181a18;
-    --family-surface: #222521;
-    --family-text: #f4eee5;
-    --family-muted: #b7b1a6;
-    --family-line: #363a34;
-    --family-soft: #30352e;
-    --family-success: #b5d2b8;
-    --family-success-bg: #2d3d30;
-    --family-danger: #e9ad91;
-    --family-danger-bg: #392b24;
+    --family-accent: #a988ff;
+    --family-on-accent: #17112b;
+    --family-accent-soft: #473d78;
+    --family-lime: #d6f786;
+    --family-on-lime: #20280c;
+    --family-bg: #141219;
+    --family-surface: #1d1b25;
+    --family-surface-2: #262330;
+    --family-tint: #241d3a;
+    --family-text: #f1eef7;
+    --family-muted: #a39db4;
+    --family-line: #2b2836;
+    --family-soft: #262330;
+    --family-track: #2b2836;
+    --family-track-2: #403a52;
+    --family-success: #53cd93;
+    --family-success-bg: #1c3429;
+    --family-danger: #ee8068;
+    --family-danger-bg: #331f1b;
+    --family-warn: #e0b45f;
+    --family-warn-bg: #332a16;
+    --family-info: #5fc3dc;
+    --family-chart-grid: #2b2836;
+    --family-chart-axis: #403a52;
+    --family-chart-label: #a39db4;
+    --family-hero-bg-gradient: linear-gradient(
+      135deg,
+      color-mix(
+        in srgb,
+        var(--family-accent-soft) 55%,
+        var(--family-accent) 45%
+      ),
+      var(--family-accent-soft)
+    );
+    --family-cat-1: #4fcf97;
+    --family-cat-2: #f06ba3;
+    --family-cat-3: #f0a650;
+    --family-cat-4: #5fc3dc;
+    --family-cat-5: #b0a4d0;
+    --family-cat-6: #a988ff;
+    --family-cat-7: #ef7a63;
+    --family-cat-8: #a9c654;
+    --family-cat-9: #6aa5f0;
+    --family-cat-10: #d27ac8;
+    --family-cat-11: #e0bd4a;
+    --family-cat-12: #5fbfa9;
+    --family-cat-cards: #8c86a6;
+    --family-cat-none: #5d5970;
     color-scheme: dark;
   }
+}
+/* tom semântico neutro → cor, consumido por todos os primitivos (DRY).
+   data-tone="ok|warn|danger|accent|neutral" resolve --tone e --tone-bg. */
+[data-tone="ok"] {
+  --tone: var(--family-success);
+  --tone-bg: var(--family-success-bg);
+}
+[data-tone="warn"] {
+  --tone: var(--family-warn);
+  --tone-bg: var(--family-warn-bg);
+}
+[data-tone="danger"] {
+  --tone: var(--family-danger);
+  --tone-bg: var(--family-danger-bg);
+}
+[data-tone="accent"] {
+  --tone: var(--family-accent);
+  --tone-bg: var(--family-tint);
+}
+[data-tone="neutral"] {
+  --tone: var(--family-muted);
+  --tone-bg: var(--family-surface-2);
 }
 body {
   background: var(--family-bg);
   color: var(--family-text);
+}
+/* globals.css também pinta `body` (var(--paper), pra outras páginas fora do
+   app). Por ordem de import (app/layout.tsx: globals.css antes de family.css)
+   essa regra acima já vence em empate de especificidade — mas depender disso
+   é frágil. Esta trava, só pra área do app, garante var(--family-bg) sem
+   tocar globals.css (que outras páginas usam). */
+body:has(.family-app) {
+  background: var(--family-bg);
+}
+/* Comportamento de app no celular: a página nunca desliza para os lados.
+   `clip` (não `hidden`) não cria contêiner de rolagem, então sticky segue
+   funcionando; overscroll-x desliga o "elástico" lateral. Rolagens
+   horizontais internas (tabelas, carrosséis) continuam nos próprios blocos. */
+html:has(.family-app),
+body:has(.family-app) {
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+.family-app {
+  max-width: 100%;
+  overflow-x: clip;
 }
 .family-app,
 .family-login {
@@ -51,6 +257,7 @@ body {
   background: var(--family-bg);
   min-height: 100dvh;
   font-family:
+    var(--family-font-sans),
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -88,13 +295,16 @@ body {
   letter-spacing: -0.8px;
   text-wrap: balance;
 }
+/* Escala de títulos: página 26px, seção 18px. Componentes (Panel, diálogo)
+   definem o próprio tamanho; isto é só o padrão de quem usa h1/h2 cru. */
 .family-app h1 {
-  font-size: 36px;
+  font-size: 26px;
+  line-height: 1.2;
   margin: 0;
 }
 .family-app h2 {
-  font-size: 20px;
-  font-weight: 650;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1.35;
 }
 .family-app small,
@@ -110,25 +320,6 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-}
-.family-wordmark {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: inherit;
-  text-decoration: none;
-  line-height: 1.2;
-}
-.family-wordmark strong {
-  font-size: 23px;
-  letter-spacing: -0.5px;
-}
-.family-wordmark small {
-  display: block;
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
 }
 .family-logo {
   display: inline-grid;
@@ -153,110 +344,6 @@ body {
   max-width: 760px;
   padding: 14px 20px calc(120px + env(safe-area-inset-bottom));
   margin: auto;
-}
-.family-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin: 8px 0 22px;
-}
-.family-heading .eyebrow {
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  margin-bottom: 5px;
-}
-.family-heading select {
-  width: 80px;
-  padding: 8px;
-}
-.family-month {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--family-line);
-  border-bottom: 1px solid var(--family-line);
-  padding: 8px 0;
-  margin-bottom: 22px;
-}
-.family-month button {
-  background: transparent;
-  border: none;
-  font-size: 29px;
-  padding: 0;
-  width: 46px;
-}
-.family-month label {
-  position: relative;
-  font-weight: 650;
-  text-transform: capitalize;
-  margin: 0;
-  cursor: pointer;
-  display: block;
-}
-.family-month input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-  cursor: pointer;
-}
-.family-hero {
-  background: var(--family-accent);
-  color: var(--family-surface);
-  border-radius: 24px;
-  padding: 20px;
-  margin: 0 0 18px;
-}
-.family-hero p {
-  font-size: 13px;
-  color: var(--family-on-accent);
-  margin: 0 0 10px;
-}
-.family-hero h2 {
-  font-size: 24px;
-  line-height: 1.3;
-  font-family: Georgia, serif;
-  font-weight: 400;
-}
-.family-hero small {
-  color: var(--family-on-accent);
-}
-.family-hero progress {
-  width: 100%;
-  height: 7px;
-  border-radius: 20px;
-  margin: 0 0 20px;
-  accent-color: var(--family-on-accent);
-  appearance: none;
-}
-.family-hero progress::-webkit-progress-bar {
-  background: #b69b7a;
-  border-radius: 8px;
-}
-.family-hero progress::-webkit-progress-value {
-  background: var(--family-on-accent);
-  border-radius: 8px;
-}
-.family-two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-.family-two > div {
-  min-width: 0;
-}
-.family-two small {
-  display: block;
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-.family-two strong {
-  font-size: 20px;
-  font-weight: 600;
-  display: block;
-  overflow-wrap: anywhere;
-  font-variant-numeric: tabular-nums;
 }
 .family-entry {
   padding: 6px 3px 24px;
@@ -287,97 +374,6 @@ body {
 }
 .family-section h2 {
   margin: 0;
-}
-.family-section select {
-  width: auto;
-  padding: 8px 28px 8px 10px;
-  border: 1px solid var(--family-line);
-  border-radius: 12px;
-}
-.family-search {
-  display: block;
-  margin: 0 0 12px;
-}
-.family-search input {
-  width: 100%;
-  border-radius: 12px;
-}
-.family-list {
-  border: 1px solid var(--family-line);
-  border-radius: 18px;
-  background: var(--family-surface);
-  overflow: hidden;
-}
-.family-item {
-  display: flex;
-  gap: 12px;
-  padding: 17px 13px;
-  align-items: center;
-  border-bottom: 1px solid var(--family-line);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 84px;
-}
-.family-item:last-child {
-  border-bottom: 0;
-}
-.family-check {
-  width: 46px;
-  padding: 0;
-  border-radius: 50%;
-  background: var(--family-soft);
-  flex-shrink: 0;
-  font-size: 22px;
-}
-.family-item-body {
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  text-align: left;
-  background: transparent;
-  display: block;
-  min-width: 0;
-  flex: 1;
-  font-weight: 400;
-}
-.family-item-body:hover {
-  background: transparent;
-}
-.family-item-body strong {
-  font-size: 14px;
-  display: block;
-  overflow-wrap: anywhere;
-}
-.family-item-body span {
-  display: block;
-  font-size: 11px;
-  color: var(--family-muted);
-  margin-top: 4px;
-}
-.family-amount {
-  font-size: 13px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.is-done .family-check {
-  background: var(--family-success-bg);
-  color: var(--family-success);
-}
-.is-done .family-item-body strong {
-  color: var(--family-muted);
-}
-.family-empty {
-  padding: 28px 20px;
-  text-align: center;
-}
-.family-empty p {
-  font-size: 14px;
-  color: var(--family-muted);
-}
-.family-footnote {
-  font-size: 12px;
-  color: var(--family-muted);
-  padding: 14px 3px;
-  line-height: 1.6;
 }
 .family-movement {
   display: flex;
@@ -431,20 +427,19 @@ body {
   display: list-item;
   padding-top: 10px;
 }
+.ui-collapsible-body > .family-card {
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+.ui-collapsible-body > .family-card > h2:first-child {
+  display: none;
+}
 .family-card .family-actions {
   margin-bottom: 0;
-}
-.family-account {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--family-line);
-  font-size: 13px;
-}
-.family-account small {
-  display: block;
-  font-size: 11px;
 }
 .family-card .fine {
   font-size: 12px;
@@ -487,19 +482,6 @@ body {
   background: var(--family-soft);
   border-radius: 13px;
   font-weight: 700;
-}
-.family-dialog {
-  background: var(--family-bg);
-  color: var(--family-text);
-  width: min(540px, calc(100% - 20px));
-  max-height: calc(100dvh - 30px);
-  padding: 22px;
-  border: 1px solid var(--family-line);
-  border-radius: 23px;
-  overscroll-behavior: contain;
-}
-.family-dialog::backdrop {
-  background: #161611a8;
 }
 .family-dialog .family-section {
   margin-top: 0;
@@ -601,26 +583,8 @@ body {
   .family-main {
     padding-top: 28px;
   }
-  .family-hero {
-    padding: 32px;
-  }
-  .family-item {
-    padding: 18px 22px;
-  }
-  .family-item-body strong {
-    font-size: 16px;
-  }
-  .family-item-body span {
-    font-size: 12px;
-  }
-  .family-amount {
-    font-size: 16px;
-  }
   .family-nav {
     gap: 20px;
-  }
-  .family-heading h1 {
-    font-size: 42px;
   }
 }
 @media (max-width: 360px) {
@@ -628,38 +592,13 @@ body {
     padding-left: 14px;
     padding-right: 14px;
   }
-  .family-item {
-    gap: 7px;
-    padding: 14px 9px;
-  }
-  .family-amount {
-    font-size: 12px;
-  }
-  .family-two strong {
-    font-size: 17px;
-  }
-  .family-heading h1 {
-    font-size: 32px;
-  }
 }
 @media (max-width: 759px) {
   .family-main {
     padding-top: 0;
   }
-  .family-heading {
-    margin: 2px 0 14px;
-  }
-  .family-heading .eyebrow {
-    display: none;
-  }
-  .family-heading h1 {
-    font-size: 32px;
-  }
   .family-header {
     padding-bottom: 8px;
-  }
-  .family-month {
-    margin-bottom: 14px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -694,21 +633,6 @@ body {
 .family-login .primary:hover {
   opacity: 0.85;
 }
-.family-app .family-hero {
-  color: var(--family-on-accent);
-  background: var(--family-accent);
-}
-.family-hero h2 {
-  font-family: inherit;
-  font-size: 34px;
-  font-weight: 550;
-  letter-spacing: -1px;
-  margin: 8px 0 12px;
-}
-.family-hero p,
-.family-hero small {
-  color: var(--family-on-accent);
-}
 .family-svg {
   width: 23px;
   height: 23px;
@@ -717,18 +641,6 @@ body {
 }
 .family-header {
   justify-content: initial;
-}
-.family-wordmark {
-  margin-right: auto;
-}
-.family-wordmark strong {
-  font:
-    27px Georgia,
-    serif;
-  font-weight: 400;
-}
-.family-wordmark small {
-  display: none;
 }
 .family-logo {
   background: transparent;
@@ -764,116 +676,16 @@ body {
   height: 20px;
   margin: 5px 0;
 }
-.family-intro {
-  color: var(--family-muted);
-  font-size: 14px;
-}
-.family-position {
-  border-bottom: 1px solid var(--family-line);
-  padding: 17px 0;
-}
-.family-position > strong,
-.family-position small {
-  display: block;
-}
-.family-position small {
-  font-size: 12px;
-  margin-top: 7px;
-}
-.family-position-value {
-  display: block;
-  font-size: 25px;
-  letter-spacing: -0.5px;
-  margin: 5px 0;
-}
-.family-wide {
-  width: 100%;
-}
 .family-card progress {
   width: 100%;
   height: 7px;
   accent-color: var(--family-accent);
   margin-top: 18px;
 }
-.family-help-intro {
-  text-align: center;
-  padding: 15px 10px;
-}
-.family-help-intro > .family-svg {
-  width: 36px;
-  height: 36px;
-  color: var(--family-accent);
-}
-.family-help-intro h2 {
-  font:
-    32px Georgia,
-    serif;
-  margin-bottom: 12px;
-}
-.family-help-intro p {
-  font-size: 14px;
-  color: var(--family-muted);
-}
-.family-help-mode {
-  font-size: 12px;
-  text-align: center;
-  color: var(--family-muted);
-  margin: 10px 0 22px;
-}
-.family-app .family-question {
-  display: flex;
-  justify-content: space-between;
-  text-align: left;
-  gap: 12px;
-  width: 100%;
-  padding: 17px;
-  font-size: 14px;
-  margin: 10px 0;
-  font-weight: 500;
-}
-.family-ask {
-  display: grid;
-  gap: 10px;
-  margin: 24px 0;
-}
-.family-ask label {
-  font-size: 13px;
-  font-weight: 600;
-}
-.family-ask textarea {
-  width: 100%;
-  padding: 14px;
-  border: 1px solid var(--family-line);
-  border-radius: 14px;
-  resize: vertical;
-}
-.family-answer {
-  border: 1px solid var(--family-line);
-  border-left: 3px solid var(--family-accent);
-  padding: 20px;
-  border-radius: 0 16px 16px 0;
-  background: var(--family-surface);
-}
-.family-answer > p:first-child {
-  white-space: pre-wrap;
-  font-size: 15px;
-  line-height: 1.8;
-}
-.family-answer small,
-.family-answer .fine {
-  font-size: 12px;
-  color: var(--family-muted);
-}
 .family-theme {
   display: grid;
   gap: 10px;
   font-size: 14px;
-}
-.family-theme select {
-  width: 100%;
-  padding: 13px;
-  border: 1px solid var(--family-line);
-  border-radius: 12px;
 }
 .family-consent {
   display: flex;
@@ -893,18 +705,6 @@ body {
 .family-login input {
   border-color: var(--family-line);
 }
-.family-app .family-item-body {
-  background: transparent;
-  border: none;
-}
-.family-app .family-check {
-  background: var(--family-soft);
-}
-.family-app .is-done .family-check {
-  background: var(--family-success-bg);
-  color: var(--family-success);
-}
-.family-item-body span,
 .family-movement span,
 .family-movement small {
   font-size: 12px;
@@ -914,24 +714,11 @@ body {
 }
 .family-app label,
 .family-login label,
-.family-app summary,
-.family-app .family-month label {
+.family-app summary {
   color: var(--family-text);
 }
 .family-app .family-card > p {
   color: var(--family-text);
-}
-.family-app.is-chat .family-heading {
-  margin-bottom: 10px;
-}
-.family-app.is-chat .family-heading .eyebrow {
-  display: none;
-}
-.family-app.is-chat .family-heading h1 {
-  font-size: 27px;
-}
-.family-app.is-chat .family-month {
-  margin-bottom: 10px;
 }
 .family-app.is-chat .family-main {
   padding-bottom: calc(90px + env(safe-area-inset-bottom));
@@ -950,48 +737,6 @@ body {
   gap: 8px;
   padding: 0 0 10px;
   border-bottom: 1px solid var(--family-line);
-}
-.family-app .chat-mode,
-.family-app .chat-new {
-  background: transparent;
-  border: 0;
-  padding: 6px;
-  text-align: left;
-}
-.chat-mode strong,
-.chat-mode small {
-  display: block;
-}
-.chat-mode strong {
-  font-size: 14px;
-}
-.chat-mode small {
-  font-size: 11px;
-  font-weight: 400;
-  margin-top: 3px;
-}
-.chat-spark {
-  font-size: 30px;
-  color: var(--family-muted);
-}
-.family-app .chat-new {
-  width: 46px;
-  font-size: 27px;
-}
-.chat-settings {
-  background: var(--family-surface);
-  border: 1px solid var(--family-line);
-  border-radius: 16px;
-  padding: 16px;
-  max-height: 65%;
-  overflow: auto;
-  font-size: 13px;
-}
-.chat-settings .family-consent {
-  align-items: flex-start;
-}
-.chat-settings input {
-  flex-shrink: 0;
 }
 .chat-log {
   overflow-y: auto;
@@ -1079,17 +824,6 @@ body {
 .chat-assistant .chat-message-body {
   flex: 1;
 }
-.chat-avatar {
-  display: grid;
-  place-items: center;
-  background: var(--family-accent);
-  color: var(--family-on-accent);
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  flex-shrink: 0;
-  font-size: 23px;
-}
 .chat-text {
   font-size: 14px;
   line-height: 1.75;
@@ -1116,30 +850,6 @@ body {
 .chat-sources p {
   margin: 7px 0;
 }
-.chat-action {
-  background: var(--family-surface);
-  border: 1px solid var(--family-line);
-  border-radius: 16px;
-  margin-top: 16px;
-  padding: 16px;
-}
-.chat-action h3 {
-  margin: 8px 0;
-  font-size: 17px;
-}
-.chat-action small {
-  font-size: 10px;
-  letter-spacing: 1px;
-}
-.chat-action ul {
-  list-style: none;
-  padding: 0;
-  font-size: 13px;
-}
-.chat-action li {
-  padding: 7px 0;
-  border-bottom: 1px solid var(--family-line);
-}
 .chat-action-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -1148,13 +858,6 @@ body {
 .family-app .chat-action-buttons button {
   font-size: 13px;
   flex: 1;
-}
-.chat-thinking {
-  display: flex;
-  gap: 10px;
-  padding: 8px 0;
-  color: var(--family-muted);
-  font-size: 13px;
 }
 .chat-compose-wrap {
   flex-shrink: 0;
@@ -1183,27 +886,6 @@ body {
   line-height: 1.5;
   width: 0;
 }
-.family-app .chat-send {
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  flex-shrink: 0;
-  padding: 0;
-  border-radius: 50%;
-  background: var(--family-accent);
-  color: var(--family-on-accent);
-  border: 0;
-  font-size: 26px;
-}
-.family-app .chat-attach {
-  width: 38px;
-  min-height: 44px;
-  padding: 0;
-  flex-shrink: 0;
-  border: 0;
-  background: transparent;
-  font-size: 24px;
-}
 .chat-disclaimer {
   margin: 8px 0 0;
   text-align: center;
@@ -1226,10 +908,6 @@ body {
   .chat-action-buttons {
     flex-direction: column;
   }
-}
-
-.chat-settings p {
-  color: var(--family-muted);
 }
 .family-app .chat-composer textarea::placeholder {
   color: var(--family-muted);
@@ -1271,17 +949,6 @@ body {
   margin: 0 auto;
   overflow: hidden;
 }
-.family-app.is-chat .family-heading,
-.family-app.is-chat .family-month {
-  flex-shrink: 0;
-}
-.family-app.is-chat .family-heading {
-  margin: 0 0 6px;
-}
-.family-app.is-chat .family-month {
-  padding-block: 4px;
-  margin-bottom: 6px;
-}
 .family-chat-slot {
   flex: 1;
   display: flex;
@@ -1299,100 +966,19 @@ body {
 :root[data-chat-keyboard="open"] .family-app.is-chat .family-nav {
   display: none;
 }
-:root[data-chat-keyboard="open"] .family-app.is-chat .family-heading {
-  display: none;
-}
 .chat-toolbar {
   flex-shrink: 0;
   gap: 4px;
   padding-bottom: 6px;
 }
-.family-app .chat-mode {
-  min-width: 0;
-  flex: 1;
-  justify-content: flex-start;
-  gap: 7px;
-}
-.chat-mode > span:nth-child(2) {
-  min-width: 0;
-}
-.chat-mode strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-}
-.chat-mode small {
-  white-space: nowrap;
-  font-size: 10px;
-}
-.chat-spark {
-  font-size: 26px;
-}
-.family-app .chat-history-toggle {
-  background: transparent;
-  padding: 6px 8px;
-  border: 0;
-  font-size: 12px;
-  flex-shrink: 0;
-  color: var(--family-muted);
-}
-.family-app .chat-new {
-  flex-shrink: 0;
-  width: 40px;
-}
-.chat-settings,
-.chat-history {
-  flex-shrink: 1;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-.chat-history {
-  background: var(--family-surface);
-  padding: 14px;
-  border: 1px solid var(--family-line);
-  border-radius: 16px;
-  max-height: 70%;
-}
-.chat-history h2 {
-  font-size: 17px;
-  margin: 0;
-}
-.chat-history p,
 .chat-loading {
-  font-size: 12px;
-  color: var(--family-muted);
-}
-.chat-history .family-section {
-  margin: 0 0 8px;
-}
-.family-app .chat-history-item {
-  width: 100%;
-  display: block;
-  text-align: left;
-  margin-bottom: 5px;
-  padding: 10px 12px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  font-weight: 400;
-}
-.chat-history-item strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 24px 0;
   font-size: 13px;
-}
-.chat-history-item small {
-  display: block;
-  margin-top: 4px;
-  font-size: 11px;
-}
-.family-app .chat-history-item[aria-current] {
-  background: var(--family-soft);
-  border-color: var(--family-line);
+  color: var(--family-muted);
 }
 .family-app .chat-older {
   display: block;
@@ -1445,9 +1031,6 @@ body {
   max-height: 110px;
   padding: 8px 2px;
 }
-.family-app .chat-attach {
-  width: 32px;
-}
 .chat-disclaimer {
   font-size: 10px;
   padding-inline: 8px;
@@ -1463,12 +1046,8 @@ body {
 .family-app p {
   color: var(--family-text);
 }
-.family-app p.fine,
-.family-app .family-footnote {
+.family-app p.fine {
   color: var(--family-muted);
-}
-.family-app .family-hero p {
-  color: var(--family-on-accent);
 }
 .family-app .family-error {
   color: var(--family-danger);
@@ -1479,8 +1058,6 @@ body {
 .family-app .chat-disclaimer,
 .family-app .chat-empty p,
 .family-app .chat-loading,
-.family-app .chat-settings p,
-.family-app .chat-history p,
 .family-app .chat-sources p {
   color: var(--family-muted);
 }
@@ -1509,17 +1086,82 @@ body {
     transform: translateY(0);
   }
 }
-.family-dialog {
-  overflow-y: auto;
-  max-height: calc(
-    var(--chat-viewport-height, 100dvh) - env(safe-area-inset-top) -
-      env(safe-area-inset-bottom) - 24px
+
+/* Espera da Judite: três pontos que respiram em sequência e um anel que gira
+ * devagar em volta do avatar. Sem movimento reduzido, ficam parados e o texto
+ * da etapa e o relógio continuam dizendo que ela está trabalhando. */
+.chat-waiting {
+  animation: chat-appear 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.family-app .chat-waiting-bubble {
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: min(100%, 30rem);
+}
+.chat-dots {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+.chat-dots > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary-ink);
+  opacity: 0.55;
+}
+.judite-avatar {
+  position: relative;
+}
+.judite-avatar.is-working::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: var(--color-primary);
+  border-right-color: color-mix(
+    in oklab,
+    var(--color-primary) 40%,
+    transparent
   );
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chat-dots > span {
+    animation: chat-dot 1.2s ease-in-out infinite;
+  }
+  .chat-dots > span:nth-child(2) {
+    animation-delay: 0.16s;
+  }
+  .chat-dots > span:nth-child(3) {
+    animation-delay: 0.32s;
+  }
+  .judite-avatar.is-working::after {
+    animation: judite-orbit 1.4s linear infinite;
+  }
+}
+@keyframes chat-dot {
+  0%,
+  70%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+@keyframes judite-orbit {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .family-dialog .family-section {
   position: sticky;
-  top: -22px;
-  background: var(--family-bg);
+  top: -1.5rem; /* = padding do modal-box */
+  /* mesma cor do modal-box: o título fixo cobre o conteúdo sem virar faixa */
+  background: var(--color-base-100);
   z-index: 1;
   padding-block: 6px;
 }
@@ -1533,12 +1175,6 @@ body {
 .family-app .family-section h2 {
   min-width: 0;
 }
-.family-app .family-item {
-  min-width: 0;
-}
-.family-amount {
-  flex-shrink: 0;
-}
 @media (max-width: 430px) {
   .family-header,
   .family-main {
@@ -1551,17 +1187,6 @@ body {
   }
   .family-card {
     padding: 18px;
-  }
-  .family-two {
-    gap: 14px;
-  }
-  .family-dialog {
-    width: calc(100% - 24px);
-    padding: 18px;
-    border-radius: 20px;
-  }
-  .family-dialog .family-section {
-    top: -18px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1590,10 +1215,6 @@ body {
 @media (max-width: 350px) {
   .chat-action-buttons {
     grid-template-columns: 1fr;
-  }
-  .family-app .chat-history-toggle {
-    padding-inline: 4px;
-    font-size: 11px;
   }
 }
 
@@ -1624,52 +1245,15 @@ body {
     max(16px, env(safe-area-inset-right)) 4px
     max(16px, env(safe-area-inset-left));
 }
-.family-header .family-page-title {
-  flex: 1;
-  min-width: 0;
-  font-size: 25px;
-  line-height: 1.15;
-  letter-spacing: -0.5px;
-}
 .family-header .family-logo {
   width: 38px;
   height: 38px;
   border-radius: 12px;
   font-size: 27px;
 }
-.family-wordmark {
-  min-width: 44px;
-  min-height: 44px;
-}
 .family-main,
 .is-chat .family-main {
   padding-top: 4px;
-}
-.family-month,
-.is-chat .family-month {
-  border-top: 0;
-  margin-bottom: 14px;
-  padding: 0 0 6px;
-  gap: 2px;
-}
-.family-month label {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-  font-size: 15px;
-}
-.family-month button {
-  width: 44px;
-  min-width: 44px;
-  padding: 0;
-}
-.family-month select {
-  width: 72px;
-  padding: 6px;
-  margin: 0 0 0 8px;
-  background: transparent;
-  border-color: transparent;
-  font-size: 16px;
 }
 .family-nav {
   padding-top: 4px;
@@ -1677,143 +1261,6 @@ body {
 .family-nav button {
   min-height: 48px;
   padding-block: 4px;
-}
-.family-month-summary {
-  border-radius: 22px;
-  padding: 20px;
-  background: var(--family-soft);
-  margin-bottom: 16px;
-}
-.family-summary-kicker {
-  color: var(--family-muted);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 1.3px;
-}
-.family-month-summary h2 {
-  font-family: Georgia, serif;
-  font-size: 27px;
-  font-weight: 500;
-  letter-spacing: -0.4px;
-  margin: 9px 0;
-  text-wrap: balance;
-}
-.family-month-summary > p {
-  margin: 0;
-  font-size: 14px;
-}
-.family-due-alert {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 5px 9px;
-  border-radius: 8px;
-  background: var(--family-danger-bg);
-  color: var(--family-danger);
-  font-size: 12px;
-}
-.family-month-totals {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  border-top: 1px solid var(--family-line);
-  padding-top: 12px;
-  margin-top: 16px;
-}
-.family-month-totals span {
-  min-width: 0;
-  color: var(--family-muted);
-  font-size: 11px;
-}
-.family-month-totals strong {
-  display: block;
-  color: var(--family-text);
-  font-size: 14px;
-  font-weight: 600;
-  margin-top: 3px;
-  overflow-wrap: anywhere;
-}
-.family-plan-filter {
-  margin-top: 24px;
-}
-.family-plan-group {
-  margin: 16px 0;
-  border: 1px solid var(--family-line);
-  border-radius: 20px;
-  background: var(--family-surface);
-  overflow: clip;
-}
-.family-group-heading {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 18px 16px 12px;
-}
-.family-group-heading > div {
-  min-width: 0;
-}
-.family-group-heading h3 {
-  font-size: 17px;
-  margin: 0 0 4px;
-}
-.family-app .family-group-heading p {
-  color: var(--family-muted);
-  font-size: 12px;
-  margin: 0;
-  line-height: 1.4;
-}
-.family-group-heading > strong {
-  font-size: 15px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.family-group-heading small {
-  display: block;
-  font-size: 11px;
-  font-weight: 400;
-  margin-top: 4px;
-}
-.group-income .family-group-heading h3 {
-  color: var(--family-success);
-}
-.family-plan-group .family-list {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-.family-plan-group .family-item {
-  padding: 14px 12px;
-  gap: 9px;
-}
-.family-plan-group .family-check {
-  flex-shrink: 0;
-}
-.family-plan-group .family-item-body {
-  min-width: 0;
-  padding: 0;
-}
-.family-plan-group .family-item-body strong {
-  overflow-wrap: anywhere;
-}
-.family-plan-group .family-amount {
-  font-size: 14px;
-}
-.family-app .family-group-empty {
-  margin: 0;
-  padding: 16px;
-  color: var(--family-muted);
-  font-size: 14px;
-}
-.family-plan-add {
-  width: 100%;
-  border: 0;
-  border-top: 1px solid var(--family-line);
-  border-radius: 0;
-  text-align: left;
-  padding: 10px 16px;
-  background: transparent;
-  font-size: 14px;
-  color: var(--family-text);
 }
 .family-entry-options {
   display: grid;
@@ -1850,17 +1297,6 @@ body {
   gap: 9px;
   font-size: 13px;
 }
-.family-pie-dot {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  border-radius: 50%;
-}
-.family-pie-legend li > span:not(.family-pie-dot) {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
 .family-pie-legend small {
   display: block;
   margin-top: 2px;
@@ -1888,66 +1324,6 @@ body {
   .family-main {
     padding-bottom: calc(98px + env(safe-area-inset-bottom));
   }
-  .family-month-summary {
-    padding: 18px;
-  }
-}
-
-/* The period belongs to the content; the app header contains only navigation. */
-.family-summary-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-.family-app .family-period-chip {
-  display: inline-flex;
-  flex-direction: row;
-  min-height: 44px;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0 6px 8px;
-  margin: 0;
-  flex-shrink: 0;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: capitalize;
-  color: var(--family-muted);
-  background: transparent;
-  border: 0;
-}
-.family-period-context {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0 0 10px;
-}
-.family-month-summary .family-summary-heading {
-  margin-top: -10px;
-}
-.family-month-summary .family-summary-heading + h2 {
-  margin-top: 4px;
-}
-.family-period-options {
-  display: grid;
-  gap: 16px;
-}
-.family-period-step {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  text-transform: capitalize;
-}
-.family-period-step button {
-  width: 46px;
-  font-size: 24px;
-}
-@media (max-width: 430px) {
-  .family-summary-kicker {
-    font-size: 9px;
-    letter-spacing: 0.6px;
-  }
 }
 
 .family-banks {
@@ -1956,18 +1332,6 @@ body {
 .family-banks h3 {
   font-size: 17px;
   margin: 0;
-}
-.family-banks details {
-  border-top: 1px solid var(--family-line);
-  padding: 12px 0;
-}
-.family-banks summary {
-  min-height: 44px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  font-weight: 600;
-  font-size: 14px;
 }
 .family-banks form {
   display: grid;
@@ -2002,47 +1366,7 @@ body {
   flex-shrink: 0;
   margin: 0;
 }
-.bank-connection {
-  border-top: 1px solid var(--family-line);
-  padding: 14px 0;
-}
 .bank-account {
-  border: 1px solid var(--family-line);
-  border-radius: 14px;
-  padding: 14px;
-  margin: 12px 0;
-  overflow-wrap: anywhere;
-}
-.bank-review {
-  border-top: 1px solid var(--family-line);
-  padding: 10px 0;
-}
-.family-banks .bank-review-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  text-align: left;
-  width: 100%;
-  gap: 12px;
-  background: transparent;
-  border: 0;
-  padding: 8px 0;
-}
-.bank-review-title > span {
-  min-width: 0;
-}
-.bank-review-title strong {
-  font-size: 14px;
-  overflow-wrap: anywhere;
-}
-.bank-review-title > strong {
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-}
-.bank-review-title small {
-  display: block;
-  font-size: 11px;
-  margin-top: 5px;
   overflow-wrap: anywhere;
 }
 .family-banks .family-actions {
@@ -2054,101 +1378,1759 @@ body {
 }
 
 /* Cards, categories and reminders use the same quiet surfaces in both themes. */
-.category-svg{width:24px;height:24px;flex:none}.category-picker{border:0;padding:0;margin:8px 0;min-width:0}.category-picker legend{font-weight:600;margin-bottom:10px}.category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.category-choice{position:relative;min-width:0}.category-choice input{position:absolute;opacity:0;width:1px;height:1px;min-height:0}.category-choice>span{display:flex;min-height:82px;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:9px 5px;border:1px solid var(--family-line);border-radius:14px;font-size:11px;text-align:center;overflow-wrap:anywhere;cursor:pointer;background:var(--family-surface);transition:background .15s ease,border-color .15s ease}.category-choice input:checked+span{border-color:var(--family-accent);background:var(--family-soft)}.category-choice input:focus-visible+span{outline:2px solid var(--family-accent);outline-offset:2px}.plan-category-icon{display:inline-flex;vertical-align:middle;margin-right:7px;color:var(--family-muted)}.plan-category-icon .category-svg{width:18px;height:18px}
-.category-chart-tabs{display:flex;gap:8px;margin:16px 0}.category-chart-tabs button{flex:1;min-height:44px;border-radius:24px;font-size:13px}.category-chart-tabs button[aria-pressed=true]{background:var(--family-soft);border-color:var(--family-accent)}.family-pie{position:relative;display:grid;place-items:center}.family-pie>span{position:absolute;inset:24px;border-radius:50%;background:var(--family-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}.family-pie>span small{font-size:10px;color:var(--family-muted)}.family-pie>span strong{font-size:13px}.category-legend-button{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;border:1px solid transparent;background:transparent;text-align:left;padding:6px;border-radius:12px}.category-legend-button[aria-pressed=true]{border-color:var(--family-accent);background:var(--family-soft)}.category-legend-button>span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}.category-symbol{display:grid;place-items:center;width:36px;height:36px;background:var(--family-soft);border-radius:12px;flex:none}.category-details ul,.credit-purchases{list-style:none;padding:0;margin:8px 0}.category-details li,.credit-purchases li{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-top:1px solid var(--family-line);padding:12px 0;font-size:12px}.category-details li>span,.credit-purchases li>div{min-width:0;overflow-wrap:anywhere}.category-details strong,.credit-purchases li>span{white-space:nowrap}.credit-account{border-top:1px solid var(--family-line);padding:14px 0}.credit-account h3{font-size:15px}.credit-bill{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin:12px 0}.credit-bill small,.credit-purchases small{display:block;color:var(--family-muted);font-size:11px;line-height:1.5}.credit-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0}.credit-stats>div{padding:10px;border-radius:12px;background:var(--family-soft);min-width:0}.credit-stats dt{font-size:10px;line-height:1.5;color:var(--family-muted)}.credit-stats dd{margin:6px 0 0;font-size:12px;overflow-wrap:anywhere}.credit-overview details>summary,.payment-alerts details>summary{min-height:44px;cursor:pointer;font-size:13px;padding:12px 0}.payment-alert{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;border:0;border-top:1px solid var(--family-line);border-radius:0;background:transparent;padding:14px 0;font-size:12px}.payment-alert>span:first-child{min-width:0;overflow-wrap:anywhere}.payment-alert small{display:block;color:var(--family-muted);margin-top:5px}.payment-alerts .family-section{gap:10px;flex-wrap:wrap}.payment-alerts .family-section button{font-size:12px;min-height:44px}.alert-overdue small{color:var(--family-danger,#a45141)}
-@media(prefers-reduced-motion:reduce){.category-choice>span{transition:none}}
+.category-svg {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+.category-picker {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.category-picker legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.375;
+}
+.category-picker .category-grid {
+  width: 100%;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+} /* .family-app na frente: precisa vencer .family-dialog label (grid + gap + 600), que transformava o rádio oculto numa linha extra do tile. */
+.family-app .category-choice {
+  position: relative;
+  display: block;
+  min-width: 0;
+  font-weight: 400;
+}
+.category-choice input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+}
+.category-choice > span {
+  display: flex;
+  height: 100%;
+  min-height: 64px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px;
+  border: 1px solid var(--family-line);
+  border-radius: var(--radius-field);
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  background: var(--family-surface);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.category-choice input:checked + span {
+  border-color: var(--family-accent);
+  background: var(--family-soft);
+}
+.category-choice input:focus-visible + span {
+  outline: 2px solid var(--family-accent);
+  outline-offset: 2px;
+}
+.category-chart-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+.category-chart-tabs button {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 24px;
+  font-size: 13px;
+}
+.category-chart-tabs button[aria-pressed="true"] {
+  background: var(--family-soft);
+  border-color: var(--family-accent);
+}
+.family-pie {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.family-pie > span {
+  position: absolute;
+  inset: 24px;
+  border-radius: 50%;
+  background: var(--family-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.family-pie > span small {
+  font-size: 10px;
+  color: var(--family-muted);
+}
+.family-pie > span strong {
+  font-size: 13px;
+}
+.category-legend-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  padding: 6px;
+  border-radius: 12px;
+}
+.category-legend-button[aria-pressed="true"] {
+  border-color: var(--family-accent);
+  background: var(--family-soft);
+}
+.category-legend-button > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.category-symbol {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: var(--family-soft);
+  border-radius: 12px;
+  flex: none;
+}
+.category-details ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.category-details li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--family-line);
+  padding: 12px 0;
+  font-size: 12px;
+}
+.category-details li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.category-details strong {
+  white-space: nowrap;
+}
+.credit-account {
+  border-top: 1px solid var(--family-line);
+  padding: 14px 0;
+}
+.credit-account h3 {
+  font-size: 15px;
+}
+.credit-overview details > summary,
+.payment-alerts details > summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 12px 0;
+}
+.payment-alert {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  border: 0;
+  border-top: 1px solid var(--family-line);
+  border-radius: 0;
+  background: transparent;
+  padding: 14px 0;
+  font-size: 12px;
+}
+.payment-alert > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.payment-alert small {
+  display: block;
+  color: var(--family-muted);
+  margin-top: 5px;
+}
+.payment-alerts .family-section {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.payment-alerts .family-section button {
+  font-size: 12px;
+  min-height: 44px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .category-choice > span {
+    transition: none;
+  }
+}
 
-.card-cycle-form{display:grid;gap:12px;padding:12px 0}.card-cycle-form label{display:grid;gap:6px}.card-cycle-form input{min-width:0;max-width:100%}
+.card-cycle-form {
+  display: grid;
+  gap: 12px;
+  padding: 12px 0;
+}
+.card-cycle-form label {
+  display: grid;
+  gap: 6px;
+}
+.card-cycle-form input {
+  min-width: 0;
+  max-width: 100%;
+}
 
-.card-cycle-form input[type="checkbox"]{width:auto;min-height:auto;accent-color:var(--primary,#c5ab8b)}
-.credit-account{scroll-margin-top:24px}.payment-alert{text-decoration:none;color:inherit}
+.card-cycle-form input[type="checkbox"] {
+  width: auto;
+  min-height: auto;
+  accent-color: var(--primary, #c5ab8b);
+}
+.credit-account {
+  scroll-margin-top: 24px;
+}
+.payment-alert {
+  text-decoration: none;
+  color: inherit;
+}
 
-.family-app label.manual-card-paid{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;min-height:44px}.family-app .manual-card-paid input[type="checkbox"]{width:22px;height:22px;min-width:22px;margin:0;flex:none}
+.family-app label.manual-card-paid {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 44px;
+}
+.family-app .manual-card-paid input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  margin: 0;
+  flex: none;
+}
 
 /* Individual preferences: touch-first controls and private profile. */
-.personal-home{display:grid;gap:20px;min-width:0}.personal-home-block{min-width:0}.personal-home-block:empty{display:none}
-.personal-home-block>.family-card,.personal-home-block>.family-plan-group,.personal-home-block>.family-month-summary{margin:0}
-.personal-home-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px}
-.personal-avatar{width:32px;height:32px;object-fit:cover;border-radius:50%}
-.personalization form{display:grid;gap:18px}.personalization fieldset{display:grid;gap:14px;min-width:0;margin:0;padding:16px 0;border:0;border-top:1px solid var(--family-line)}
-.personalization legend{font-size:16px;font-weight:650;padding:0 8px 0 0}.personalization label{display:grid;gap:7px;min-width:0}
-.personal-photo{display:flex;align-items:center;gap:14px;min-width:0}.personal-photo img,.personal-photo>span{flex:none;width:64px;height:64px;border-radius:50%;object-fit:cover;background:var(--family-soft);display:grid;place-items:center;font-size:24px}
-.personal-photo label{flex:1;min-width:0}.personal-photo input{width:100%;font-size:13px;padding:8px 0}
-.personalization input[type="color"]{width:80px;height:44px;padding:4px;border-radius:12px}
-.personal-swatches{display:flex;gap:12px;flex-wrap:wrap}.personal-swatches button{width:44px;height:44px;border:2px solid var(--family-line);border-radius:50%}.personal-swatches button[aria-pressed="true"]{outline:2px solid var(--family-text);outline-offset:3px}
-.personal-card-list{display:grid;gap:10px;list-style:none;padding:0;margin:0}.personal-card-list li{display:flex;align-items:center;gap:8px;justify-content:space-between;border:1px solid var(--family-line);border-radius:14px;padding:8px;background:var(--family-bg)}
-.family-app .personal-card-list label{display:flex;flex-direction:row;align-items:center;gap:10px;flex:1;font-size:14px;min-height:44px}
-.family-app .personal-card-list input{width:20px;height:20px;min-width:20px;min-height:20px;margin:0;flex:none;accent-color:var(--family-accent)}
-.personal-card-list li>div{display:flex;gap:4px;flex:none}.family-app .personal-card-list button{min-width:44px;min-height:44px;padding:6px;font-size:20px}
-.personal-overview{width:min(480px,calc(100% - 28px));padding:28px;max-height:calc(100dvh - 40px);overflow:auto}.personal-overview::backdrop{background:rgba(10,15,12,.65);backdrop-filter:blur(5px)}
-.personal-step{color:var(--family-muted);font-size:12px}.personal-overview h2{font-size:26px;line-height:1.2;margin:18px 0}.personal-overview p{line-height:1.65}.personal-tour-actions{display:flex;gap:12px;margin:26px 0 12px}.personal-tour-actions button{flex:1;min-height:48px}
-@media(max-width:400px){.personalization{padding:16px}.personal-card-list li{gap:4px}.family-app .personal-card-list label{font-size:13px}.personal-photo{align-items:flex-start}.personal-overview{padding:22px}}
+.personal-home {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  margin-top: 20px;
+}
+.personal-home-block {
+  min-width: 0;
+}
+.home-card-preview > .ds-panel:last-child {
+  margin-bottom: 0;
+}
+.personal-home-block:empty {
+  display: none;
+}
+.personal-home-block > .family-card {
+  margin: 0;
+}
+.personal-avatar {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 50%;
+}
 
-.family-app .family-nav{flex-direction:row;flex-wrap:nowrap;gap:4px;margin:0}.family-app .family-nav button{align-items:center;justify-content:center}
+.family-app .family-nav {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 4px;
+  margin: 0;
+}
+.family-app .family-nav button {
+  align-items: center;
+  justify-content: center;
+}
 
 /* Edit the widgets themselves. The handle owns touch dragging; the page still scrolls elsewhere. */
-.home-edit-toolbar{position:sticky;top:6px;z-index:15;display:grid;gap:12px;padding:16px;background:var(--family-surface);border:1px solid var(--family-line);border-radius:18px;box-shadow:0 8px 28px #0002}.home-edit-toolbar strong{font-size:16px}.home-edit-toolbar small{display:block;line-height:1.5;color:var(--family-muted);margin-top:5px}.home-edit-toolbar>div:last-of-type{display:flex;justify-content:flex-end;gap:8px}.home-edit-toolbar button{min-height:44px}.home-edit-toolbar p{margin:0}
-.is-editing .personal-home-block{border:2px dashed var(--family-accent);border-radius:22px;padding:8px;background:var(--family-surface);box-shadow:0 5px 16px #0001;transition:box-shadow .15s,opacity .15s;animation:home-lift .22s ease-out}.is-editing .personal-home-block.is-dragging{opacity:.65;box-shadow:0 10px 32px #0004;border-style:solid}
-.home-card-tools{display:flex;align-items:center;gap:8px;padding:0 0 8px;min-width:0}.home-card-tools>div{display:flex;gap:4px;flex:none}.family-app .home-card-tools button{min-height:44px;min-width:40px;padding:8px;display:flex;align-items:center;justify-content:center}.family-app .home-drag-handle{touch-action:none;cursor:grab;flex:1;justify-content:flex-start;gap:8px;text-align:left;min-width:0;border:0;background:transparent;font-size:12px}.home-drag-handle>span:last-child{min-width:0;overflow-wrap:anywhere}.home-drag-handle>span:first-child{font-size:24px;flex:none}.home-remove-card{color:var(--family-danger)!important}.is-editing .home-card-preview{max-height:155px;overflow:hidden;border-radius:16px;pointer-events:none;user-select:none;mask-image:linear-gradient(#000 75%,transparent)}.home-card-preview:empty{display:none}.is-editing .home-card-preview:empty{display:block;min-height:36px}.is-editing .home-card-preview:empty:before{content:'Sem informações neste mês';font-size:12px;color:var(--family-muted);padding:10px;display:block}.personal-home:not(.is-editing) .personal-home-block:has(>.home-card-preview:empty){display:none}.home-add-cards{padding:18px;border:1px dashed var(--family-line);border-radius:18px}.home-add-cards summary{min-height:44px;cursor:pointer}.home-add-cards button{width:100%;margin-top:8px;text-align:left;min-height:44px}.home-editor-status:empty{display:none}.personal-layout-link{border-top:1px solid var(--family-line);padding-top:16px}
-@keyframes home-lift{from{transform:translateY(5px);opacity:.6}to{transform:translateY(0);opacity:1}}
+.home-edit-toolbar {
+  position: sticky;
+  top: 6px;
+  z-index: 15;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: var(--family-surface);
+  border: 1px solid var(--family-line);
+  border-radius: 18px;
+  box-shadow: 0 8px 28px #0002;
+}
+.home-edit-toolbar strong {
+  font-size: 16px;
+}
+.home-edit-toolbar small {
+  display: block;
+  line-height: 1.5;
+  color: var(--family-muted);
+  margin-top: 5px;
+}
+.home-edit-toolbar > div:last-of-type {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.home-edit-toolbar button {
+  min-height: 44px;
+}
+.home-edit-toolbar p {
+  margin: 0;
+}
+.is-editing .personal-home-block {
+  border: 2px dashed var(--family-accent);
+  border-radius: 22px;
+  padding: 8px;
+  background: var(--family-surface);
+  box-shadow: 0 5px 16px #0001;
+  transition:
+    box-shadow 0.15s,
+    opacity 0.15s;
+  animation: home-lift 0.22s ease-out;
+}
+.is-editing .personal-home-block.is-dragging {
+  opacity: 0.65;
+  box-shadow: 0 10px 32px #0004;
+  border-style: solid;
+}
+.home-card-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px;
+  min-width: 0;
+}
+.home-card-tools > div {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+.family-app .home-card-tools button {
+  min-height: 44px;
+  min-width: 40px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.family-app .home-drag-handle {
+  touch-action: none;
+  cursor: grab;
+  flex: 1;
+  justify-content: flex-start;
+  gap: 8px;
+  text-align: left;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+.home-drag-handle > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.home-drag-handle > span:first-child {
+  font-size: 24px;
+  flex: none;
+}
+.home-remove-card {
+  color: var(--family-danger) !important;
+}
+.is-editing .home-card-preview {
+  max-height: 155px;
+  overflow: hidden;
+  border-radius: 16px;
+  pointer-events: none;
+  user-select: none;
+  mask-image: linear-gradient(#000 75%, transparent);
+}
+.home-card-preview:empty {
+  display: none;
+}
+.is-editing .home-card-preview:empty {
+  display: block;
+  min-height: 36px;
+}
+.is-editing .home-card-preview:empty:before {
+  content: "Sem informações neste mês";
+  font-size: 12px;
+  color: var(--family-muted);
+  padding: 10px;
+  display: block;
+}
+.personal-home:not(.is-editing)
+  .personal-home-block:has(> .home-card-preview:empty) {
+  display: none;
+}
+.home-add-cards {
+  padding: 18px;
+  border: 1px dashed var(--family-line);
+  border-radius: 18px;
+}
+.home-add-cards summary {
+  min-height: 44px;
+  cursor: pointer;
+}
+.home-add-cards button {
+  width: 100%;
+  margin-top: 8px;
+  text-align: left;
+  min-height: 44px;
+}
+.home-editor-status:empty {
+  display: none;
+}
+.personal-layout-link {
+  border-top: 1px solid var(--family-line);
+  padding-top: 16px;
+}
+@keyframes home-lift {
+  from {
+    transform: translateY(5px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
 /* Native modal focus trapping with a transparent window over the current control. */
-dialog.guided-tour{position:fixed;inset:0;margin:0;padding:0;border:0;width:100vw;max-width:none;height:100dvh;max-height:none;background:transparent;overflow:hidden;color:var(--family-text)}dialog.guided-tour:not([open]){display:none}.guided-tour::backdrop{background:transparent}.guided-shade{position:absolute;inset:0;pointer-events:none}.guided-bubble{position:absolute;width:min(340px,calc(100vw - 32px));max-height:calc(100dvh - 24px);overflow:auto;padding:18px;background:var(--family-surface);border:1px solid var(--family-line);border-radius:20px;box-shadow:0 16px 48px #0005}.guided-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--family-muted)}.guided-meta button{width:36px;min-height:36px;font-size:23px;padding:0;display:grid;place-items:center;background:transparent;border:0;color:var(--family-text)}.guided-bubble h2{font-size:20px;line-height:1.25;margin:8px 0 10px}.guided-bubble p{font-size:14px;line-height:1.55;margin:0 0 16px}.guided-actions{display:flex;gap:10px;justify-content:flex-end}.guided-actions button{min-height:44px}.guided-bubble .primary{background:var(--family-accent);color:var(--family-on-accent)}
-@media(prefers-reduced-motion:reduce){.is-editing .personal-home-block{animation:none;transition:none}}
-@media(max-width:400px){.family-app .home-card-tools button{min-width:36px;padding:6px}.home-card-tools{gap:3px}.home-drag-handle{font-size:11px}.guided-bubble{padding:16px}}
+dialog.guided-tour {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  background: transparent;
+  overflow: hidden;
+  color: var(--family-text);
+}
+dialog.guided-tour:not([open]) {
+  display: none;
+}
+.guided-tour::backdrop {
+  background: transparent;
+}
+.guided-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.guided-bubble {
+  position: absolute;
+  width: min(340px, calc(100vw - 32px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 18px;
+  background: var(--family-surface);
+  border: 1px solid var(--family-line);
+  border-radius: 20px;
+  box-shadow: 0 16px 48px #0005;
+}
+.guided-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--family-muted);
+}
+.guided-meta button {
+  width: 36px;
+  min-height: 36px;
+  font-size: 23px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--family-text);
+}
+.guided-bubble h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  margin: 8px 0 10px;
+}
+.guided-bubble p {
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+.guided-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.guided-actions button {
+  min-height: 44px;
+}
+.guided-bubble .primary {
+  background: var(--family-accent);
+  color: var(--family-on-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-editing .personal-home-block {
+    animation: none;
+    transition: none;
+  }
+}
+@media (max-width: 400px) {
+  .family-app .home-card-tools button {
+    min-width: 36px;
+    padding: 6px;
+  }
+  .home-card-tools {
+    gap: 3px;
+  }
+  .home-drag-handle {
+    font-size: 11px;
+  }
+  .guided-bubble {
+    padding: 16px;
+  }
+}
 
-.guided-bubble{overscroll-behavior:contain}.guided-actions{position:sticky;bottom:0;background:var(--family-surface);padding-top:8px}.personal-photo input{font-size:16px}
+.guided-bubble {
+  overscroll-behavior: contain;
+}
+.guided-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--family-surface);
+  padding-top: 8px;
+}
 
-.family-administration fieldset{min-inline-size:0;margin:16px 0;padding:14px;border:1px solid var(--family-line);border-radius:16px}.family-administration button{white-space:normal}.family-administration legend{padding:0 6px}
+.family-administration fieldset {
+  min-inline-size: 0;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--family-line);
+  border-radius: 16px;
+}
+.family-administration button {
+  white-space: normal;
+}
+.family-administration legend {
+  padding: 0 6px;
+}
 
 /* Per-person bank setup: wrap steps instead of a horizontally scrolling strip. */
-.bank-onboarding{margin:18px 0;padding:18px;border:1px solid var(--family-line);border-radius:18px;background:var(--family-surface);min-width:0;overflow-wrap:anywhere}
-.bank-onboarding h3{margin-top:0}.bank-onboarding h4{font-size:17px;line-height:1.4;margin:0 0 14px}.bank-onboarding p{line-height:1.6}
-.family-banks .bank-steps{display:flex;flex-wrap:wrap;gap:7px;list-style:none;padding:0;margin:18px 0}.family-banks .bank-steps li{margin:0;flex:1 1 110px;min-width:0}
-.family-banks .bank-steps button{display:flex;align-items:center;gap:7px;width:100%;height:100%;min-height:48px;padding:9px;font-size:12px;text-align:left;border:1px solid var(--family-line);border-radius:12px;background:var(--family-bg);overflow-wrap:anywhere;line-height:1.35}
-.bank-steps button span{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;background:var(--family-soft)}.family-banks .bank-steps button[aria-current=step]{border-color:var(--family-accent);background:var(--family-soft);font-weight:650}
-.bank-step-content{min-width:0}.bank-step-content form{min-width:0}.bank-step-content input{min-width:0;width:100%}.bank-step-content .bank-consent input{width:24px}
-.bank-external{display:inline-flex;align-items:center;min-height:46px;margin:4px 0 12px;line-height:1.5}.bank-step-content>button{width:100%;white-space:normal;line-height:1.5;margin-top:12px}.bank-step-content .bank-setup{margin:12px 0}.bank-step-content summary,.bank-help summary{min-height:44px;padding:12px 0;cursor:pointer;line-height:1.5}.bank-guide-links{padding-left:20px}.bank-guide-links a{display:inline-flex;align-items:center;min-height:44px;line-height:1.5}
-.bank-help{border-top:1px solid var(--family-line);margin-top:20px;padding-top:4px;font-size:13px}.bank-connection,#bank-review-title{scroll-margin-top:24px}
-@media(max-width:420px){.bank-onboarding{padding:14px}.family-banks .bank-steps li{flex-basis:90px}.family-banks .bank-steps button{font-size:11px;padding:7px;gap:5px}}
+.bank-onboarding h3 {
+  margin-top: 0;
+}
+.bank-onboarding h4 {
+  font-size: 17px;
+  line-height: 1.4;
+  margin: 0 0 14px;
+}
+.bank-onboarding p {
+  line-height: 1.6;
+}
+.bank-step-content {
+  min-width: 0;
+}
+.bank-step-content form {
+  min-width: 0;
+}
+.bank-step-content input {
+  min-width: 0;
+  width: 100%;
+}
+.bank-step-content .bank-consent input {
+  width: 24px;
+}
+.bank-step-content > button {
+  width: 100%;
+  white-space: normal;
+  line-height: 1.5;
+  margin-top: 12px;
+}
+.bank-step-content .bank-setup {
+  margin: 12px 0;
+}
+.bank-step-content summary,
+.bank-help summary {
+  min-height: 44px;
+  padding: 12px 0;
+  cursor: pointer;
+  line-height: 1.5;
+}
+#bank-review-title {
+  scroll-margin-top: 24px;
+}
 
-.family-banks .bank-onboarding nav{display:block;overflow:visible;width:100%;padding:0;margin:0;min-width:0}
-.family-banks .bank-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;min-width:0}.family-banks .bank-steps li:last-child{grid-column:1/-1}.family-banks .bank-steps button{white-space:normal;min-width:0}
-@media(min-width:700px){.family-banks .bank-steps{grid-template-columns:repeat(5,minmax(0,1fr))}.family-banks .bank-steps li:last-child{grid-column:auto}}
+.family-banks .bank-onboarding nav {
+  display: block;
+  overflow: visible;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
 
 /* Touch-first month actions; only the icon rotates, keeping the content stationary. */
-.family-quick-actions{pointer-events:none;position:fixed;z-index:32;left:max(20px,env(safe-area-inset-left));bottom:calc(84px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:flex-start;gap:12px;max-width:calc(100vw - 40px)}
-.family-app .quick-actions-trigger{pointer-events:auto;display:grid;place-items:center;width:56px;height:56px;min-width:56px;padding:0;border:1px solid var(--family-line);border-radius:50%;background:var(--family-accent);color:var(--family-on-accent);box-shadow:0 5px 18px #0003;touch-action:manipulation}.quick-actions-trigger svg{width:26px;height:26px;transition:transform 180ms ease}.family-quick-actions[data-open=true] .quick-actions-trigger svg{transform:rotate(45deg)}
-.quick-actions-list{display:flex;flex-direction:column;gap:12px;visibility:hidden;opacity:0;transform:translateY(14px);transition:opacity 180ms ease,transform 180ms ease,visibility 180ms;pointer-events:none}.family-quick-actions[data-open=true] .quick-actions-list{visibility:visible;opacity:1;transform:translateY(0);pointer-events:auto}
-.family-app .quick-action{display:flex;align-items:center;justify-content:flex-start;gap:12px;padding:0;border:0;background:transparent;color:var(--family-text);text-align:left;white-space:normal;border-radius:28px;max-width:100%;min-height:56px}.quick-action-circle{display:grid;place-items:center;width:56px;height:56px;flex:none;border:1px solid var(--family-line);border-radius:50%;background:var(--family-surface);box-shadow:0 3px 12px #0002}.quick-action-circle svg{width:23px;height:23px}.quick-action-label{padding:10px 14px;border:1px solid var(--family-line);border-radius:14px;background:var(--family-surface);font-size:14px;line-height:1.4;box-shadow:0 3px 12px #0001;overflow-wrap:anywhere}.family-app .quick-action:disabled{opacity:.5}
-.family-app .quick-actions-backdrop{position:fixed;inset:0;z-index:31;width:100%;height:100dvh;border:0;border-radius:0;padding:0;background:#0003;animation:quick-backdrop-in 150ms ease}.family-app:has(>.family-quick-actions) .family-main{padding-bottom:calc(160px + env(safe-area-inset-bottom))}
-@keyframes quick-backdrop-in{from{opacity:0}to{opacity:1}}
-@media(prefers-reduced-motion:reduce){.quick-actions-list,.quick-actions-trigger svg{transition:none}.family-app .quick-actions-backdrop{animation:none}}
+.family-quick-actions {
+  pointer-events: none;
+  position: fixed;
+  z-index: 32;
+  left: max(20px, env(safe-area-inset-left));
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: calc(100vw - 40px);
+}
+.family-app .quick-actions-trigger {
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  padding: 0;
+  border: 1px solid var(--family-line);
+  border-radius: 50%;
+  background: var(--family-accent);
+  color: var(--family-on-accent);
+  box-shadow: 0 5px 18px #0003;
+  touch-action: manipulation;
+}
+.quick-actions-trigger svg {
+  width: 26px;
+  height: 26px;
+  transition: transform 180ms ease;
+}
+.family-quick-actions[data-open="true"] .quick-actions-trigger svg {
+  transform: rotate(45deg);
+}
+.quick-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms;
+  pointer-events: none;
+}
+.family-quick-actions[data-open="true"] .quick-actions-list {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.family-app .quick-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--family-text);
+  text-align: left;
+  white-space: normal;
+  border-radius: 28px;
+  max-width: 100%;
+  min-height: 56px;
+}
+.quick-action-circle {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border: 1px solid var(--family-line);
+  border-radius: 50%;
+  background: var(--family-surface);
+  box-shadow: 0 3px 12px #0002;
+}
+.quick-action-circle svg {
+  width: 23px;
+  height: 23px;
+}
+.quick-action-label {
+  padding: 10px 14px;
+  border: 1px solid var(--family-line);
+  border-radius: 14px;
+  background: var(--family-surface);
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 3px 12px #0001;
+  overflow-wrap: anywhere;
+}
+.family-app .quick-action:disabled {
+  opacity: 0.5;
+}
+.family-app .quick-actions-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 31;
+  width: 100%;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: #0003;
+  animation: quick-backdrop-in 150ms ease;
+}
+.family-app:has(> .family-quick-actions) .family-main {
+  padding-bottom: calc(160px + env(safe-area-inset-bottom));
+}
+@keyframes quick-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-actions-list,
+  .quick-actions-trigger svg {
+    transition: none;
+  }
+  .family-app .quick-actions-backdrop {
+    animation: none;
+  }
+}
 
-.quick-actions-list .quick-action{opacity:0;transform:translateY(22px) scale(.92);transform-origin:28px center;transition:transform 220ms cubic-bezier(.2,.8,.2,1),opacity 160ms ease}.family-quick-actions[data-open=true] .quick-action{opacity:1;transform:translateY(0) scale(1)}.family-quick-actions[data-open=true] .quick-action:nth-child(2){transition-delay:45ms}.family-quick-actions[data-open=true] .quick-action:nth-child(1){transition-delay:90ms}
-@media(prefers-reduced-motion:reduce){.quick-actions-list .quick-action{transition:none}}
+.quick-actions-list .quick-action {
+  opacity: 0;
+  transform: translateY(22px) scale(0.92);
+  transform-origin: 28px center;
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 160ms ease;
+}
+.family-quick-actions[data-open="true"] .quick-action {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.family-quick-actions[data-open="true"] .quick-action:nth-child(2) {
+  transition-delay: 45ms;
+}
+.family-quick-actions[data-open="true"] .quick-action:nth-child(1) {
+  transition-delay: 90ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-actions-list .quick-action {
+    transition: none;
+  }
+}
 
-.profile-cards{display:grid;gap:16px;min-width:0}.profile-card{min-width:0;border:1px solid var(--family-line);background:var(--family-surface);border-radius:20px;box-shadow:0 3px 12px #00000005;overflow:clip}.profile-card[data-expanded=true]{border-color:var(--family-accent)}
-.family-app .profile-card-title{margin:0;font-family:inherit}.family-app .profile-card-title>button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:90px;padding:20px;text-align:left;border:0;border-radius:20px;background:transparent;color:var(--family-text);white-space:normal}.profile-card-title button>span{min-width:0}.profile-card-title strong{display:block;font-size:16px;font-weight:650;line-height:1.4;overflow-wrap:anywhere}.profile-card-title small{display:block;font-size:12px;font-weight:400;line-height:1.5;color:var(--family-muted);margin-top:5px}.profile-card-title svg{width:22px;height:22px;flex:none;transition:transform 180ms ease}.profile-card[data-expanded=true]>.profile-card-title svg{transform:rotate(180deg)}
-.profile-card-body{padding:0 20px 20px;animation:profile-reveal 160ms ease}.profile-card-body[hidden]{display:none}.profile-card-body>.family-card{padding:0;margin:0;border:0;box-shadow:none;background:transparent;border-radius:0}.profile-card-body>.family-card>h2:first-child{display:none}.profile-card-body>.family-card>p:first-of-type{margin-top:0}.profile-card-body>.install-guide{margin:0}.profile-card-body form{min-width:0}
-@keyframes profile-reveal{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-@media(prefers-reduced-motion:reduce){.profile-card-body{animation:none}.profile-card-title svg{transition:none}}
+.notification-settings .family-actions {
+  flex-wrap: wrap;
+}
+.notification-settings .family-actions button {
+  flex: 1 1 180px;
+  white-space: normal;
+  min-height: 48px;
+}
+.notification-settings details {
+  margin-top: 16px;
+}
+.notification-settings summary {
+  min-height: 44px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.notification-settings li {
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
 
-.notification-device{border:1px solid var(--family-line);border-radius:14px;background:var(--family-soft);padding:14px;margin:16px 0}.notification-device strong{font-size:14px}.notification-device p{font-size:13px;line-height:1.6;margin:8px 0 0}.notification-settings .family-actions{flex-wrap:wrap}.notification-settings .family-actions button{flex:1 1 180px;white-space:normal;min-height:48px}.notification-settings details{margin-top:16px}.notification-settings summary{min-height:44px;padding:12px 0;cursor:pointer}.notification-settings li{line-height:1.6;margin-bottom:10px}
-
-.home-disclosure{padding:0;overflow:clip}.family-app .home-disclosure-heading{margin:0}.family-app .home-disclosure-heading>button{display:flex;justify-content:space-between;align-items:center;width:100%;padding:18px 20px;gap:14px;text-align:left;white-space:normal;border:0;border-radius:18px;background:transparent;color:var(--family-text);font-size:16px;font-weight:650;min-height:64px}.home-disclosure-heading button>span{min-width:0;overflow-wrap:anywhere}.home-disclosure-heading small{display:block;font-size:12px;font-weight:400;line-height:1.5;color:var(--family-muted);margin-top:6px}.home-disclosure-heading svg{width:22px;height:22px;flex:none;transition:transform 160ms ease}.home-disclosure[data-expanded=true]>.home-disclosure-heading svg{transform:rotate(180deg)}.home-disclosure-body{padding:0 18px 18px;min-width:0}.home-disclosure-body[hidden]{display:none}.home-disclosure-body>.family-card,.home-disclosure-body>.family-plan-group,.home-disclosure-body>.family-month-summary{margin:0;border:0;box-shadow:none;padding:0;background:transparent;border-radius:0}.home-disclosure-body>.family-card>h2:first-child,.home-disclosure-body>.family-plan-group>.family-group-heading h3{display:none}.personal-home:not(.is-editing) .personal-home-block:has(.home-disclosure-body:empty){display:none}
-.credit-total{display:grid;gap:7px;margin:4px 0 16px}.credit-total small{font-size:12px;color:var(--family-muted)}.credit-total>strong{font-size:28px;font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.credit-distribution{display:flex;height:18px;border-radius:12px;background:var(--family-soft);overflow:hidden;margin:12px 0}.credit-distribution>span{height:100%;flex:none}.card-color-0{background:#8c765e}.card-color-1{background:#648b79}.card-color-2{background:#7488ab}.card-color-3{background:#a17e9a}.card-color-4{background:#b18a50}
-.credit-account>summary.credit-bank-summary{display:flex;align-items:center;gap:10px;list-style:none;min-height:70px;padding:12px 0;cursor:pointer}.credit-bank-summary::-webkit-details-marker{display:none}.credit-bank-dot{width:12px;height:12px;flex:none;border-radius:50%}.credit-bank-summary>span:nth-child(2){flex:1;min-width:0}.credit-bank-summary strong{font-size:13px;overflow-wrap:anywhere}.credit-bank-summary>strong{max-width:40%;text-align:right;font-variant-numeric:tabular-nums}.credit-bank-summary small{display:block;font-size:11px;color:var(--family-muted);line-height:1.5;margin-top:5px}.credit-bank-summary:after{content:'⌄';flex:none;color:var(--family-muted)}.credit-account[open]>.credit-bank-summary:after{content:'⌃'}.credit-bank-detail{padding:8px 0 10px}.credit-account{padding:0}
-@media(prefers-reduced-motion:reduce){.home-disclosure-heading svg{transition:none}}
+.personal-home:not(.is-editing)
+  .personal-home-block:has(.ui-collapsible-body:empty) {
+  display: none;
+}
+.card-color-0 {
+  background: #8c765e;
+}
+.card-color-1 {
+  background: #648b79;
+}
+.card-color-2 {
+  background: #7488ab;
+}
+.card-color-3 {
+  background: #a17e9a;
+}
+.card-color-4 {
+  background: #b18a50;
+}
+.credit-account > summary.credit-bank-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+  min-height: 70px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.credit-bank-summary::-webkit-details-marker {
+  display: none;
+}
+.credit-bank-summary > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.credit-bank-summary strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.credit-bank-summary > strong {
+  max-width: 40%;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.credit-bank-summary small {
+  display: block;
+  font-size: 11px;
+  color: var(--family-muted);
+  line-height: 1.5;
+  margin-top: 5px;
+}
+.credit-bank-summary:after {
+  content: "⌄";
+  flex: none;
+  color: var(--family-muted);
+}
+.credit-account[open] > .credit-bank-summary:after {
+  content: "⌃";
+}
+.credit-bank-detail {
+  padding: 8px 0 10px;
+}
+.credit-account {
+  padding: 0;
+}
 
 /* The personal accent is the primary action color and the secondary surface color. */
-.family-app,.family-login{--family-soft:color-mix(in srgb,var(--family-accent) 17%,var(--family-surface));--family-line:color-mix(in srgb,var(--family-accent) 28%,var(--family-surface));background:color-mix(in srgb,var(--family-accent) 7%,var(--family-bg))}
-.family-app .primary,.family-login .primary,.family-app .family-actions .primary{background:var(--family-accent);border-color:var(--family-accent);color:var(--family-on-accent)}
-.family-app .family-nav{background:color-mix(in srgb,var(--family-accent) 9%,var(--family-surface));border-top-color:var(--family-line)}.family-app .family-nav button[aria-current]{background:var(--family-accent);color:var(--family-on-accent)}
-.family-app .home-disclosure-heading>button,.family-app .profile-card-title>button{background:var(--family-soft)}.family-app .home-disclosure[data-expanded=true]>.home-disclosure-heading>button,.family-app .profile-card[data-expanded=true]>.profile-card-title>button{background:var(--family-accent);color:var(--family-on-accent)}.home-disclosure[data-expanded=true]>.home-disclosure-heading small,.profile-card[data-expanded=true]>.profile-card-title small{color:inherit;opacity:.9}
-.family-app .family-period-pill{background:var(--family-soft);border-color:var(--family-line)}.family-app :focus-visible{outline-color:color-mix(in srgb,var(--family-accent) 65%,var(--family-text))}.family-app input[type=checkbox],.family-app input[type=radio]{accent-color:var(--family-accent)}.family-app .card-color-0{background:var(--family-accent)}.family-header .personal-avatar{width:36px;height:36px;object-fit:cover;border-radius:50%;display:block;flex:none}.family-header .family-icon:has(.personal-avatar){padding:4px}
+.family-app,
+.family-login {
+  --family-soft: color-mix(
+    in srgb,
+    var(--family-accent) 17%,
+    var(--family-surface)
+  );
+  --family-soft-strong: color-mix(
+    in srgb,
+    var(--family-accent) 28%,
+    var(--family-surface)
+  );
+  --family-line: color-mix(
+    in srgb,
+    var(--family-accent) 28%,
+    var(--family-surface)
+  );
+  background: color-mix(in srgb, var(--family-accent) 7%, var(--family-bg));
+}
+.family-app .primary,
+.family-login .primary,
+.family-app .family-actions .primary {
+  background: var(--family-accent);
+  border-color: var(--family-accent);
+  color: var(--family-on-accent);
+}
+.family-app .family-nav {
+  background: color-mix(
+    in srgb,
+    var(--family-accent) 9%,
+    var(--family-surface)
+  );
+  border-top-color: var(--family-line);
+}
+.family-app .family-nav button[aria-current] {
+  background: var(--family-accent);
+  color: var(--family-on-accent);
+}
+.family-app :focus-visible {
+  outline-color: color-mix(
+    in srgb,
+    var(--family-accent) 65%,
+    var(--family-text)
+  );
+}
+.family-app input[type="checkbox"],
+.family-app input[type="radio"] {
+  accent-color: var(--family-accent);
+}
+.family-app .card-color-0 {
+  background: var(--family-accent);
+}
+.family-header .personal-avatar {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  flex: none;
+}
+.family-header .family-icon:has(.personal-avatar) {
+  padding: 4px;
+}
 /* Unified month controls, aligned with the home cards. */
-.month-controls{display:grid;gap:10px;margin:4px 0 20px;padding:10px;border:1px solid var(--family-line);border-radius:22px;background:var(--family-surface)}.month-control-bar{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:4px}.family-app .month-control-bar>button{min-height:44px;border:0;background:transparent;color:var(--family-text);padding:8px;font-size:26px;border-radius:14px}.family-app .month-control-bar>.month-control-title{font-size:15px;font-weight:650;display:flex;justify-content:center;align-items:center;gap:8px;text-transform:capitalize}.month-control-title span:first-child{overflow-wrap:anywhere}.month-control-title span:last-child{font-size:16px;color:var(--family-muted)}.month-plan-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--family-soft);padding:4px;border-radius:14px}.family-app .month-plan-tabs>button{min-height:40px;border:0;background:transparent;font-size:12px;padding:8px 4px;border-radius:11px;color:var(--family-muted)}.family-app .month-plan-tabs>button[aria-pressed=true]{background:var(--family-surface);color:var(--family-text);box-shadow:0 1px 5px #0000000d;font-weight:650}.family-logo img{display:block;border-radius:24%;object-fit:cover}.family-header .family-logo{display:grid;place-items:center}
+.month-controls {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 20px;
+}
+.family-logo img {
+  display: block;
+  border-radius: 24%;
+  object-fit: cover;
+}
+.family-header .family-logo {
+  display: grid;
+  place-items: center;
+}
 /* Movements: confirmed totals, compact filters and one timeline. */
-.movements-panel{display:grid;gap:16px;min-width:0}.movement-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.movement-overview>div{display:grid;gap:9px;padding:18px 14px;border:1px solid var(--family-line);border-radius:22px;background:var(--family-surface);min-width:0}.movement-overview small{font-size:12px;color:var(--family-muted)}.movement-overview strong{font-size:clamp(16px,5vw,23px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.movement-overview>p{grid-column:1/-1;color:var(--family-muted);font-size:11px;line-height:1.6;margin:0}.movement-symbol{width:36px;height:36px;display:grid;place-items:center;border-radius:12px;background:var(--family-soft);color:var(--family-text);font-size:22px;flex:none}.movement-symbol svg{width:20px;height:20px}.movement-symbol[data-tone=income]{background:color-mix(in srgb,#608d76 16%,var(--family-surface));color:var(--family-text)}.movement-symbol[data-tone=expense]{background:color-mix(in srgb,#be8b78 16%,var(--family-surface))}.movement-symbol[data-tone=review]{background:color-mix(in srgb,#bd9b5b 19%,var(--family-surface));font-size:17px;font-weight:650}.movement-review{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--family-soft);border-radius:18px}.movement-review>span{min-width:0}.movement-review strong{font-size:13px}.movement-review small{display:block;color:var(--family-muted);font-size:11px;line-height:1.6;margin-top:4px}.family-app .movement-review button{min-width:44px;min-height:44px;border-color:var(--family-line);background:var(--family-surface)}.movement-tools{display:grid;gap:12px;min-width:0}.movement-search-row{display:flex;gap:10px;align-items:center}.movement-search-row label{flex:1;min-width:0;margin:0}.movement-search-row input{width:100%;min-width:0;border-radius:16px;font-size:16px;min-height:48px}.family-app .movement-add{width:48px;height:48px;min-width:48px;padding:0;border-radius:16px;font-size:25px}.movement-chips{display:flex;gap:7px;flex-wrap:wrap}.family-app .movement-chips button{border:1px solid var(--family-line);background:var(--family-surface);color:var(--family-muted);font-size:12px;min-height:40px;padding:8px 13px;border-radius:99px}.family-app .movement-chips button[aria-pressed=true]{background:var(--family-accent);color:var(--family-on-accent);border-color:var(--family-accent)}.movement-account-filter{font-size:12px;min-width:0}.movement-account-filter>summary{color:var(--family-muted);padding:8px 0;cursor:pointer;overflow-wrap:anywhere;min-height:40px}.movement-account-filter label{margin:8px 0}.movement-account-filter select{max-width:100%}.movement-history-heading{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.movement-history-heading h2{font-size:16px;margin:0}.movement-history-heading>span{font-size:11px;color:var(--family-muted)}.movement-day>h3{font-size:12px;font-weight:500;color:var(--family-muted);margin:4px 4px 10px;text-transform:capitalize}.movement-day-list{border:1px solid var(--family-line);border-radius:20px;background:var(--family-surface);overflow:hidden}.movement-entry+ .movement-entry{border-top:1px solid var(--family-line)}.movement-entry summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;padding:15px 12px;min-height:80px}.movement-entry summary::-webkit-details-marker{display:none}.movement-entry-name{flex:1;min-width:0}.movement-entry-name>strong{font-size:12px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.movement-entry-name>small{display:block;font-size:10px;color:var(--family-muted);margin-top:4px;overflow-wrap:anywhere}.movement-entry-name>em{display:block;font-size:10px;font-style:normal;color:var(--family-muted);margin-top:4px}.movement-amount{font-size:12px;max-width:38%;text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.movement-amount[data-tone=income]{color:var(--family-text)}.movement-amount[data-tone=income]:before{content:'+'}.movement-entry-detail{margin:0;padding:0 16px 16px 58px;display:grid;gap:10px;font-size:11px}.movement-entry-detail>div{display:grid;gap:3px}.movement-entry-detail dt{color:var(--family-muted)}.movement-entry-detail dd{margin:0;overflow-wrap:anywhere}.movement-empty{text-align:center;color:var(--family-muted)}.movement-empty>svg{width:32px;height:32px}.movement-more{justify-self:center;min-height:44px}.movements-panel .family-footnote{margin:0}
+/* Ações do movimento: botões de altura normal, hierarquia por cor/peso.
+   Confirmar cheio (accent); Rejeitar discreto inline; sem caixões. Só tokens. */
+/* Formulário de categorização dentro do modal (family-dialog). */
 /* Navigation already identifies the current area; keep the utility header quiet. */
-.family-app .family-header,.family-app.is-chat .family-header{justify-content:flex-end;gap:6px;padding-top:calc(4px + env(safe-area-inset-top));padding-bottom:2px}.family-header h1.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.family-app .family-header,
+.family-app.is-chat .family-header {
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  padding-top: calc(4px + env(safe-area-inset-top));
+  padding-bottom: 2px;
+}
+.family-header .ds-greet-hello {
+  margin-right: auto;
+  padding-left: 12px;
+}
+.family-header h1.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================================================================
+   DESIGN SYSTEM · PRIMITIVOS (estilo). Portado do ds-kit; lê só tokens
+   --family-*. DRY: tom sempre via [data-tone]; superfícies/raios/tipografia
+   via var; zero hex cru. Classes .ds-* isolam do CSS legado .family-*.
+   ======================================================================== */
+.ds-money {
+  font-variant-numeric: tabular-nums;
+}
+
+/* P9 MoneyText */
+.ds-money {
+  font-family: var(--family-font-numeric);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.ds-money .ds-cur {
+  font-size: 0.55em;
+  color: var(--family-muted);
+  margin-right: 0.12em;
+  letter-spacing: 0;
+}
+.ds-money.is-neg {
+  color: var(--family-danger);
+}
+.ds-money.is-pos {
+  color: var(--family-success);
+}
+.ds-stat .ds-value .ds-cur {
+  font-size: 0.5em;
+  color: var(--family-muted);
+  margin-right: 0.1em;
+}
+.ds-stat.inverted .ds-value .ds-cur {
+  color: var(--family-hero-sub);
+}
+.ds-stat-expand-arrow {
+  display: inline-block;
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ds-stat.is-open .ds-stat-summary .ds-stat-expand-arrow,
+.ds-stat-value-btn[aria-expanded="true"] .ds-stat-expand-arrow {
+  transform: rotate(180deg);
+}
+/* Crescimento de altura de verdade: max-height em PX, medido no JS
+   (scrollHeight) e animado via style inline — não grid-template-rows 0fr->1fr, que não funciona aqui (grid intrínseco: qualquer fr>0 já resolve pro
+   tamanho máximo do conteúdo, então "transita" num pulo só em vez de crescer
+   aos poucos). overflow:hidden clipa o conteúdo enquanto max-height < altura
+   real. */
+.ds-stat-expand-wrap {
+  overflow: hidden;
+  transition: max-height 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ds-stat-expand-body {
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+.ds-stat.is-open .ds-stat-expand-body {
+  opacity: 1;
+}
+.ds-stat-expand-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--family-space-3);
+  font-size: 14px;
+  font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-stat-expand-wrap {
+    transition: none;
+  }
+  .ds-stat-expand-body {
+    transition: none;
+  }
+}
+
+/* Collapse: a mesma animação do expand do StatBanner, com gatilho do chamador. */
+.ds-collapse {
+  overflow: hidden;
+  transition: max-height 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ds-collapse-body {
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+.ds-collapse[data-open] > .ds-collapse-body {
+  opacity: 1;
+}
+.ds-collapse-arrow {
+  display: inline-block;
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+[aria-expanded="true"] .ds-collapse-arrow {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-collapse,
+  .ds-collapse-body,
+  .ds-collapse-arrow {
+    transition: none;
+  }
+}
+
+/* Espaçamento entre blocos (layout; o visual é do daisyUI) */
+.ds-disc {
+  margin-top: var(--family-space-3);
+}
+.ds-panel,
+.ds-callout,
+.family-app .ui-collapsible--card {
+  margin-bottom: var(--family-space-4);
+}
+
+/* P7 LegendList / P8 IconRow (linha genérica compartilhada, DRY) */
+.ds-list {
+  display: grid;
+  gap: var(--family-space-2);
+}
+
+/* Saudação da tela Mês (greet do protótipo final): nome + avatares. */
+.ds-greet {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 0 12px;
+}
+.ds-greet-hello {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 550;
+  color: var(--family-text);
+}
+
+/* P12 AvatarCluster */
+.ds-avatars {
+  display: flex;
+}
+.ds-avatars .ds-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--family-tint);
+  color: var(--family-accent);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: -8px;
+  border: 2px solid var(--family-bg);
+}
+/* Cor por pessoa é DADO: quando o componente seta --ds-avatar-color, o tint
+   (12% da cor) e o texto saem dela via color-mix — aceita #rgb, #rrggbb, rgb(), hsl(), nome CSS, sem o JS montar hex frágil. Sem a var, cai no tema. */
+.ds-avatars .ds-avatar[style*="--ds-avatar-color"] {
+  background: color-mix(in srgb, var(--ds-avatar-color) 12%, transparent);
+  color: var(--ds-avatar-color);
+}
+.ds-avatars .ds-avatar:first-child {
+  margin-left: 0;
+}
+
+/* P6 SegmentedBar (CSS, sem lib) */
+.ds-segbar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--family-track);
+}
+.ds-segbar span {
+  min-width: 3px;
+  transform-origin: left;
+  animation: ds-bar-fill 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* Só existe hoje dentro do expand do StatBanner ("Seu mês") — o delay-base
+   (650ms) espera o cartão terminar de se desenrolar (.ds-stat-expand-body)
+   antes de começar a preencher, em vez de competir com ele ao mesmo tempo. */
+.ds-segbar span:nth-child(1) {
+  animation-delay: 1.2s;
+}
+.ds-segbar span:nth-child(2) {
+  animation-delay: 1s;
+}
+.ds-segbar span:nth-child(n + 3) {
+  animation-delay: 830ms;
+}
+@keyframes ds-bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ========================================================================
+   DESIGN SYSTEM · GRÁFICOS (chrome do ChartFrame). recharts encapsulado;
+   regras do projeto num só lugar. Tokens --family-*; zero hex cru. As cores
+   das séries vêm via props JS (tokens lidos em runtime), não por CSS.
+   ======================================================================== */
+.ds-chart {
+  position: relative;
+}
+.ds-chart .frame {
+  width: 100%;
+}
+.ds-chart .legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 10.5px;
+  color: var(--family-muted);
+  margin-top: 8px;
+}
+.ds-chart .legend i {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 2.5px solid;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+.ds-chart .legend i.dash {
+  border-top-style: dashed;
+}
+.ds-chart .legend .sw {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: 0;
+  margin-right: 5px;
+}
+.ds-chart .empty {
+  font-size: 13.5px;
+  color: var(--family-muted);
+  padding: 20px 0;
+}
+/* recharts: herda tipografia e tokens; neutraliza defaults que destoam. */
+/* percentual dentro das fatias do BreakdownBar: branco e legível sobre a cor
+   da categoria (a regra acima pintaria de cinza, cor de eixo). */
+.ds-chart text.ds-breakdown-pct,
+.ds-chart .ds-breakdown-pct text {
+  fill: var(--family-on-category);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ========================================================================
+   ANIMAÇÕES · entrada escalonada da tela Mês. Cada seção direta de
+   .ds-stagger (herói, callouts, painéis — gráficos inclusos, por estarem
+   dentro de um painel) sobe e aparece em sequência, não tudo de uma vez.
+   Delay cresce por nth-child e satura em 360ms pra não alongar a espera.
+   Escopo isolado de .ds-stagger (não .ds-list): RowList reusa .ds-list para
+   linhas internas e não deve herdar este escalonamento. */
+@keyframes ds-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ds-stagger > * {
+  animation: ds-rise-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ds-stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.ds-stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.ds-stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.ds-stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.ds-stagger > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.ds-stagger > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.ds-stagger > *:nth-child(7) {
+  animation-delay: 240ms;
+}
+.ds-stagger > *:nth-child(8) {
+  animation-delay: 300ms;
+}
+.ds-stagger > *:nth-child(n + 9) {
+  animation-delay: 360ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-stagger > *,
+  .ds-segbar span {
+    animation: none;
+  }
+}
+
+/* Tela Copiloto (app/copilot): formulários e ações dentro do cartão do objetivo. */
+.family-app .cop-inline {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.family-app .cop-inline input {
+  font-family: var(--family-font-numeric);
+  font-size: 18px;
+}
+.family-app .cop-form {
+  display: grid;
+  gap: 12px;
+}
+.family-app .cop-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+.family-app .cop-actions .ds-button {
+  width: 100%;
+}
+.family-app .cop-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+}
+.family-app .cop-links .ds-button {
+  min-height: 28px;
+  padding: 0;
+  font-size: 12px;
+}
+.family-app .cop-err {
+  margin: 0;
+  font-size: 12px;
+  color: var(--family-warn);
+}
+.family-app .goal-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.family-app .goal-nums {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--family-muted);
+  margin-top: var(--family-space-4);
+}
+.family-app .goal-nums b {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--family-text);
+  white-space: nowrap;
+}
+.family-app .cop-screen .ds-stat:has(.goal-eyebrow) .ds-rail {
+  height: 8px;
+}
+.family-app .cop-screen .ds-panel .ds-caption {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--family-muted);
+  margin: 8px 0 0;
+}
+.family-app .cop-screen .ds-stat .ds-disc {
+  margin-top: 12px;
+}
+.family-app .cop-screen .ds-disc .ds-stat-expand-h {
+  margin-top: 14px;
+}
+/* Bloco sem colapsável (HomeBlock collapsible=false) que renderizou vazio
+   (ex.: Precisa de você sem pendências): some, como o colapsável vazio. */
+.personal-home:not(.is-editing)
+  .personal-home-block:has(> .home-card-preview:empty) {
+  display: none;
+}
+.family-app .cop-amount {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.family-app .cop-amount output {
+  text-align: center;
+  font-family: var(--family-font-numeric);
+  font-size: 24px;
+  font-weight: 600;
+}
+.family-app .cop-steps {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.family-app .cop-steps li {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+}
+.family-app .cop-steps li span:first-child {
+  color: var(--family-muted);
+}
+/* Panorama (app/insights): grade dos números, barras por categoria, calendário e tabela de lugares. */
+.family-app .ins-chips {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.family-app .ins-sub {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--family-muted);
+}
+.family-app .ins-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.family-app .ins-grid .ds-stat {
+  margin: 0;
+}
+.family-app .ins-grid .ds-value {
+  font-size: 22px;
+}
+.family-app .ds-heat {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-top: 4px;
+}
+.family-app .ds-heat > span {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+}
+.family-app .ds-heat .h {
+  aspect-ratio: auto;
+  color: var(--family-muted);
+}
+.family-app .ds-heat .day {
+  background: color-mix(
+    in srgb,
+    var(--family-accent) var(--ds-heat),
+    transparent
+  );
+  color: var(--family-text);
+}
+.family-app .ds-heat .future {
+  background: var(--family-track);
+  color: var(--family-muted);
+  opacity: 0.6;
+}
+.family-app .ins-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.family-app .ins-table th {
+  text-align: right;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--family-muted);
+  padding: 6px 0;
+}
+.family-app .ins-table th:first-child,
+.family-app .ins-table td:first-child {
+  text-align: left;
+}
+.family-app .ins-table td {
+  padding: 10px 0;
+  border-top: 1px solid var(--family-line);
+  text-align: right;
+  font-family: var(--family-font-numeric);
+}
+.family-app .ins-table td:first-child {
+  font-family: var(--family-font-sans);
+  overflow-wrap: anywhere;
+}
+.family-app .ins-table small {
+  display: block;
+  color: var(--family-muted);
+  font-size: 11px;
+}
+
+.family-header-slot {
+  display: contents;
+}
+
+/* Contas fixas no Mês (app/fixed): selo e estado sob a linha, lista de ações e botões de escolha. */
+.family-app .fixed-actions {
+  display: grid;
+  gap: 8px;
+}
+.family-app .fixed-actions .ds-button {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  padding-block: 8px;
+}
+.family-app .fixed-actions .ds-button-label {
+  display: grid;
+  gap: 2px;
+}
+.family-app .fixed-actions small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--family-muted);
+}
+
+/* Contas fixas em Nosso espaço (app/fixed/overview): etiquetas de situação sob o título da linha. */
+
+/* Saídas por categoria (app/budgets): barra de composição, lista que nomeia as fatias e, aberta, o teto. As cores vêm das variáveis --family-*. */
+.family-app .budget-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  color: var(--family-muted);
+}
+.family-app .budget-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.family-app .budget-sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.family-app .budget-sw.is-spent {
+  background: var(--family-accent);
+}
+.family-app .budget-sw.is-planned {
+  background: var(--family-accent-soft);
+}
+.family-app .budget-sw.is-free {
+  border: 1px solid var(--family-track-2);
+}
+.family-app .budget-sw.is-over {
+  background: var(--family-danger);
+}
+.family-app .budget-bar .ds-segbar {
+  height: 10px;
+  border-radius: 5px;
+}
+.family-app .budget-bar .ds-segbar span {
+  animation: none;
+}
+/* Linha da categoria: display grid vence o inline-flex centralizado do button global. */
+.family-app .outflow-totals {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 0;
+}
+.family-app .outflow-totals > div {
+  min-width: 0;
+}
+.family-app .outflow-totals > div:last-child {
+  text-align: right;
+}
+.family-app .outflow-totals dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--family-muted);
+}
+.family-app .outflow-totals > div:last-child dt {
+  justify-content: flex-end;
+}
+.family-app .outflow-totals dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--family-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.family-app .outflow-list {
+  display: grid;
+}
+.family-app .outflow-item + .outflow-item {
+  border-top: 1px solid var(--family-line);
+}
+.family-app .outflow-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--family-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.family-app .outflow-row:hover {
+  background: transparent;
+}
+.family-app .outflow-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+.family-app .outflow-name {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.family-app .outflow-name strong {
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+  font-weight: 300;
+}
+.family-app .outflow-name .ds-chip {
+  justify-self: start;
+  font-weight: 200;
+}
+.family-app .outflow-name small,
+.family-app .outflow-val small {
+  font-size: 12px;
+  color: var(--family-muted);
+}
+.family-app .outflow-val {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.family-app .outflow-val b {
+  font-size: 14px;
+  white-space: nowrap;
+}
+.family-app .outflow-val .ds-collapse-arrow {
+  margin-left: 4px;
+  color: var(--family-muted);
+}
+.family-app .outflow-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 0 14px 22px;
+}
+/* Gatilho da lista: texto solto, sem a casca do button global. */
+.family-app .outflow-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--family-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  text-align: left;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+.family-app .outflow-more:hover {
+  background: transparent;
+}
+.family-app .outflow-list {
+  padding-top: 4px;
+}
+.family-app .budget-sum {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.family-app .budget-sum > div {
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--family-soft);
+  min-width: 0;
+}
+.family-app .budget-sum dt {
+  font-size: 11px;
+  color: var(--family-muted);
+}
+.family-app .budget-sum dd {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.family-app .budget-reference {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.family-app .budget-reference .fine {
+  margin: 0;
+}
+.family-app .budget-readonly {
+  padding: 10px 12px;
+  border-radius: var(--family-radius-sm);
+  background: var(--family-soft);
+  font-size: 14px;
+  font-weight: 600;
+}
+/* Composição do "Já gastou" em Movimentos: saiu da conta, agendado, no cartão. */
+/* Panorama: linha de frescor, em voz baixa (11px, cor de apoio, alinhada à direita).
+   O ponto só aparece enquanto relê, pulsando; parado, a linha é só texto. */
+.family-app .ins-fresh {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: -6px 2px 0;
+  min-height: 14px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--family-muted);
+  font-variant-numeric: tabular-nums;
+}
+.family-app .ins-fresh-dot {
+  display: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--family-accent);
+  flex: none;
+}
+.family-app .ins-fresh[data-busy] .ins-fresh-dot {
+  display: block;
+  animation: ins-fresh-pulse 900ms var(--ds-ease) infinite alternate;
+}
+@keyframes ins-fresh-pulse {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .family-app .ins-fresh[data-busy] .ins-fresh-dot {
+    animation: none;
+  }
+}
+/* Panorama: ao trocar de mês ou reler, a barra fixo/dia a dia e o calendário vão
+   do valor antigo ao novo. --ds-heat registrado como porcentagem para a intensidade poder transicionar. */
+@property --ds-heat {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 12%;
+}
+.family-app .ins-screen .ds-segbar span {
+  transition: flex-grow var(--ds-dur-move) var(--ds-ease);
+}
+.family-app .ins-screen .ds-heat .day,
+.family-app .ins-screen .ds-heat .future {
+  transition:
+    --ds-heat var(--ds-dur-move) var(--ds-ease),
+    background-color var(--ds-dur) var(--ds-ease),
+    opacity var(--ds-dur) var(--ds-ease);
+}

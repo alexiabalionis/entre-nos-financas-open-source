@@ -88,7 +88,7 @@ test("runtime without owner/admin privilege preserves auth, finance and reminder
       assert.equal((await tx.query("SELECT 1 FROM accounts")).rows.length, 0);
       assert.equal(
         (await tx.query("SELECT 1 FROM categories")).rows.length,
-        14,
+        15,
       );
     });
     await assert.rejects(

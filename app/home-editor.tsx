@@ -1,5 +1,7 @@
 "use client";
-import { HomeDisclosure } from "./home-disclosure";
+import { Button } from "./button";
+import { Collapsible } from "./collapsible";
+import { Panel } from "./ds/panel.tsx";
 import {
   Children,
   isValidElement,
@@ -62,7 +64,11 @@ export function HomeLayout({
     return () => cancelAnimationFrame(frame);
   }, [dragging]);
   const blocks = Children.toArray(children).filter(
-      isValidElement<{ cardId: HomeCardId; caption?: string }>,
+      isValidElement<{
+        cardId: HomeCardId;
+        caption?: string;
+        collapsible?: boolean;
+      }>,
     ),
     p = editing ? draft : preferences;
   const visible = p.card_order.filter((id) => !p.hidden_cards.includes(id));
@@ -145,35 +151,31 @@ export function HomeLayout({
       }}
     >
       {editing && (
-        <div
-          className="home-edit-toolbar"
-          role="region"
-          aria-label="Editar tela principal"
-        >
-          <div>
-            <strong>Seu mês, do seu jeito</strong>
-            <small>
+        <div className="home-edit-toolbar" role="region" aria-label="Editar tela principal">
+          <Panel title="Seu mês, do seu jeito">
+            <p className="ds-caption">
               Arraste pela alça, use as setas ou remova um card. Seus dados
               ficam guardados.
-            </small>
-          </div>
-          <div>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onEditingChange(false)}
-            >
-              Cancelar
-            </button>
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={() => void save()}
-            >
-              {busy ? "Salvando…" : "Concluir"}
-            </button>
-          </div>
-          {message && <p role="alert">{message}</p>}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                disabled={busy}
+                onClick={() => onEditingChange(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                busy={busy}
+                busyLabel="Salvando…"
+                onClick={() => void save()}
+              >
+                Concluir
+              </Button>
+            </div>
+            {message && <p role="alert" className="ds-caption alert alert-soft alert-error">{message}</p>}
+          </Panel>
         </div>
       )}
       {visible.map((id, index) => {
@@ -190,7 +192,7 @@ export function HomeLayout({
           >
             {editing && (
               <div className="home-card-tools">
-                <button
+                <Button
                   type="button"
                   className="home-drag-handle"
                   disabled={busy}
@@ -209,9 +211,9 @@ export function HomeLayout({
                 >
                   <span aria-hidden="true">⠿</span>
                   <span>{label}</span>
-                </button>
+                </Button>
                 <div>
-                  <button
+                  <Button
                     type="button"
                     disabled={busy || index === 0}
                     aria-label={"Subir " + label}
@@ -228,8 +230,8 @@ export function HomeLayout({
                     }
                   >
                     ↑
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     disabled={busy || index === visible.length - 1}
                     aria-label={"Descer " + label}
@@ -246,8 +248,8 @@ export function HomeLayout({
                     }
                   >
                     ↓
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     disabled={busy}
                     className="home-remove-card"
@@ -270,39 +272,44 @@ export function HomeLayout({
                     >
                       <path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
             <div className="home-card-preview" inert={editing}>
-              {editing ? (
+              {editing || block.props.collapsible === false ? (
                 block
               ) : (
-                <HomeDisclosure
-                  cardId={id}
-                  title={label}
-                  caption={block.props.caption}
-                  initiallyOpen={id === "fixed" || id === "variable"}
+                <Collapsible
+                  variant="card"
+                  summary={label}
+                  description={block.props.caption}
+                  defaultOpen={id === "fixed" || id === "variable"}
+                  revealOnHash={id === "cards" ? "#card-" : undefined}
                 >
                   {block}
-                </HomeDisclosure>
+                </Collapsible>
               )}
             </div>
           </div>
         );
       })}
       {editing && (
-        <details className="home-add-cards">
-          <summary>
-            ＋ Adicionar cards
-            {p.hidden_cards.length ? ` (${p.hidden_cards.length})` : ""}
-          </summary>
-          <p className="fine">Toque para trazer um card de volta.</p>
+        <Collapsible
+          className="home-add-cards"
+          summary={
+            <>
+              ＋ Adicionar cards
+              {p.hidden_cards.length ? ` (${p.hidden_cards.length})` : ""}
+            </>
+          }
+        >
+          <p className="ds-caption">Toque para trazer um card de volta.</p>
           {p.hidden_cards.length ? (
             p.card_order
               .filter((id) => p.hidden_cards.includes(id))
               .map((id) => (
-                <button
+                <Button
                   type="button"
                   key={id}
                   disabled={busy}
@@ -314,18 +321,20 @@ export function HomeLayout({
                   }
                 >
                   ＋ {homeCards.find((c) => c[0] === id)![1]}
-                </button>
+                </Button>
               ))
           ) : (
             <p>Todos os cards já estão na sua tela.</p>
           )}
-        </details>
+        </Collapsible>
       )}
       {!editing && visible.length === 0 && (
-        <p className="family-card">
-          Sua tela está vazia. Toque no + e em “Editar tela” para adicionar
-          cards.
-        </p>
+        <Panel>
+          <p className="ds-caption">
+            Sua tela está vazia. Toque no + e em “Editar tela” para adicionar
+            cards.
+          </p>
+        </Panel>
       )}
       <span role="status" className="home-editor-status">
         {editing && dragging

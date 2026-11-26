@@ -87,6 +87,35 @@ try {
     (await fetch(base)).headers.get("content-security-policy"),
     csp,
   );
+  // Todas as páginas do app: CSP com nonce (sem unsafe-inline) e scripts com o nonce.
+  for (const route of ["/movimentos", "/panorama", "/copiloto", "/judite", "/espaco"]) {
+    const page = await fetch(base + route);
+    assert.equal(page.status, 200, route);
+    const pageCsp = page.headers.get("content-security-policy");
+    assert.ok(
+      pageCsp &&
+        !pageCsp
+          .split(";")
+          .find((v) => v.includes("script-src"))
+          .includes("unsafe-inline"),
+      route,
+    );
+    const pageNonce = pageCsp.match(/'nonce-([^']+)'/)[1];
+    assert.ok((await page.text()).includes('nonce="' + pageNonce + '"'), route);
+  }
+  // Links antigos /?view= viram a rota nova, mantendo o mês.
+  for (const [from, to] of [
+    ["/?view=us&month=2026-11", "/espaco?month=2026-11"],
+    ["/?view=future", "/panorama"],
+    ["/?view=help", "/judite"],
+    ["/?view=copiloto", "/copiloto"],
+    ["/?view=movements&month=2026-01", "/movimentos?month=2026-01"],
+    ["/?view=month&month=2026-02", "/?month=2026-02"],
+  ]) {
+    const legacy = await fetch(base + from, { redirect: "manual" });
+    assert.ok([307, 308].includes(legacy.status), from);
+    assert.equal(legacy.headers.get("location"), to, from);
+  }
   assert.equal((await call("auth/login")).status, 405);
   assert.equal(
     (

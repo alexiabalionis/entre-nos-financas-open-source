@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { openDatabase, asUser } from "../src/server/db.ts";
 import { createFamily, type Identity } from "../src/server/auth.ts";
 import { readHelpHistory } from "../src/server/help-history.ts";
+import { saveCardCycle } from "../src/server/card-cycle.ts";
+import { createManualEventTx } from "../src/server/manual.ts";
 import { retrieveFacts } from "../src/domain/retrieval.ts";
 import { helpMonth } from "../src/domain/help-period.ts";
 
@@ -123,6 +125,89 @@ test("historical retrieval includes multiple months, excludes transfer/payment d
       (await db.query("SELECT * FROM economic_events")).rows.length,
       10,
     );
+  } finally {
+    await db.close();
+  }
+});
+
+test("card-account events weigh in the bill's due month while non-card events stay in the transaction month", async () => {
+  const db = await openDatabase();
+  try {
+    const email = "card-competence-history@example.invalid";
+    const userId = await createFamily(db, {
+      name: "Fictícia",
+      familyName: "Casa",
+      email,
+      password: "Sintetica!2026abcd",
+    });
+    const familyId = (
+      await db.query<{ household_id: string }>(
+        "SELECT household_id FROM members WHERE user_id=$1",
+        [userId],
+      )
+    ).rows[0].household_id;
+    const user: Identity = {
+      userId,
+      familyId,
+      name: "Fictícia",
+      email,
+      role: "owner",
+    };
+    const checking = randomUUID(),
+      card = randomUUID();
+    const category = (
+      await db.query<{ id: string }>(
+        "SELECT id FROM categories WHERE household_id=$1 AND name='Alimentação'",
+        [familyId],
+      )
+    ).rows[0].id;
+    await db.query(
+      "INSERT INTO accounts(id,household_id,name,institution,currency,kind,created_by) VALUES($1,$2,'Conta corrente','Teste','BRL','checking',$3)",
+      [checking, familyId, userId],
+    );
+    await db.query(
+      "INSERT INTO accounts(id,household_id,name,institution,currency,kind,created_by) VALUES($1,$2,'Cartão','Teste','BRL','card',$3)",
+      [card, familyId, userId],
+    );
+    // Fatura fecha 13/10 e vence 20/10: a compra de 25/10 cai no ciclo seguinte,
+    // vence em novembro e pesa no mês 2026-11, não no mês da compra.
+    await saveCardCycle(
+      db,
+      user,
+      { account_id: card, close_date: "2026-10-13", due_date: "2026-10-20" },
+      { today: "2026-10-01" },
+    );
+    await asUser(db, userId, async (tx) => {
+      await createManualEventTx(tx, user, {
+        account_id: card,
+        date: "2026-10-25",
+        description: "Compra no cartão",
+        amount: "-600,00",
+        kind: "card_purchase",
+        category_id: category,
+        counter_account_id: null,
+        counter_currency: null,
+        counter_amount: null,
+        related_event_id: null,
+      });
+      await createManualEventTx(tx, user, {
+        account_id: checking,
+        date: "2026-10-05",
+        description: "Despesa na conta",
+        amount: "-100,00",
+        kind: "expense",
+        category_id: category,
+        counter_account_id: null,
+        counter_currency: null,
+        counter_amount: null,
+        related_event_id: null,
+      });
+    });
+    const history = await readHelpHistory(db, user, "BRL");
+    const october = history.find((m) => m.month === "2026-10");
+    const november = history.find((m) => m.month === "2026-11");
+    assert.equal(october?.expense_cents, "10000");
+    assert.equal(november?.expense_cents, "60000");
   } finally {
     await db.close();
   }

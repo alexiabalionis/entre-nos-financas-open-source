@@ -4,6 +4,37 @@ import {
   readProfilePhoto,
   completeOnboarding,
 } from "../../../src/server/preferences.ts";
+import { readCopilot, toCopilotWire } from "../../../src/server/copilot.ts";
+import { readFuture, toFutureWire } from "../../../src/server/future-plan.ts";
+import {
+  deleteNote,
+  listContext,
+  readSobraPaths,
+  saveNote,
+  setProtected,
+} from "../../../src/server/context-notes.ts";
+import { saveMemory } from "../../../src/server/ai-assistant-memories.ts";
+import {
+  dismissSuggestion,
+  listDismissed,
+  restoreSuggestions,
+} from "../../../src/server/dismissed-suggestions.ts";
+import {
+  createGoal,
+  readReserves,
+  saveGoalLocation,
+  updateGoal,
+} from "../../../src/server/reserve-goal.ts";
+import {
+  savePlan,
+  savePlanRange,
+  saveEverydayWeekly,
+  saveCopilotMargin,
+} from "../../../src/server/reserves.ts";
+import {
+  addMovement,
+  voidMovement,
+} from "../../../src/server/reserve-movements.ts";
 import { allowedMethods, logSecurity } from "../../../src/server/api-policy.ts";
 import {
   isAdministrator,
@@ -20,11 +51,16 @@ import {
 } from "../../../src/server/rate-limit.ts";
 import { saveManualCard } from "../../../src/server/manual-cards.ts";
 import { saveCardCycle } from "../../../src/server/card-cycle.ts";
-import { readCards } from "../../../src/server/cards.ts";
+import { readCards, readCardProjection } from "../../../src/server/cards.ts";
 import {
   analyzeBanks,
   configureIncome,
 } from "../../../src/server/bank-analysis.ts";
+import {
+  compareRemoteTransactions,
+  listBankTransactions,
+  type BankTransactionsFilters,
+} from "../../../src/server/bank-transactions.ts";
 import {
   renewBank,
   readBanks,
@@ -35,7 +71,9 @@ import {
   syncBank,
   syncOwnBanks,
   reviewBankTransaction,
+  reviewBankBatch,
 } from "../../../src/server/banks.ts";
+import { readBankInvestments } from "../../../src/server/bank-investments.ts";
 import { createManualEvent } from "../../../src/server/manual.ts";
 import { resolveAction } from "../../../src/server/chat-actions.ts";
 import {
@@ -54,6 +92,40 @@ import {
   copyMonth,
 } from "../../../src/server/routine.ts";
 import {
+  readProjectionMonth,
+  readUsualAudit,
+} from "../../../src/server/projection.ts";
+import {
+  readRecurringAccounts,
+  saveRecurrenceDecision,
+} from "../../../src/server/recurrences.ts";
+import { readCategorySpend, readInsights } from "../../../src/server/insights.ts";
+import { readBudgetReference } from "../../../src/server/budget-reference.ts";
+import { searchCandidates } from "../../../src/server/recurrence-match.ts";
+import {
+  createRecurrence,
+  previewFromDate,
+  applyFromDate,
+  endRecurrence,
+  setPaused,
+} from "../../../src/server/recurrence-series.ts";
+import { deleteRecurrence } from "../../../src/server/recurrence-delete.ts";
+import { setAmountAll, setSince } from "../../../src/server/recurrence-period.ts";
+import { linkEventToSeries } from "../../../src/server/recurrence-link.ts";
+import { syncRecurrences } from "../../../src/server/recurrence-sync.ts";
+import { readFixedOverview } from "../../../src/server/recurrence-overview.ts";
+import { convertLegacyItem } from "../../../src/server/recurrence-convert.ts";
+import { parseMigrateIncomeInput, runIncomeMigration } from "../../../src/server/income-migration.ts";
+import {
+  AlreadyInSeriesError,
+  createFromEvent,
+} from "../../../src/server/recurrence-from-event.ts";
+import {
+  cancelOccurrence,
+  moveCompetence,
+  changeDueDate,
+} from "../../../src/server/recurrence-occurrence.ts";
+import {
   testPush,
   pushStatus,
   subscribePush,
@@ -67,7 +139,19 @@ import {
   applyPlanning,
   prefillAndRecord,
   prepareOpenings,
+  learnMerchantRule,
+  assignEventCategory,
 } from "../../../src/server/assisted.ts";
+import { renameEvent, renameAccount } from "../../../src/server/rename.ts";
+import { readMerchantAlias, setMerchantAlias } from "../../../src/server/merchant-alias.ts";
+import { cancelEvent, restoreEvent } from "../../../src/server/event-cancel.ts";
+import { changeEventKind } from "../../../src/server/event-kind.ts";
+import {
+  createCategoryTag,
+  renameCategoryTag,
+  deleteCategoryTag,
+  setBankTransactionTag,
+} from "../../../src/server/category-tags.ts";
 import { z } from "zod";
 import { getDb, asUser, recordAudit } from "../../../src/server/db.ts";
 import {
@@ -108,6 +192,15 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 type Context = { params: Promise<{ path: string[] }> };
+// `today` existe nos serviços de recorrência só para testes; o cliente não define "hoje".
+async function bodyWithoutToday(request: Request): Promise<unknown> {
+  const body = await bodyJson(request);
+  if (typeof body !== "object" || body === null || Array.isArray(body))
+    return body;
+  const rest: Record<string, unknown> = { ...body };
+  delete rest.today;
+  return rest;
+}
 const text = z.string().trim().min(1).max(120);
 const currency = z.enum(["BRL", "USD", "EUR"]);
 const authSchema = z
@@ -124,7 +217,12 @@ const setupSchema = authSchema.extend({
 function setSession(response: NextResponse, token: string) {
   response.cookies.set("family_session", token, {
     httpOnly: true,
-    sameSite: "strict",
+    // Produção: 'strict' (proteção CSRF máxima). Dev: 'lax', porque acessar o
+    // dev server por um host não-localhost (IP/hostname Tailscale, para testar
+    // no celular) faz o Safari tratar requests como cross-site e, com 'strict',
+    // NÃO reenvia o cookie de sessão — o login "pisca" e cai para deslogado.
+    // 'lax' ainda bloqueia POST cross-site; só afeta dev (deployment local).
+    sameSite: deployment().remote ? "strict" : "lax",
     path: "/",
     maxAge: 12 * 60 * 60,
     secure: deployment().remote,
@@ -242,6 +340,44 @@ async function handleRequest(
       });
       return response;
     }
+    // auth/dev-reset é público por natureza (reset sem login), mas só vive em
+    // dev: deixa passar a guarda de sessão aqui; o próprio handler rejeita com
+    // 404 fora de dev (DEV_ALLOWED_HOST ausente ou deployment remoto).
+    const devResetRoute = route === "auth/dev-reset" && mutating;
+    if (!user && !devResetRoute)
+      return json({ error: "Entre na sua conta para continuar." }, 401);
+    if (devResetRoute) {
+      if (deployment().remote || !process.env.DEV_ALLOWED_HOST)
+        return json({ error: "Operação não encontrada." }, 404);
+      const input = z
+        .object({
+          email: z.string().email(),
+          password: z.string().min(12).max(128),
+        })
+        .strict()
+        .parse(await bodyJson(request, 4096));
+      const hash = await hashPassword(input.password);
+      const result = await db.query(
+        "UPDATE users SET password_hash=$1 WHERE email=$2",
+        [hash, input.email.toLowerCase()],
+      );
+      if (!result.affectedRows)
+        return json({ error: "E-mail não encontrado." }, 404);
+      await db.query(
+        "DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email=$1)",
+        [input.email.toLowerCase()],
+      );
+      // Limpa o bloqueio por tentativas (auth_attempts usa o hash do e-mail,
+      // mesma chave de login()). Sem isto, resetar a senha não destrava o
+      // "Muitas tentativas. Aguarde 15 minutos" e o login continua barrado.
+      await db.query("DELETE FROM auth_attempts WHERE email_hash=$1", [
+        digest(input.email.toLowerCase()),
+      ]);
+      return json({ ok: true, reset: input.email.toLowerCase() });
+    }
+    // Após os caminhos sem sessão (dev-reset retorna acima), `user` é não-null.
+    // Este guard re-afirma isso para o TypeScript (o devResetRoute acima sempre
+    // retorna, então aqui só chega sessão válida).
     if (!user)
       return json({ error: "Entre na sua conta para continuar." }, 401);
     await limitUser(db, user, route, request.method);
@@ -307,6 +443,8 @@ async function handleRequest(
     }
     if (route === "help" && request.method === "POST")
       return json(await askHelp(db, user, await bodyJson(request)));
+    if (route === "memories" && request.method === "POST")
+      return json(await saveMemory(db, user, await bodyJson(request)));
     if (route === "help/status" && request.method === "GET")
       return json(helpStatus());
     if (route === "help/conversations" && request.method === "GET")
@@ -323,6 +461,9 @@ async function handleRequest(
       return json(await openConversation(db, user, await bodyJson(request)));
     if (route === "help/conversations/send" && request.method === "POST")
       return json(await sendChat(db, user, await bodyJson(request)));
+    // Leitura que usa corpo (POST): leitor também pode, não grava nada.
+    if (route === "family/sobra-paths" && request.method === "POST")
+      return json(await readSobraPaths(db, user, await bodyJson(request)));
     if (mutating && user.role === "reader")
       return json({ error: "Seu acesso é somente para leitura." }, 403);
     const url = new URL(request.url);
@@ -335,6 +476,23 @@ async function handleRequest(
           url.searchParams.get("group") || "",
           url.searchParams.get("account") || "",
         ),
+      );
+    if (route === "banks/transactions/remote" && request.method === "GET")
+      return json(
+        await compareRemoteTransactions(db, user, {
+          account: url.searchParams.get("account") || "",
+          from: url.searchParams.get("from") || null,
+        }),
+      );
+    if (route === "banks/transactions" && request.method === "GET")
+      return json(
+        await listBankTransactions(db, user, {
+          offset: Number(url.searchParams.get("offset") || 0),
+          account: url.searchParams.get("account") || null,
+          month: url.searchParams.get("month") || null,
+          status: (url.searchParams.get("status") ||
+            null) as BankTransactionsFilters["status"],
+        }),
       );
     if (route === "cards/manual" && request.method === "POST")
       return json(await saveManualCard(db, user, await bodyJson(request)));
@@ -356,17 +514,66 @@ async function handleRequest(
       return json(await pauseBank(db, user, await bodyJson(request)));
     if (route === "banks/read" && request.method === "POST")
       return json(await syncBank(db, user, await bodyJson(request)));
+    if (route === "banks/investments" && request.method === "GET")
+      return json(
+        await readBankInvestments(db, user, { id: url.searchParams.get("id") }),
+      );
     if (route === "banks/read-due" && request.method === "POST")
       return json(await syncOwnBanks(db, user));
     if (route === "banks/review" && request.method === "POST")
       return json(
         await reviewBankTransaction(db, user, await bodyJson(request)),
       );
+    if (route === "banks/review-batch" && request.method === "POST")
+      return json(await reviewBankBatch(db, user, await bodyJson(request)));
+    if (route === "banks/learn-category" && request.method === "POST")
+      return json(await learnMerchantRule(db, user, await bodyJson(request)));
+    if (route === "banks/tag" && request.method === "POST")
+      return json(await setBankTransactionTag(db, user, await bodyJson(request)));
+    if (route === "events/categorize" && request.method === "POST")
+      return json(await assignEventCategory(db, user, await bodyJson(request)));
+    if (route === "merchant-alias" && request.method === "GET")
+      return json(
+        await readMerchantAlias(
+          db,
+          user,
+          new URL(request.url).searchParams.get("movement_id"),
+        ),
+      );
+    if (route === "merchant-alias" && request.method === "POST")
+      return json(await setMerchantAlias(db, user, await bodyJson(request)));
+    if (route === "events/rename" && request.method === "POST")
+      return json(await renameEvent(db, user, await bodyJson(request)));
+    if (route === "events/cancel" && request.method === "POST")
+      return json(await cancelEvent(db, user, await bodyJson(request)));
+    if (route === "events/restore" && request.method === "POST")
+      return json(await restoreEvent(db, user, await bodyJson(request)));
+    if (route === "events/kind" && request.method === "POST")
+      return json(await changeEventKind(db, user, await bodyJson(request)));
+    if (route === "categories/tags" && request.method === "POST")
+      return json(await createCategoryTag(db, user, await bodyJson(request)));
+    if (route === "categories/tags/rename" && request.method === "POST")
+      return json(await renameCategoryTag(db, user, await bodyJson(request)));
+    if (route === "categories/tags/delete" && request.method === "POST")
+      return json(await deleteCategoryTag(db, user, await bodyJson(request)));
+    if (route === "accounts/rename" && request.method === "POST")
+      return json(await renameAccount(db, user, await bodyJson(request)));
     if (route === "help/actions" && request.method === "POST")
       return json(await resolveAction(db, user, await bodyJson(request)));
     if (route === "investments" && request.method === "GET")
       return json(
         await readInvestments(
+          db,
+          user,
+          z
+            .string()
+            .regex(/^\d{4}-\d{2}$/)
+            .parse(url.searchParams.get("month")),
+        ),
+      );
+    if (route === "cards/projection" && request.method === "GET")
+      return json(
+        await readCardProjection(
           db,
           user,
           z
@@ -389,6 +596,102 @@ async function handleRequest(
       ]);
       return json({ state, routine, cards });
     }
+    if (route === "family/projection" && request.method === "GET") {
+      const month = z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .optional()
+        .parse(url.searchParams.get("month") ?? undefined);
+      return json(await readProjectionMonth(db, user, month));
+    }
+    if (route === "recurrences" && request.method === "GET")
+      return json(await readRecurringAccounts(db, user));
+    if (route === "recurrences/decision" && request.method === "POST")
+      return json(
+        await saveRecurrenceDecision(db, user, await bodyJson(request)),
+      );
+    if (route === "family/insights" && request.method === "GET") {
+      const month = z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .optional()
+        .parse(url.searchParams.get("month") ?? undefined);
+      return json(await readInsights(db, user, { month }));
+    }
+    if (route === "family/spend-by-category" && request.method === "GET") {
+      const { month } = z
+        .object({ month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) })
+        .strict()
+        .parse({ month: url.searchParams.get("month") });
+      return json(await readCategorySpend(db, user, month));
+    }
+    if (route === "budgets/reference" && request.method === "GET") {
+      const input = z
+        .object({
+          category_id: z.uuid(),
+          month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+        })
+        .strict()
+        .parse({
+          category_id: url.searchParams.get("category"),
+          month: url.searchParams.get("month"),
+        });
+      return json(await readBudgetReference(db, user, input));
+    }
+    if (route === "family/copilot/usual" && request.method === "GET")
+      return json(await readUsualAudit(db, user));
+    if (route === "family/copilot" && request.method === "GET")
+      return json(toCopilotWire(await readCopilot(db, user)));
+    if (route === "family/future" && request.method === "GET")
+      return json(
+        toFutureWire(
+          await readFuture(db, user, {
+            months: url.searchParams.has("months")
+              ? Number(url.searchParams.get("months"))
+              : undefined,
+          }),
+        ),
+      );
+    if (route === "future/dismissed" && request.method === "GET")
+      return json(await listDismissed(db, user));
+    if (route === "future/dismiss" && request.method === "POST")
+      return json(await dismissSuggestion(db, user, await bodyJson(request)));
+    if (route === "future/dismissed/restore" && request.method === "POST")
+      return json(await restoreSuggestions(db, user));
+    if (route === "family/context" && request.method === "GET") {
+      const month = z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .optional()
+        .parse(url.searchParams.get("month") ?? undefined);
+      return json(await listContext(db, user, { month }));
+    }
+    if (route === "family/context/note" && request.method === "POST")
+      return json(await saveNote(db, user, await bodyJson(request)));
+    if (route === "family/context/note/delete" && request.method === "POST")
+      return json(await deleteNote(db, user, await bodyJson(request)));
+    if (route === "family/context/protect" && request.method === "POST")
+      return json(await setProtected(db, user, await bodyJson(request)));
+    if (route === "reserves" && request.method === "GET")
+      return json(await readReserves(db, user));
+    if (route === "reserves/plan" && request.method === "POST")
+      return json(await savePlan(db, user, await bodyJson(request)));
+    if (route === "reserves/plan-range" && request.method === "POST")
+      return json(await savePlanRange(db, user, await bodyJson(request)));
+    if (route === "reserves/movement" && request.method === "POST")
+      return json(await addMovement(db, user, await bodyJson(request)));
+    if (route === "reserves/void" && request.method === "POST")
+      return json(await voidMovement(db, user, await bodyJson(request)));
+    if (route === "reserves/everyday" && request.method === "POST")
+      return json(await saveEverydayWeekly(db, user, await bodyJson(request)));
+    if (route === "reserves/margin" && request.method === "POST")
+      return json(await saveCopilotMargin(db, user, await bodyJson(request)));
+    if (route === "reserves/location" && request.method === "POST")
+      return json(await saveGoalLocation(db, user, await bodyJson(request)));
+    if (route === "reserves/create" && request.method === "POST")
+      return json(await createGoal(db, user, await bodyJson(request)));
+    if (route === "reserves/update" && request.method === "POST")
+      return json(await updateGoal(db, user, await bodyJson(request)));
     if (route === "routine" && request.method === "GET")
       return json(
         await readRoutine(
@@ -406,6 +709,55 @@ async function handleRequest(
       return json(await checkItem(db, user, await bodyJson(request)));
     if (route === "routine/copy" && request.method === "POST")
       return json(await copyMonth(db, user, await bodyJson(request)));
+    if (route === "routine/candidates" && request.method === "GET")
+      return json(
+        await searchCandidates(db, user, {
+          item_id: url.searchParams.get("item"),
+          q: url.searchParams.get("q") || undefined,
+          from: url.searchParams.get("from") || undefined,
+          to: url.searchParams.get("to") || undefined,
+        }),
+      );
+    if (route === "recurrences/create" && request.method === "POST")
+      return json(await createRecurrence(db, user, await bodyWithoutToday(request)));
+    if (route === "recurrences/from-event" && request.method === "POST")
+      return json(await createFromEvent(db, user, await bodyWithoutToday(request)));
+    if (route === "recurrences/sync" && request.method === "POST")
+      return json(await syncRecurrences(db, user, await bodyJson(request)));
+    if (route === "recurrences/preview" && request.method === "POST")
+      return json(await previewFromDate(db, user, await bodyJson(request)));
+    if (route === "recurrences/apply" && request.method === "POST")
+      return json(await applyFromDate(db, user, await bodyWithoutToday(request)));
+    if (route === "recurrences/end" && request.method === "POST")
+      return json(await endRecurrence(db, user, await bodyJson(request)));
+    if (route === "recurrences/delete" && request.method === "POST")
+      return json(await deleteRecurrence(db, user, await bodyJson(request)));
+    if (route === "recurrences/since" && request.method === "POST")
+      return json(await setSince(db, user, await bodyWithoutToday(request)));
+    if (route === "recurrences/amount-all" && request.method === "POST")
+      return json(await setAmountAll(db, user, await bodyJson(request)));
+    if (route === "recurrences/link-event" && request.method === "POST")
+      return json(await linkEventToSeries(db, user, await bodyJson(request)));
+    if (route === "recurrences/pause" && request.method === "POST")
+      return json(await setPaused(db, user, await bodyJson(request)));
+    if (route === "recurrences/cancel" && request.method === "POST")
+      return json(await cancelOccurrence(db, user, await bodyJson(request)));
+    if (route === "recurrences/move" && request.method === "POST")
+      return json(await moveCompetence(db, user, await bodyJson(request)));
+    if (route === "recurrences/due" && request.method === "POST")
+      return json(await changeDueDate(db, user, await bodyJson(request)));
+    if (route === "recurrences/overview" && request.method === "GET")
+      return json(
+        await readFixedOverview(db, user, {
+          month: url.searchParams.get("month") ?? undefined,
+        }),
+      );
+    if (route === "recurrences/migrate-income" && request.method === "POST")
+      return json(
+        await runIncomeMigration(db, user, parseMigrateIncomeInput(await bodyJson(request))),
+      );
+    if (route === "recurrences/convert" && request.method === "POST")
+      return json(await convertLegacyItem(db, user, await bodyWithoutToday(request)));
     if (route === "notifications" && request.method === "GET")
       return json(await pushStatus(db, user));
     if (route === "notifications/subscribe" && request.method === "POST")
@@ -555,6 +907,12 @@ async function handleRequest(
         .parse(await bodyJson(request));
       const id = input.id || randomUUID();
       await asUser(db, user.userId, async (tx) => {
+        const duplicate = await tx.query(
+          "SELECT 1 FROM categories WHERE household_id=$1 AND name=$2 AND id<>$3",
+          [user.familyId, input.name, id],
+        );
+        if (duplicate.rows.length)
+          throw new UserError("Já existe uma categoria com esse nome.");
         if (input.id) {
           const result = await tx.query(
             "UPDATE categories SET name=$1,essential=$2 WHERE id=$3 AND household_id=$4 RETURNING id",
@@ -571,18 +929,46 @@ async function handleRequest(
       });
       return json({ id });
     }
+    if (route === "categories/fixed" && mutating) {
+      if (!["owner", "editor"].includes(user.role))
+        throw new UserError("Seu acesso é somente para leitura.");
+      const input = z
+        .object({ id: z.uuid(), fixed: z.boolean() })
+        .strict()
+        .parse(await bodyJson(request));
+      await asUser(db, user.userId, async (tx) => {
+        const result = await tx.query(
+          "UPDATE categories SET fixed=$1 WHERE id=$2 AND household_id=$3 RETURNING id",
+          [input.fixed, input.id, user.familyId],
+        );
+        if (!result.rows.length) throw new UserError("Categoria indisponível.");
+        await recordAudit(
+          tx,
+          user.familyId,
+          user.userId,
+          "category.fixed",
+          input.id,
+          {
+            fixed: input.fixed,
+          },
+        );
+      });
+      return json({ ok: true });
+    }
     if (route === "budgets" && mutating) {
       const input = z
         .object({
           category_id: z.uuid(),
           month: z.string().regex(/^\d{4}-\d{2}$/),
           currency,
-          planned: z.string(),
+          planned: z.string().nullable(),
         })
         .strict()
         .parse(await bodyJson(request));
-      const amount = cents(input.planned);
-      if (amount < 0n) throw new UserError("Orçamento não pode ser negativo.");
+      // planned null = "sem teto a partir deste mês".
+      const amount = input.planned === null ? null : cents(input.planned);
+      if (amount !== null && amount < 0n)
+        throw new UserError("Orçamento não pode ser negativo.");
       await asUser(db, user.userId, async (tx) => {
         await tx.query(
           "INSERT INTO budgets(household_id,category_id,month,currency,planned_cents) VALUES($1,$2,$3,$4,$5) ON CONFLICT(household_id,category_id,month,currency) DO UPDATE SET planned_cents=EXCLUDED.planned_cents",
@@ -591,7 +977,7 @@ async function handleRequest(
             input.category_id,
             dateOnly(input.month + "-01"),
             input.currency,
-            amount.toString(),
+            amount === null ? null : amount.toString(),
           ],
         );
         await recordAudit(
@@ -600,7 +986,7 @@ async function handleRequest(
           user.userId,
           "budget.save",
           input.category_id,
-          { month: input.month },
+          { month: input.month, open: amount === null },
         );
       });
       return json({ ok: true });
@@ -782,12 +1168,13 @@ async function handleRequest(
         "bank_transactions",
         "bank_card_bills",
         "card_cycles",
+        "card_cycle_versions",
         "manual_card_settings",
         "manual_card_bills",
       ];
       const data = await asUser(db, user.userId, async (tx) => {
         const result: Record<string, unknown> = {
-          schema_version: 14,
+          schema_version: 15,
           household_id: user.familyId,
         };
         for (const table of tables)
@@ -818,6 +1205,13 @@ async function handleRequest(
     if (error instanceof HttpError) {
       logSecurity("input_rejected", requestId, error.status);
       return json({ error: error.message }, error.status);
+    }
+    if (error instanceof AlreadyInSeriesError) {
+      logSecurity("input_rejected", requestId, 400);
+      return json(
+        { error: error.message, recurrence_id: error.recurrenceId },
+        400,
+      );
     }
     if (error instanceof UserError) {
       logSecurity("input_rejected", requestId, 400);

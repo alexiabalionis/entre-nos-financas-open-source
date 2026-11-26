@@ -59,7 +59,10 @@ test("personal preferences isolate spouses and readers, reject stale updates, sa
       hidden_cards: ["cards", "fixed"],
     });
     assert.equal(p.revision, 1);
-    assert.equal(p.card_order[0], "categories");
+    // Reverter a ordem padrão põe o ÚLTIMO id de homeCards na frente —
+    // "composition" (último id desde a Etapa 3; "categories" deixou de ser o
+    // último quando o commit 5c260f6 moveu os 4 blocos novos para o fim).
+    assert.equal(p.card_order[0], "composition");
     assert.equal(p.onboarding_done, false);
     assert.deepEqual(await readPreferences(db, spouse), defaultPreferences);
     await savePreferences(db, spouse, { revision: 0, accent: "#fefefe" });
@@ -76,11 +79,21 @@ test("personal preferences isolate spouses and readers, reject stale updates, sa
         accent: "red;url(https://invalid)",
       }),
     );
+    // card_order recebido como ARRAY sempre é auto-curado por
+    // preNormalizeHomeOrder (ids desconhecidos descartados, faltantes
+    // completados) antes da validação — por isso um array com um id
+    // desconhecido como "summary" não rejeita mais (vira a ordem completa,
+    // v. teste de normalizeHomeOrder). O que ainda rejeita é a FORMA errada:
+    // card_order que não é array.
     await assert.rejects(
-      savePreferences(db, u, { revision: 1, card_order: ["summary"] }),
+      savePreferences(db, u, { revision: 1, card_order: "summary" }),
     );
+    // Mesmo motivo do card_order acima: hidden_cards recebido como array é
+    // deduplicado por preNormalizeHomeOrder antes da validação, então
+    // ["cards","cards"] não rejeita mais (vira ["cards"]). O que ainda
+    // rejeita é a FORMA errada: hidden_cards que não é array.
     await assert.rejects(
-      savePreferences(db, u, { revision: 1, hidden_cards: ["cards", "cards"] }),
+      savePreferences(db, u, { revision: 1, hidden_cards: "cards" }),
     );
     assert.equal(
       (
@@ -166,17 +179,82 @@ test("home editing moves only visible cards and retains hidden cards without los
   const { moveVisibleCard, reorderCard } =
     await import("../src/domain/preferences.ts");
   const base = defaultPreferences.card_order;
-  const moved = moveVisibleCard(base, ["receipts", "alerts"], "summary", 1);
-  assert.ok(moved.indexOf("summary") > moved.indexOf("cards"));
+  const moved = moveVisibleCard(base, ["receipts", "alerts"], "income", 1);
+  assert.ok(moved.indexOf("income") > moved.indexOf("cards"));
   assert.deepEqual(
     moved.filter((x) => ["receipts", "alerts"].includes(x)),
     ["receipts", "alerts"],
   );
   assert.equal(new Set(moved).size, base.length);
   assert.deepEqual(base, defaultPreferences.card_order);
-  assert.equal(moveVisibleCard(base, [], "summary", -1), base);
-  const last = reorderCard(base, "summary", "categories", true);
-  assert.equal(last.at(-1), "summary");
+  // "receipts" é o primeiro id de homeCards: não há pra onde mover-se mais
+  // pra trás, então é no-op (mesma referência).
+  assert.equal(moveVisibleCard(base, [], "receipts", -1), base);
+  const last = reorderCard(base, "receipts", "composition", true);
+  assert.equal(last.at(-1), "receipts");
   assert.deepEqual([...last].sort(), [...base].sort());
-  assert.equal(reorderCard(base, "summary", "summary"), base);
+  assert.equal(reorderCard(base, "receipts", "receipts"), base);
+});
+
+test("readPreferences normalizes a legacy 9-id card_order read from the database, dropping the 2 retired ids (categories/summary) and appending the 4 new month-block ids at the end", async () => {
+  const db = await openDatabase();
+  try {
+    const ownerId = await createFamily(db, {
+      name: "Teste",
+      familyName: "Casa",
+      email: "prefs-legacy@example.invalid",
+      password: "Sintetica!2026abcd",
+    });
+    const familyId = (
+      await db.query<{ household_id: string }>(
+        "SELECT household_id FROM members WHERE user_id=$1",
+        [ownerId],
+      )
+    ).rows[0].household_id;
+    const u = {
+      userId: ownerId,
+      familyId,
+      name: "Teste",
+      email: "prefs-legacy@example.invalid",
+      role: "owner",
+    } as Identity;
+    const legacyOrder = [
+      "alerts",
+      "categories",
+      "summary",
+      "receipts",
+      "cards",
+      "income",
+      "fixed",
+      "variable",
+      "saving",
+    ];
+    // Grava direto no banco (não via savePreferences) uma linha como a de um
+    // usuário de antes da Etapa 3: 9 ids, satisfazendo o CHECK ainda vigente
+    // na migration 015 (jsonb_array_length(card_order)=9). "categories" e
+    // "summary" são 2 desses 9 — retirados de homeCards na Etapa 4, por isso
+    // normalizeHomeOrder os descarta como id desconhecido, igual a qualquer
+    // lixo (ex.: um "ghost-block"), em vez de preservá-los.
+    await asUser(db, ownerId, (tx) =>
+      tx.query(
+        "INSERT INTO user_preferences(user_id,card_order,hidden_cards) VALUES($1,$2::jsonb,$3::jsonb)",
+        [ownerId, JSON.stringify(legacyOrder), JSON.stringify(["cards"])],
+      ),
+    );
+    const survivingLegacyOrder = legacyOrder.filter(
+      (id) => id !== "categories" && id !== "summary",
+    );
+    const p = await readPreferences(db, u);
+    assert.equal(p.card_order.length, 11);
+    assert.deepEqual(p.card_order.slice(0, survivingLegacyOrder.length), survivingLegacyOrder);
+    assert.deepEqual(p.card_order.slice(survivingLegacyOrder.length), [
+      "upcoming",
+      "pending",
+      "path",
+      "composition",
+    ]);
+    assert.deepEqual(p.hidden_cards, ["cards"]);
+  } finally {
+    await db.close();
+  }
 });

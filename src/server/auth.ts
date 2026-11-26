@@ -49,6 +49,7 @@ const categoryNames = [
   "Saúde",
   "Educação",
   "Lazer",
+  "Viagens",
   "Assinaturas",
   "Compras pessoais",
   "Família",

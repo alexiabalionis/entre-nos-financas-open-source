@@ -19,6 +19,10 @@ export type ChatMessage = {
   text: string;
   source?: string;
   coverage?: string;
+  /** Rodapé da resposta: se saiu para a IA externa e com qual modelo (nulo em resposta antiga). */
+  origem?: { externo: boolean; modelo: string | null };
+  /** O detalhe numérico da resposta ("Ver as contas"); ausente quando a resposta não trouxe. */
+  contas?: string;
   action?: ActionView;
   pending?: boolean;
   error?: boolean;
@@ -31,13 +35,16 @@ type Turn = {
   answer: string | null;
   source: string | null;
   coverage: string | null;
+  external: boolean;
+  model: string | null;
+  details: string | null;
   action_id: string | null;
   action_status: string | null;
   action_view: Omit<ActionView, "id" | "status"> | null;
 };
 const columns =
   "id,title,to_char(month,'YYYY-MM') AS month,currency,updated_at::text";
-const turnColumns = `t.id,t.ordinal,t.question,t.status,t.answer,t.source,t.coverage,t.action_id,
+const turnColumns = `t.id,t.ordinal,t.question,t.status,t.answer,t.source,t.coverage,t.external,t.model,t.details,t.action_id,
  CASE WHEN a.status='pending' AND a.expires_at<now() THEN 'expired' ELSE a.status END AS action_status,
  a.payload->'view' AS action_view`;
 const turnJoin =
@@ -55,6 +62,9 @@ function messages(turn: Turn): ChatMessage[] {
       error: turn.status === "failed",
       source: turn.source ?? undefined,
       coverage: turn.coverage ?? undefined,
+      // Erro e resposta em andamento não levam rodapé: não há de onde a resposta veio.
+      ...(turn.status === "complete" ? { origem: { externo: turn.external, modelo: turn.model } } : {}),
+      ...(turn.details ? { contas: turn.details } : {}),
       ...(turn.action_id && turn.action_view && turn.action_status
         ? {
             action: {
@@ -181,8 +191,8 @@ export async function sendChat(db: Database, user: Identity, raw: unknown) {
     ).rows[0];
     if (!c) throw new UserError("Conversa indisponível para este acesso.");
     const existing = (
-      await tx.query<Turn & { external: boolean }>(
-        `SELECT ${turnColumns},t.external FROM ${turnJoin} WHERE t.id=$1 AND t.conversation_id=$2 AND t.household_id=$3 AND t.user_id=$4`,
+      await tx.query<Turn>(
+        `SELECT ${turnColumns} FROM ${turnJoin} WHERE t.id=$1 AND t.conversation_id=$2 AND t.household_id=$3 AND t.user_id=$4`,
         [input.request_id, input.id, user.familyId, user.userId],
       )
     ).rows[0];
@@ -252,6 +262,8 @@ export async function sendChat(db: Database, user: Identity, raw: unknown) {
     text: string;
     source?: string;
     coverage?: string;
+    origem?: { externo: boolean; modelo: string | null };
+    contas?: string | null;
     action?: ActionView;
   };
   let status = "complete";
@@ -276,7 +288,7 @@ export async function sendChat(db: Database, user: Identity, raw: unknown) {
   return asUser(db, user.userId, async (tx) => {
     // A terminated request cannot overwrite a turn already marked interrupted on another device.
     await tx.query(
-      "UPDATE chat_turns SET status=$1,answer=$2,source=$3,coverage=$4,action_id=$5,completed_at=now() WHERE id=$6 AND household_id=$7 AND user_id=$8 AND status='pending'",
+      "UPDATE chat_turns SET status=$1,answer=$2,source=$3,coverage=$4,action_id=$5,model=$9,details=$10,completed_at=now() WHERE id=$6 AND household_id=$7 AND user_id=$8 AND status='pending'",
       [
         status,
         answer.text,
@@ -286,6 +298,8 @@ export async function sendChat(db: Database, user: Identity, raw: unknown) {
         input.request_id,
         user.familyId,
         user.userId,
+        answer.origem?.modelo?.slice(0, 80) || null,
+        answer.contas?.slice(0, 2000) || null,
       ],
     );
     await tx.query(

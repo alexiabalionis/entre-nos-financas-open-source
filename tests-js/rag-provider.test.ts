@@ -143,3 +143,101 @@ test("Groq is disabled without key and confirmed ZDR; fixed endpoint and no paid
     }
   }
 });
+test("DashScope is disabled without key, model and confirmed retention; fixed endpoint and no paid-provider failover", async () => {
+  const keys = [
+    "AI_PROVIDER",
+    "DASHSCOPE_API_KEY",
+    "DASHSCOPE_MODEL",
+    "DASHSCOPE_RETENTION_CONFIRMED",
+  ];
+  const original = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  const fetchOriginal = globalThis.fetch;
+  let calls = 0;
+  try {
+    process.env.AI_PROVIDER = "dashscope";
+    delete process.env.DASHSCOPE_API_KEY;
+    delete process.env.DASHSCOPE_MODEL;
+    delete process.env.DASHSCOPE_RETENTION_CONFIRMED;
+    assert.equal(llmConfig().ready, false);
+    process.env.DASHSCOPE_API_KEY = "chave-ficticia";
+    process.env.DASHSCOPE_MODEL = "qwen-plus";
+    assert.equal(llmConfig().ready, false);
+    await assert.rejects(
+      requestLlm({
+        model: "qwen-plus",
+        instructions: "Teste",
+        input: "Teste fictício",
+      }),
+    );
+    process.env.DASHSCOPE_RETENTION_CONFIRMED = "true";
+    assert.equal(llmConfig().ready, true);
+    assert.equal(llmConfig().provider, "DashScope");
+    globalThis.fetch = async (url, options) => {
+      calls++;
+      assert.equal(
+        url,
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+      );
+      assert.equal(options?.redirect, "error");
+      const body = JSON.parse(String(options?.body));
+      assert.equal(body.enable_thinking, false);
+      assert.equal(body.max_tokens, 1200);
+      assert.equal("max_completion_tokens" in body, false);
+      assert.equal("reasoning_effort" in body, false);
+      assert.equal("tools" in body, false);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: { content: "Resposta fictícia [P1]" },
+          },
+        ],
+      });
+    };
+    assert.equal(
+      await requestLlm({
+        model: llmConfig().model,
+        instructions: "Teste",
+        input: "Dados fictícios",
+      }),
+      "Resposta fictícia [P1]",
+    );
+    assert.equal(calls, 1);
+    globalThis.fetch = async () => {
+      calls++;
+      return new Response(null, { status: 429 });
+    };
+    await assert.rejects(
+      requestLlm({
+        model: llmConfig().model,
+        instructions: "Teste",
+        input: "Teste",
+      }),
+      /PROVIDER_RATE_LIMIT/,
+    );
+    assert.equal(calls, 2);
+    globalThis.fetch = async () =>
+      Response.json({
+        choices: [
+          {
+            finish_reason: "length",
+            message: { content: "Resposta incompleta" },
+          },
+        ],
+      });
+    await assert.rejects(
+      requestLlm({
+        model: llmConfig().model,
+        instructions: "Teste",
+        input: "Teste",
+      }),
+      /Incomplete/,
+    );
+  } finally {
+    globalThis.fetch = fetchOriginal;
+    for (const k of keys) {
+      if (original[k] === undefined) delete process.env[k];
+      else process.env[k] = original[k];
+    }
+  }
+});

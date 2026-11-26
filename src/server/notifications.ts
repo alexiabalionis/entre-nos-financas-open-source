@@ -5,6 +5,9 @@ import { validSecret } from "./deployment.ts";
 import { asUser, type Database } from "./db.ts";
 import type { Identity } from "./auth.ts";
 import { UserError } from "./imports.ts";
+import { syncCurrentCycle } from "./card-cycle.ts";
+import { listGoals } from "./reserves.ts";
+import { monthsBetween } from "../domain/future-months.ts";
 
 export function safePushEndpoint(endpoint: string) {
   const u = new URL(endpoint);
@@ -138,7 +141,17 @@ type PushTarget = {
   id: string;
   endpoint: string;
   keys: { p256dh: string; auth: string };
+  reason?: string;
 };
+const BODY: Record<string, string> = {
+  items: "Há compromissos perto do vencimento no nosso mês.",
+  card_manual: "A fatura do cartão vence em breve. Vale conferir no nosso mês.",
+  card_bank: "A fatura do cartão vence em breve. Vale conferir no nosso mês.",
+  card_cycle: "A fatura do cartão vence em breve. Vale conferir no nosso mês.",
+  goal_deadline:
+    "Um objetivo de vocês chega ao prazo em breve. Vale conferir quanto falta.",
+};
+const TEST_BODY = "Há compromissos ou faturas para conferir no nosso mês.";
 async function deliver(
   pair: { public_key: string; private_key: string },
   target: PushTarget,
@@ -151,7 +164,7 @@ async function deliver(
     JSON.stringify({
       type: test ? "test" : "reminder",
       title: "Entre Nós",
-      body: "Há compromissos ou faturas para conferir no nosso mês.",
+      body: test ? TEST_BODY : (BODY[target.reason ?? "items"] ?? BODY.items),
       url: "/?view=month",
     }),
     {
@@ -179,7 +192,7 @@ export async function testPush(db: Database, user: Identity, raw: unknown) {
     async (tx) =>
       (
         await tx.query<PushTarget>(
-          `UPDATE push_subscriptions SET last_test_at=now(),delivery_token=$3,delivery_until=now()+interval '2 minutes' WHERE user_id=$1 AND endpoint=$2 AND enabled AND (last_test_at IS NULL OR last_test_at<now()-interval '1 minute') AND (delivery_until IS NULL OR delivery_until<now()) RETURNING id,endpoint,keys`,
+          `UPDATE push_subscriptions SET last_test_at=now(),delivery_token=$3,delivery_until=now()+interval '2 minutes' WHERE user_id=$1 AND endpoint=$2 AND enabled AND (last_test_at IS NULL OR last_test_at<now()-interval '1 second') AND (delivery_until IS NULL OR delivery_until<now()) RETURNING id,endpoint,keys`,
           [user.userId, endpoint, token],
         )
       ).rows[0],
@@ -192,6 +205,12 @@ export async function testPush(db: Database, user: Identity, raw: unknown) {
     await deliver(await keys(db), target, true);
     return { ok: true, accepted: true };
   } catch (error) {
+    const e = error as { statusCode?: number; body?: string; message?: string };
+    console.error("push_test_failed", {
+      status: e.statusCode,
+      host: new URL(target.endpoint).hostname,
+      body: String(e.body ?? e.message ?? "").slice(0, 300),
+    });
     if ([404, 410].includes((error as { statusCode?: number }).statusCode ?? 0))
       await asUser(db, user.userId, (tx) =>
         tx.query(
@@ -229,19 +248,62 @@ export async function sendDueReminders(db: Database) {
   console.info("notification_reminders", { sent, failed });
   return { sent, failed };
 }
+async function hasGoalDue(
+  db: Database,
+  userId: string,
+  context: { household_id: string; today: string },
+) {
+  try {
+    const user: Identity = {
+      userId,
+      familyId: context.household_id,
+      role: "reader",
+      name: "",
+      email: "",
+    };
+    const month = context.today.slice(0, 7);
+    return (await listGoals(db, user)).some((g) => {
+      if (g.status !== "active" || g.deadline_month === null) return false;
+      const left = monthsBetween(month, g.deadline_month.slice(0, 7));
+      return (
+        left >= 0 && left <= 1 && BigInt(g.saved_cents) < BigInt(g.target_cents)
+      );
+    });
+  } catch {
+    return false;
+  }
+}
 async function sendMemberReminders(db: Database, userId: string) {
   const pair = await keys(db),
     token = randomUUID();
+  // Alinha card_cycles à versão de ciclo vigente hoje antes da query do
+  // lembrete (que lê card_cycles): uma mudança agendada que já venceu passa a
+  // valer no vencimento usado pelo lembrete. A família/data são resolvidas
+  // pela conexão de serviço (members não é legível pelo papel family_app); o
+  // sync em si roda em asUser (card_cycles/_versions são family-scoped).
+  const context = (
+    await db.query<{ household_id: string; today: string }>(
+      "SELECT household_id,(now() AT TIME ZONE 'America/Sao_Paulo')::date::text AS today FROM members WHERE user_id=$1 LIMIT 1",
+      [userId],
+    )
+  ).rows[0];
+  if (context)
+    await asUser(db, userId, (tx) =>
+      syncCurrentCycle(tx, context.household_id, context.today),
+    );
+  const goalDue = context ? await hasGoalDue(db, userId, context) : false;
   const rows = (
     await asUser(db, userId, (tx) =>
       tx.query<PushTarget>(
-        `UPDATE push_subscriptions s SET delivery_token=$1,delivery_until=now()+interval '5 minutes' WHERE s.id IN (
- SELECT p.id FROM push_subscriptions p WHERE p.enabled AND (p.last_sent IS NULL OR p.last_sent<(now() AT TIME ZONE 'America/Sao_Paulo')::date) AND (p.delivery_until IS NULL OR p.delivery_until<now()) AND (
- EXISTS(SELECT 1 FROM monthly_items i WHERE i.household_id=p.household_id AND NOT i.archived AND i.purpose IN ('expense','card','benefit') AND i.status<>'done' AND i.due_date BETWEEN (now() AT TIME ZONE 'America/Sao_Paulo')::date-7 AND (now() AT TIME ZONE 'America/Sao_Paulo')::date+1)
- OR EXISTS(SELECT 1 FROM manual_card_bills b WHERE b.household_id=p.household_id AND NOT b.paid AND b.amount_cents>0 AND b.due_date BETWEEN (now() AT TIME ZONE 'America/Sao_Paulo')::date-7 AND (now() AT TIME ZONE 'America/Sao_Paulo')::date+1)
- OR EXISTS(SELECT 1 FROM bank_accounts a WHERE a.household_id=p.household_id AND a.account_type='CREDIT' AND a.active AND a.balance_cents>0 AND a.credit_due_date BETWEEN (now() AT TIME ZONE 'America/Sao_Paulo')::date-7 AND (now() AT TIME ZONE 'America/Sao_Paulo')::date+1)
- OR EXISTS(SELECT 1 FROM card_cycles c JOIN bank_accounts a ON a.household_id=c.household_id AND a.local_account_id=c.account_id CROSS JOIN LATERAL (SELECT (date_trunc('month',now() AT TIME ZONE 'America/Sao_Paulo')+v*interval '1 month')::date AS month FROM generate_series(-1,1) v) months WHERE c.household_id=p.household_id AND a.active AND a.account_type='CREDIT' AND a.balance_cents>0 AND (months.month+(least(c.due_day,extract(day FROM (months.month+interval '1 month'-interval '1 day'))::int)-1))>=c.effective_due_date AND (months.month+(least(c.due_day,extract(day FROM (months.month+interval '1 month'-interval '1 day'))::int)-1)) BETWEEN (now() AT TIME ZONE 'America/Sao_Paulo')::date-7 AND (now() AT TIME ZONE 'America/Sao_Paulo')::date+1)) ORDER BY p.id LIMIT 100 FOR UPDATE SKIP LOCKED) RETURNING s.id,s.endpoint,s.keys`,
-        [token],
+        `UPDATE push_subscriptions s SET delivery_token=$1,delivery_until=now()+interval '5 minutes' FROM (
+ SELECT p.id,f.reason FROM push_subscriptions p CROSS JOIN LATERAL (SELECT CASE
+ WHEN EXISTS(SELECT 1 FROM monthly_items i WHERE i.household_id=p.household_id AND NOT i.archived AND i.purpose IN ('expense','card','benefit') AND i.status<>'done' AND i.due_date BETWEEN (now() AT TIME ZONE 'America/Sao_Paulo')::date-7 AND (now() AT TIME ZONE 'America/Sao_Paulo')::date+1) THEN 'items'
+ WHEN EXISTS(SELECT 1 FROM manual_card_bills b WHERE b.household_id=p.household_id AND NOT b.paid AND b.amount_cents>0 AND b.due_date BETWEEN (now() AT TIME ZONE 'America/Sao_Paulo')::date-7 AND (now() AT TIME ZONE 'America/Sao_Paulo')::date+1) THEN 'card_manual'
+ WHEN EXISTS(SELECT 1 FROM bank_accounts a WHERE a.household_id=p.household_id AND a.account_type='CREDIT' AND a.active AND a.balance_cents>0 AND a.credit_due_date BETWEEN (now() AT TIME ZONE 'America/Sao_Paulo')::date-7 AND (now() AT TIME ZONE 'America/Sao_Paulo')::date+1) THEN 'card_bank'
+ WHEN EXISTS(SELECT 1 FROM card_cycles c JOIN bank_accounts a ON a.household_id=c.household_id AND a.local_account_id=c.account_id CROSS JOIN LATERAL (SELECT (date_trunc('month',now() AT TIME ZONE 'America/Sao_Paulo')+v*interval '1 month')::date AS month FROM generate_series(-1,1) v) months WHERE c.household_id=p.household_id AND a.active AND a.account_type='CREDIT' AND a.balance_cents>0 AND (months.month+(least(c.due_day,extract(day FROM (months.month+interval '1 month'-interval '1 day'))::int)-1))>=c.effective_due_date AND (months.month+(least(c.due_day,extract(day FROM (months.month+interval '1 month'-interval '1 day'))::int)-1)) BETWEEN (now() AT TIME ZONE 'America/Sao_Paulo')::date-7 AND (now() AT TIME ZONE 'America/Sao_Paulo')::date+1) THEN 'card_cycle'
+ WHEN $2::boolean THEN 'goal_deadline' END AS reason) f
+ WHERE p.enabled AND (p.last_sent IS NULL OR p.last_sent<(now() AT TIME ZONE 'America/Sao_Paulo')::date) AND (p.delivery_until IS NULL OR p.delivery_until<now()) AND f.reason IS NOT NULL ORDER BY p.id LIMIT 100 FOR UPDATE OF p SKIP LOCKED) r WHERE s.id=r.id RETURNING s.id,s.endpoint,s.keys,r.reason`,
+        [token, goalDue],
       ),
     )
   ).rows;

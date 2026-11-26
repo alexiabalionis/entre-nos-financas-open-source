@@ -50,6 +50,7 @@ test("existing spreadsheet becomes a checklist; paid and partial notes survive w
       "002_fingerprints",
       "003_ledger_dates",
       "004_planning",
+      "042_merchant_aliases",
     ])
       await db.exec(await readFile("db/migrations/" + name + ".sql", "utf8"));
     const user = await person(db, "spreadsheet");
@@ -87,7 +88,21 @@ test("existing spreadsheet becomes a checklist; paid and partial notes survive w
     await db.exec(
       await readFile("db/migrations/008_monthly_cost_type.sql", "utf8"),
     );
-    for (const migration of ["009_bank_readonly", "010_bank_analysis_income"])
+    for (const migration of [
+      "009_bank_readonly",
+      "010_bank_analysis_income",
+      "011_card_bills_reminders",
+      "012_bill_precision_evidence",
+      "013_card_cycles_limits",
+      "020_category_fixed",
+      "021_monthly_items_delete",
+      "022_card_cycle_versions",
+      "028_recurrences",
+      "031_event_display_name",
+      "032_category_tags",
+      "037_event_cancel_competence",
+      "040_bank_transaction_auto",
+    ])
       await db.exec(
         await readFile("db/migrations/" + migration + ".sql", "utf8"),
       );
@@ -196,6 +211,51 @@ test("push endpoints reject internal addresses, private signing keys are inacces
       ).rows.length,
       0,
     );
+  } finally {
+    await db.close();
+  }
+});
+test("checklist candidates expose the nickname as name and keep description intact", async () => {
+  const db = await openDatabase();
+  try {
+    const user = await person(db, "nickname");
+    const account = randomUUID();
+    await asUser(db, user.userId, async (tx) => {
+      await tx.query(
+        "INSERT INTO accounts(id,household_id,name,institution,currency,kind,opening_cents,opening_date,created_by) VALUES($1,$2,'Corrente','Inst','BRL','checking',0,'2025-12-31',$3)",
+        [account, user.familyId, user.userId],
+      );
+      for (const [description, nick] of [
+        ["ENERGIA SA", "Luz de casa"],
+        ["ENERGIA SB", null],
+      ] as const) {
+        const eventId = randomUUID();
+        await tx.query(
+          `INSERT INTO economic_events(id,household_id,account_id,kind,transaction_date,description,original_description,display_name,amount_cents,currency,created_by)
+           VALUES($1,$2,$3,'expense','2026-01-10',$4,$4,$5,-10000,'BRL',$6)`,
+          [eventId, user.familyId, account, description, nick, user.userId],
+        );
+        await tx.query(
+          `INSERT INTO ledger_entries(id,household_id,event_id,account_id,nominal,currency,amount_cents,transaction_date)
+           VALUES($1,$2,$3,$4,NULL,'BRL',-10000,'2026-01-10'),($5,$2,$3,NULL,'expense','BRL',10000,'2026-01-10')`,
+          [randomUUID(), user.familyId, eventId, account, randomUUID()],
+        );
+      }
+    });
+    await saveItem(db, user, {
+      month: "2026-01",
+      label: "Energia",
+      purpose: "expense",
+      currency: "BRL",
+      amount: "100,00",
+      due_date: "2026-01-10",
+    });
+    const [item] = (await readRoutine(db, user, "2026-01")).items;
+    const byDescription = new Map(
+      item.candidates.map((c) => [c.description, c.name]),
+    );
+    assert.equal(byDescription.get("ENERGIA SA"), "Luz de casa");
+    assert.equal(byDescription.get("ENERGIA SB"), "ENERGIA SB");
   } finally {
     await db.close();
   }

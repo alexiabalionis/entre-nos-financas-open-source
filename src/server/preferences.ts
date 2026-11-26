@@ -6,6 +6,7 @@ import { UserError } from "./imports.ts";
 import {
   defaultPreferences,
   homeCards,
+  normalizeHomeOrder,
   type Preferences,
 } from "../domain/preferences.ts";
 const ids = homeCards.map((c) => c[0]);
@@ -37,8 +38,34 @@ export async function readPreferences(
         [u.userId],
       )
     ).rows[0];
-    return r ?? { ...defaultPreferences };
+    if (!r) return { ...defaultPreferences };
+    const { card_order, hidden_cards } = normalizeHomeOrder(
+      r.card_order,
+      r.hidden_cards,
+    );
+    return { ...r, card_order, hidden_cards };
   });
+}
+// Normaliza card_order/hidden_cards do payload do cliente ANTES da validação
+// zod: um cliente com UI antiga manda uma ordem com menos ids do que
+// homeCards conhece hoje, e o refine de card_order exige comprimento igual
+// a homeCards.length. Só toca o(s) campo(s) que o cliente de fato enviou —
+// payload parcial (ex.: só accent) continua sem tocar em card_order/hidden.
+function preNormalizeHomeOrder(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const r = raw as Record<string, unknown>;
+  const hasOrder = Array.isArray(r.card_order);
+  const hasHidden = Array.isArray(r.hidden_cards);
+  if (!hasOrder && !hasHidden) return raw;
+  const { card_order, hidden_cards } = normalizeHomeOrder(
+    hasOrder ? (r.card_order as unknown[]).map(String) : [],
+    hasHidden ? (r.hidden_cards as unknown[]).map(String) : [],
+  );
+  return {
+    ...r,
+    ...(hasOrder ? { card_order } : {}),
+    ...(hasHidden ? { hidden_cards } : {}),
+  };
 }
 export async function readProfilePhoto(db: Database, u: Identity) {
   return asUser(
@@ -54,7 +81,7 @@ export async function readProfilePhoto(db: Database, u: Identity) {
   );
 }
 export async function savePreferences(db: Database, u: Identity, raw: unknown) {
-  const v = schema.parse(raw);
+  const v = schema.parse(preNormalizeHomeOrder(raw));
   let photo: Buffer | null | undefined;
   if (v.photo === null) photo = null;
   else if (v.photo !== undefined) {

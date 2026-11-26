@@ -66,6 +66,21 @@ test("bank credentials use dedicated authenticated encryption bound to family an
   assert.throws(() =>
     normalizeObservation({ ...raw, accountId: randomUUID() }, account),
   );
+  // Compra internacional: vale o valor já convertido para a moeda da conta.
+  const usd = normalizeObservation(
+    { ...raw, currencyCode: "USD", amount: "20.00", amountInAccountCurrency: "112.35" },
+    account,
+  );
+  assert.deepEqual([usd.amount_cents, usd.currency], ["-11235", account.currencyCode]);
+  assert.equal(
+    normalizeObservation({ ...raw, currencyCode: "USD", amountInAccountCurrency: "112.3456" }, account).amount_cents,
+    "-11235",
+  );
+  // Sem conversão do banco, a moeda estrangeira segue (a leitura recusa a conta).
+  assert.equal(
+    normalizeObservation({ ...raw, currencyCode: "USD", amount: "20.00" }, account).currency,
+    "USD",
+  );
 });
 test("reader is fixed-origin, cursor-safe, bounded and has no upstream mutation except authentication", async () => {
   const item = randomUUID(),
@@ -422,7 +437,8 @@ test("family bank staging isolates secrets, requires account mapping and review,
     rowsA = [
       row("old", remoteA, -10.01),
       row("transfer-out", remoteA, -300, "DEBIT", "2026-10-06"),
-      { ...row("pending", remoteA, 10, "CREDIT"), status: "PENDING" },
+      // Agendado (data futura): PENDING com data passada já conta como confirmado.
+      { ...row("pending", remoteA, 10, "CREDIT", "2099-10-05"), status: "PENDING" },
     ];
     rowsB = [row("transfer-in", remoteB, 300, "CREDIT", "2026-10-06")];
     const read = async () => {
@@ -433,12 +449,24 @@ test("family bank staging isolates secrets, requires account mapping and review,
       return syncBank(db, user, { id: connection.id, force: true }, factory);
     };
     await read();
+    // A transferência própria (par único e mútuo) vira um evento na leitura
+    // (SPEC-FATOS-CARTAO, fase 3). A compra "old" coincide com o histórico e
+    // segue pendente para vínculo.
     assert.equal(
       (await db.query("SELECT id FROM economic_events")).rows.length,
-      1,
+      2,
     );
+    const pair = (
+      await db.query<{ remote_id: string; event_id: string; kind: string }>(
+        "SELECT b.remote_id,b.event_id,e.kind FROM bank_transactions b JOIN economic_events e ON e.id=b.event_id WHERE b.remote_id IN ('transfer-out','transfer-in') ORDER BY b.remote_id",
+      )
+    ).rows;
+    assert.equal(pair.length, 2);
+    assert.equal(pair[0].event_id, pair[1].event_id);
+    assert.equal(pair[0].kind, "transfer");
     state = await readBanks(db, user);
-    assert.equal(state.reviews.length, 4);
+    // Na fila só ficam "old" (histórico) e o agendado; o par já virou evento.
+    assert.equal(state.reviews.length, 2);
     const oldRow = state.reviews.find((r) => r.remote_id === "old")!;
     assert.equal(oldRow.candidates.events[0].id, old);
     await assert.rejects(
@@ -463,23 +491,6 @@ test("family bank staging isolates secrets, requires account mapping and review,
       version: oldRow.version,
       decision: "link",
       event_id: old,
-    });
-    const outgoing = state.reviews.find((r) => r.remote_id === "transfer-out")!;
-    await reviewBankTransaction(db, user, {
-      id: outgoing.id,
-      version: outgoing.version,
-      decision: "record",
-      kind: "transfer",
-      counter_account_id: localB,
-    });
-    state = await readBanks(db, user);
-    const incoming = state.reviews.find((r) => r.remote_id === "transfer-in")!;
-    assert.equal(incoming.candidates.events.length, 1);
-    await reviewBankTransaction(db, user, {
-      id: incoming.id,
-      version: incoming.version,
-      decision: "link",
-      event_id: incoming.candidates.events[0].id,
     });
     assert.equal(
       (await db.query("SELECT id FROM economic_events")).rows.length,
@@ -612,15 +623,11 @@ test("family bank staging isolates secrets, requires account mapping and review,
       r.id === "pending" ? { ...r, amount: 15, status: "POSTED" } : r,
     );
     await read();
+    // Ainda não salvo: a leitura nova do banco é adotada direto, sem revisão.
     const correction = (await readBanks(db, user)).reviews.find(
       (r) => r.id === pendingId,
     )!;
-    assert.equal(correction.changed, true);
-    await reviewBankTransaction(db, user, {
-      id: correction.id,
-      version: correction.version,
-      decision: "refresh",
-    });
+    assert.equal(correction.changed, false);
     assert.equal(
       (await readBanks(db, user)).reviews.find((r) => r.id === pendingId)
         ?.amount_cents,

@@ -289,11 +289,14 @@ test("card projections isolate families and separate posted previews, bank pendi
         ),
       ),
     );
-    await saveCardCycle(db, user, {
-      account_id: acct,
-      close_date: "2026-10-25",
-      due_date: "2026-11-03",
-    });
+    // Data fixa: o ciclo é salvo antes do fechamento informado, então as
+    // compras de 21/10 ficam cobertas pela primeira versão (K1).
+    await saveCardCycle(
+      db,
+      user,
+      { account_id: acct, close_date: "2026-10-25", due_date: "2026-11-03" },
+      { today: "2026-10-20" },
+    );
     const projected = (await readCards(db, user, "2026-11"))[0];
     assert.equal(projected.projection?.total_cents, "6000");
     assert.equal(projected.projection?.due_date, "2026-11-03");
@@ -372,11 +375,19 @@ test("card projections isolate families and separate posted previews, bank pendi
         `SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date::text AS today,((now() AT TIME ZONE 'America/Sao_Paulo')::date-1)::text AS closing`,
       )
     ).rows[0];
-    await saveCardCycle(db, user, {
-      account_id: acct,
-      close_date: tomorrowRule.closing,
-      due_date: tomorrowRule.today,
-    });
+    // O lembrete lê card_cycles, agora alinhada pela syncCurrentCycle à versão
+    // vigente. Removendo as versões deste cartão, o sync não toca card_cycles,
+    // e o teste monta direto o ciclo que vence hoje (sem versão, não há o que
+    // promover). Testa o caminho "cartão só com card_cycles manual".
+    await db.query("DELETE FROM card_cycle_versions WHERE account_id=$1", [
+      acct,
+    ]);
+    await db.query(
+      `UPDATE card_cycles SET closing_day=extract(day FROM $2::date),due_day=extract(day FROM $3::date),
+        due_month_offset=(extract(year FROM $3::date)-extract(year FROM $2::date))*12+extract(month FROM $3::date)-extract(month FROM $2::date),
+        effective_close_date=$2::date,effective_due_date=$3::date WHERE account_id=$1`,
+      [acct, tomorrowRule.closing, tomorrowRule.today],
+    );
     await db.query(
       "UPDATE bank_accounts SET credit_due_date=NULL WHERE id=$1",
       [ba],

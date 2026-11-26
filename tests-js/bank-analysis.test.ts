@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import {
   analyzeObservations,
+  billPayment,
   incomeDate,
   fifthBusinessDay,
   followingMonth,
   type Observation,
 } from "../src/domain/bank-analysis.ts";
+import { normalize } from "../src/domain/finance.ts";
 import { openDatabase, asUser } from "../src/server/db.ts";
 import { createFamily, type Identity } from "../src/server/auth.ts";
 import { configureIncome, analyzeBanks } from "../src/server/bank-analysis.ts";
@@ -23,6 +25,16 @@ const row = (v: Partial<Observation> = {}): Observation => ({
   owner_id: "owner",
   status: "pending",
   ...v,
+});
+test("billPayment recognizes invoice settlement across bank wordings but not a normal purchase", () => {
+  // Formas reais que quitam fatura (descrição normalizada, sem acento).
+  assert.equal(billPayment(normalize("Débito automático Fatura Person Mult Black")), true);
+  assert.equal(billPayment(normalize("PAGAMENTO FATURA")), true);
+  assert.equal(billPayment(normalize("Pagamento recebido")), true);
+  assert.equal(billPayment("", "PAGAMENTO_FATURA"), true);
+  // Compra comum no cartão NÃO é pagamento de fatura.
+  assert.equal(billPayment(normalize("TAUSTE SUPERMERCADOS")), false);
+  assert.equal(billPayment(normalize("ANTHROPIC CLAUDE")), false);
 });
 test("salary schedule anticipates Saturday/Sunday only; budget rolls into next year; variable salary uses a window", () => {
   assert.equal(incomeDate("2026-10"), "2026-10-23");
@@ -45,22 +57,33 @@ test("income hints use only explicitly supplied family rules and the matching ac
     label: "Recebimento configurado",
     budget_offset: 1,
   };
+  // Crédito em conta corrente sem regra agora é entrada por padrão.
   assert.equal(
     analyzeObservations([sample], [], []).get(sample.id)?.group,
-    "unclear",
+    "income",
   );
+  // Uma regra casada também produz entrada (continua reconhecendo salário).
   assert.equal(
     analyzeObservations([sample], [], [], [rule]).get(sample.id)?.group,
     "income",
   );
+  // Sem conferência: estorno/cancelamento conta pelo sinal (crédito = entrada).
   assert.equal(
     analyzeObservations(
-      [sample],
+      [{ ...sample, description: "CANCELAMENTO PARCIAL DE COMPRA" }],
       [],
       [],
-      [{ ...rule, account_id: "other" }],
     ).get(sample.id)?.group,
-    "unclear",
+    "income",
+  );
+  // Crédito em cartão também conta pelo sinal; o cartão o abate na fatura.
+  assert.equal(
+    analyzeObservations(
+      [{ ...sample, account_kind: "card", description: "CREDITO AVULSO" }],
+      [],
+      [],
+    ).get(sample.id)?.group,
+    "income",
   );
 });
 test("reconciliation separates repeat evidence, own transfer, card payment and investment; equal amounts alone never prove a transfer", () => {
@@ -78,10 +101,11 @@ test("reconciliation separates repeat evidence, own transfer, card payment and i
     [],
     [],
   );
-  assert.equal(result.get(a.id)?.group, "unclear");
+  // Sem par de transferência, a saída conta pelo sinal: gasto.
+  assert.equal(result.get(a.id)?.group, "expense");
   assert.equal(result.get(b.id)?.group, "investment");
   result = analyzeObservations([a, { ...b, owner_id: "someone-else" }], [], []);
-  assert.equal(result.get(a.id)?.group, "unclear");
+  assert.equal(result.get(a.id)?.group, "expense");
   result = analyzeObservations(
     [
       { ...a, description: "PAGAMENTO FATURA" },
@@ -107,13 +131,26 @@ test("reconciliation separates repeat evidence, own transfer, card payment and i
     [],
     [{ ...evidence, filename: "original.pdf" }],
   );
-  assert.equal(result.get(a.id)?.group, "statement");
-  result = analyzeObservations([a, { ...a, id: "repeat" }], [], []);
-  assert.equal(result.get(a.id)?.group, "duplicate");
+  // A prévia de um extrato importado não é lançamento: o movimento do banco
+  // conta normalmente e a prévia fica só como evidência.
+  assert.equal(result.get(a.id)?.group, "expense");
+  assert.equal(result.get(a.id)?.staged_ids.length, 1);
+  // Repetição entre leituras do banco: conta uma vez só (a de menor id).
+  const first = { ...a, id: "a-first" },
+    again = { ...a, id: "b-again" };
+  result = analyzeObservations([again, first], [], []);
+  assert.equal(result.get(first.id)?.group, "expense");
+  assert.equal(result.get(again.id)?.group, "duplicate");
+  // Status pendente do banco não segura o movimento.
   assert.equal(
     analyzeObservations([{ ...a, provider_status: "PENDING" }], [], []).get(
       a.id,
     )?.group,
+    "expense",
+  );
+  // Só o que mudou ou sumiu depois de salvo fica marcado.
+  assert.equal(
+    analyzeObservations([{ ...a, missing: true }], [], []).get(a.id)?.group,
     "pending",
   );
   assert.equal(
@@ -124,7 +161,7 @@ test("reconciliation separates repeat evidence, own transfer, card payment and i
     )
       .values()
       .next().value?.group,
-    "unclear",
+    "income",
   );
 });
 test("income automation reuses the plan, remains open and is idempotent; readers and other families cannot write rules", async () => {
@@ -199,12 +236,12 @@ test("income automation reuses the plan, remains open and is idempotent; readers
       password: "Ficticia!2026abcd",
     });
     const visible = await asUser(db, outsider, (tx) =>
-      tx.query("SELECT id FROM income_rules"),
+      tx.query("SELECT id FROM recurrences"),
     );
     assert.equal(visible.rows.length, 0);
     const changed = await asUser(db, outsider, (tx) =>
       tx.query(
-        `UPDATE income_rules SET enabled=false WHERE household_id=$1 RETURNING id`,
+        `UPDATE recurrences SET paused=true WHERE household_id=$1 RETURNING id`,
         [family],
       ),
     );
@@ -212,8 +249,8 @@ test("income automation reuses the plan, remains open and is idempotent; readers
     await assert.rejects(
       asUser(db, outsider, (tx) =>
         tx.query(
-          `INSERT INTO income_rules(id,household_id,account_id,label,match_text,day,expected_cents,effective_month,created_by) VALUES($1,$2,$3,'Fora','FORA',25,1,$4,$5)`,
-          [randomUUID(), family, account, current + "-01", outsider],
+          `INSERT INTO recurrences(id,household_id,purpose,label,account_id,expected_cents,frequency,every,start_date,date_rule,match_text,created_by) VALUES($1,$2,'income','Fora',$3,1,'month',1,$4,'weekend_to_friday','FORA',$5)`,
+          [randomUUID(), family, account, current + "-25", outsider],
         ),
       ),
     );
@@ -284,11 +321,11 @@ test("income automation reuses the plan, remains open and is idempotent; readers
     assert.ok(copied.some((i) => i.label === "Conta de teste"));
     await assert.rejects(copyMonth(db, u, { from: budget, to: target }));
     const before = (
-      await db.query("SELECT * FROM income_occurrences ORDER BY id")
+      await db.query("SELECT * FROM recurrence_occurrences ORDER BY id")
     ).rows;
     await analyzeBanks(db, u);
     assert.deepEqual(
-      (await db.query("SELECT * FROM income_occurrences ORDER BY id")).rows,
+      (await db.query("SELECT * FROM recurrence_occurrences ORDER BY id")).rows,
       before,
     );
   } finally {

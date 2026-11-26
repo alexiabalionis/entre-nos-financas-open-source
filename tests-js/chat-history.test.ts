@@ -345,3 +345,56 @@ test("saved chat retries do not call the provider twice, concurrent turns are bl
     await db.close();
   }
 });
+
+test("rodapé: a origem da resposta (modelo, IA sem modelo, sem envio externo) sobrevive ao recarregar o histórico", async () => {
+  await mkdir("work", { recursive: true });
+  const db = await openDatabase(await mkdtemp("work/history-origin-"));
+  try {
+    const userId = await createFamily(db, {
+      name: "Pessoa de teste",
+      familyName: "Casa de teste",
+      email: "origin@example.invalid",
+      password: "SenhaFicticia!2026",
+    });
+    const familyId = (
+      await db.query<{ household_id: string }>(
+        "SELECT household_id FROM members WHERE user_id=$1",
+        [userId],
+      )
+    ).rows[0].household_id;
+    const user: Identity = { userId, familyId, name: "Pessoa", email: "origin@example.invalid", role: "owner" };
+    const conversation = await createConversation(db, user, { id: randomUUID(), month: "2026-10", currency: "BRL" });
+    // Resposta local nova: sem envio externo.
+    const sent = await sendChat(db, user, { id: conversation.id, request_id: randomUUID(), question: "Quanto sobra no planejamento?", external: false });
+    assert.deepEqual(sent.messages[1].origem, { externo: false, modelo: null });
+    assert.equal(sent.messages[1].contas, undefined);
+    await asUser(db, userId, async (tx) => {
+      await tx.query("UPDATE chat_turns SET details=$1 WHERE conversation_id=$2 AND ordinal=1", ["Entrou R$ 10,00\nSaiu R$ 4,00", conversation.id]);
+    });
+    assert.equal((await openConversation(db, user, { id: conversation.id })).messages[1].contas, "Entrou R$ 10,00\nSaiu R$ 4,00");
+    await assert.rejects(db.query("UPDATE chat_turns SET details=$1", ["x".repeat(2001)]), /check|violates/i);
+    await asUser(db, userId, async (tx) => {
+      await tx.query("UPDATE chat_turns SET details=NULL");
+    });
+    await asUser(db, userId, async (tx) => {
+      for (const [ordinal, external, model] of [[2, true, "qwen4-max"], [3, true, null]] as const)
+        await tx.query(
+          "INSERT INTO chat_turns(id,household_id,user_id,conversation_id,ordinal,question,status,answer,external,model) VALUES($1,$2,$3,$4,$5,'Pergunta fictícia','complete','Resposta fictícia',$6,$7)",
+          [randomUUID(), familyId, userId, conversation.id, ordinal, external, model],
+        );
+    });
+    const page = await openConversation(db, user, { id: conversation.id });
+    const answers = page.messages.filter((m) => m.role === "assistant");
+    assert.deepEqual(answers.map((m) => m.origem), [
+      { externo: false, modelo: null },
+      { externo: true, modelo: "qwen4-max" },
+      { externo: true, modelo: null },
+    ]);
+    await assert.rejects(
+      db.query("UPDATE chat_turns SET model=$1", ["x".repeat(81)]),
+      /check|violates/i,
+    );
+  } finally {
+    await db.close();
+  }
+});
