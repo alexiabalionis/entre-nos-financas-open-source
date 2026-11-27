@@ -298,10 +298,6 @@ export function SpaceScreen() {
               financeiros e as conversas ficam no banco privado. Cada acesso
               vê apenas o próprio histórico de chat.
             </p>
-            <p className="ds-caption">
-              Marcar um compromisso como pago atualiza a lista do mês. Isso não
-              duplica um pagamento que já está no histórico.
-            </p>
             <Collapsible summary="Alterar minha senha">
               <form
                 className="flex flex-col gap-3 pt-1"

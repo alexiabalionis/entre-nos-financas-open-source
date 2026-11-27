@@ -6,7 +6,7 @@ import { useSession } from "../../session/session-context";
 
 type Tab = "futuro" | "simular";
 const TABS: { value: Tab; label: string }[] = [
-  { value: "futuro", label: "Futuro" },
+  { value: "futuro", label: "Visão geral" },
   { value: "simular", label: "Simular" },
 ];
 
@@ -67,10 +67,10 @@ export function CopilotoTabs({ future }: { future: ReactNode; now?: ReactNode })
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="m-0 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-            Copiloto
+            Planos
           </h1>
           <p className="m-0 mt-0.5 text-sm text-muted">
-            Horizonte do casal, reservas e simulações antes de decidir.
+            Metas, reservas e simulações antes de decidir.
           </p>
         </div>
         <Segmented label="Parte do Copiloto" value={tab} options={TABS} onChange={pick} />

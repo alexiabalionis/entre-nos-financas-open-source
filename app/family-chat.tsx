@@ -521,8 +521,9 @@ export function HelpPanel({
             <small className="truncate text-[0.75rem] leading-tight text-ink-2">
               {busy || pending
                 ? "Respondendo…"
-                : "Histórico da família · " +
-                  (external ? "Com IA" : "Sem envio externo")}
+                : external
+                  ? "Com IA ativa"
+                  : "Modo local"}
             </small>
           </span>
           <Icon
@@ -731,19 +732,19 @@ export function HelpPanel({
                   </p>
                 </div>
                 <div className="flex w-full flex-col gap-2">
-                  {[
-                    ...(external
-                      ? ["Analise nossas finanças e me diga onde melhorar"]
-                      : []),
-                    "O que falta pagar neste mês?",
-                    "Quanto sobra no planejamento?",
-                    ...(external
-                      ? [
-                          "Quero planejar uma conta",
-                          "Quero registrar uma despesa",
-                        ]
-                      : ["Como estão nossos investimentos?"]),
-                  ].map((q) => (
+                  {(external
+                    ? [
+                        "Onde estamos gastando demais?",
+                        "Quanto posso gastar até o fim da semana?",
+                        "O que vence nos próximos dias?",
+                        "Quero registrar um gasto",
+                      ]
+                    : [
+                        "O que falta pagar neste mês?",
+                        "Quanto sobra no planejamento?",
+                        "Como estão nossos investimentos?",
+                      ]
+                  ).map((q) => (
                     <button
                       key={q}
                       type="button"

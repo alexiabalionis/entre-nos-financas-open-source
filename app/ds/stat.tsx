@@ -72,20 +72,25 @@ export function Stat({
 export function Stats({
   label,
   grid4,
+  columns,
   children,
 }: {
   label?: string;
   grid4?: boolean;
+  columns?: 2 | 3 | 4;
   children: ReactNode;
 }) {
+  const cols = columns ?? (grid4 ? 4 : 2);
   return (
     <section
       aria-label={label}
       className={cx(
         "w-full overflow-hidden rounded-2xl border border-border bg-surface",
-        grid4
+        cols === 4
           ? "grid grid-cols-2 divide-x divide-y divide-border lg:grid-cols-4 lg:divide-y-0"
-          : "grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0",
+          : cols === 3
+            ? "grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+            : "grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0",
       )}
     >
       {children}

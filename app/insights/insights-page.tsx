@@ -30,10 +30,10 @@ export function InsightsPage() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-[1.625rem] leading-tight font-medium tracking-tight text-ink">
-            Panorama
+            Hábitos
           </h1>
           <p className="mt-0.5 text-[0.875rem] text-ink-2">
-            Como o dinheiro entra, sai e se distribui ao longo dos meses.
+            O que entra, o que sai e para onde vai o dinheiro.
           </p>
         </div>
         <MonthHeader

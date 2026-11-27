@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import type { Data, MonthItem } from "../hooks/use-month-data.ts";
 import type { MonthModel } from "./model.ts";
 import { money } from "../lib/money.ts";
@@ -11,11 +10,9 @@ import { Icon } from "../ds/icon.tsx";
 import { RowList } from "../ds/row-list.tsx";
 import { StatusChip } from "../ds/status-chip.tsx";
 
-const INITIAL_UPCOMING_CAP = 4;
-
 /**
- * Zona 2 — Atenção agora: unifica alarmes/vencimentos, faturas a conferir,
- * pendências do modelo e próximos compromissos em uma faixa limpa e calma.
+ * Zona 2 — Atenção agora: unifica alarmes/vencimentos, faturas a conferir
+ * e pendências do modelo em uma faixa limpa e calma.
  */
 export function AttentionStrip({
   cards,
@@ -38,8 +35,6 @@ export function AttentionStrip({
   onReviewCard: (localAccountId: string) => void;
   onOpenItem: (item: MonthItem) => void;
 }) {
-  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
-
   const manualBills = cards.filter(
     (c) =>
       c.manual_bill &&
@@ -49,14 +44,12 @@ export function AttentionStrip({
   const reviewCards = cards.filter((c) => c.projection && !c.projection.needs_review);
   const datedReminders = reminders.dated;
   const gaps = model.show.gaps ? model.pendingRows : [];
-  const upcoming = model.show.upcoming && !model.hidden ? model.upcomingRows : [];
 
   const totalActionable =
     manualBills.length +
     reviewCards.length +
     datedReminders.length +
-    gaps.length +
-    upcoming.length;
+    gaps.length;
 
   const missingDates = reminders.missingDates;
 
@@ -82,11 +75,6 @@ export function AttentionStrip({
       </section>
     );
   }
-
-  const visibleUpcoming = showAllUpcoming
-    ? upcoming
-    : upcoming.slice(0, INITIAL_UPCOMING_CAP);
-  const hiddenUpcomingCount = upcoming.length - visibleUpcoming.length;
 
   const rowCls =
     "ui-row-btn flex w-full items-center justify-between gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-surface-2/70 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent";
@@ -214,27 +202,6 @@ export function AttentionStrip({
             Precisa de você
           </p>
           <RowList rows={gaps} />
-        </div>
-      )}
-
-      {/* Próximos compromissos datados (capados em 4 com "ver todos") */}
-      {upcoming.length > 0 && (
-        <div className="border-t border-border pt-3">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted">
-              Vem aí em aberto
-            </p>
-            {upcoming.length > INITIAL_UPCOMING_CAP ? (
-              <Button
-                variant="text"
-                size="sm"
-                onClick={() => setShowAllUpcoming((v) => !v)}
-              >
-                {showAllUpcoming ? "Mostrar menos" : `Ver mais (${hiddenUpcomingCount})`}
-              </Button>
-            ) : null}
-          </div>
-          <RowList rows={visibleUpcoming} />
         </div>
       )}
 

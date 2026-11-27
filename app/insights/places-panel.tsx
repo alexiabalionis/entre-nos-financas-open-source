@@ -8,27 +8,44 @@ import { ChoiceChips } from "./choice-chips.tsx";
 import { placesReading, sortPlaces, type Money, type PlaceOrder, type PlacePeriod } from "./model.ts";
 
 const PERIODS = [["quarter", "3 meses"], ["year", "Ano"]] as const;
-const ORDERS = [["visits", "Vezes"], ["average", "Média"], ["last", "Última"], ["total", "Total"]] as const;
+const DEFAULT_ORDERS: readonly (readonly [PlaceOrder, string])[] = [
+  ["total", "Maior total"],
+  ["visits", "Mais vezes"],
+  ["average", "Média"],
+];
 const LIMIT = 15;
 
-export function PlacesPanel({ data, money }: { data: InsightsWire; money: Money }) {
+export function PlacesPanel({
+  data,
+  money,
+  orders = DEFAULT_ORDERS,
+  title = "Para onde vai o dinheiro",
+}: {
+  data: InsightsWire;
+  money: Money;
+  orders?: readonly (readonly [PlaceOrder, string])[];
+  title?: string;
+}) {
   const [period, setPeriod] = useState<PlacePeriod>("quarter");
-  const [order, setOrder] = useState<PlaceOrder>("visits");
+  const [order, setOrder] = useState<PlaceOrder>("total");
   const list = data.places[period];
   const sorted = sortPlaces(list, order).slice(0, LIMIT);
   const total = list.reduce((a, p) => a + BigInt(p.total), 0n);
-  const third = order === "visits" ? "average" : order;
+  const third: "average" | "last" | "total" =
+    order === "average" ? "average" : order === "last" ? "last" : "total";
   const value = (p: (typeof list)[number]) =>
-    third === "last" ? brDate(p.last).slice(0, 5) : money(BigInt(third === "average" ? p.average : p.total));
+    third === "last"
+      ? brDate(p.last).slice(0, 5)
+      : money(BigInt(third === "average" ? p.average : p.total));
   const reading = placesReading(list, money);
   return (
-    <Panel title="Para onde vai o dinheiro">
+    <Panel title={title}>
       <p className="text-[0.875rem] text-ink-2 tabular-nums">
-        {list.length} lugares · {money(total)} {period === "year" ? "no último ano" : "nos últimos 3 meses"}
+        {list.length} {list.length === 1 ? "lugar" : "lugares"} · {money(total)} {period === "year" ? "no último ano" : "nos últimos 3 meses"}
       </p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <ChoiceChips label="Período" options={PERIODS} value={period} onChange={setPeriod} />
-        <ChoiceChips label="Ordenar por" options={ORDERS} value={order} onChange={setOrder} />
+        <ChoiceChips label="Ordenar por" options={orders} value={order} onChange={setOrder} />
       </div>
       {sorted.length === 0 ? (
         <p className="text-[0.875rem] text-ink-2">Nenhum gasto no período.</p>

@@ -817,8 +817,12 @@
 .ds-stagger > *:nth-child(7) { animation-delay: 240ms; }
 .ds-stagger > *:nth-child(8) { animation-delay: 300ms; }
 .ds-stagger > *:nth-child(n + 9) { animation-delay: 360ms; }
+.ds-reveal-item {
+  animation: ds-rise-in 380ms var(--ds-ease) both;
+}
 @media (prefers-reduced-motion: reduce) {
   .ds-stagger > *,
+  .ds-reveal-item,
   .ds-segbar span {
     animation: none;
   }

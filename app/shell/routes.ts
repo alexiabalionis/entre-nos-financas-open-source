@@ -10,28 +10,28 @@ export type AppRoute = {
 };
 
 export const APP_ROUTES: AppRoute[] = [
-  { path: "/", title: "Nosso mês", nav: { label: "Mês", icon: "month" } },
+  { path: "/", title: "Agora", nav: { label: "Agora", icon: "month" } },
   {
     path: "/movimentos",
-    title: "Movimentos",
-    nav: { label: "Movimentos", icon: "movements" },
+    title: "Extrato",
+    nav: { label: "Extrato", icon: "movements" },
   },
   {
     path: "/panorama",
-    title: "Panorama",
-    nav: { label: "Panorama", icon: "future" },
+    title: "Hábitos",
+    nav: { label: "Hábitos", icon: "future" },
   },
   {
     path: "/copiloto",
-    title: "Copiloto",
-    nav: { label: "Copiloto", icon: "copiloto" },
+    title: "Planos",
+    nav: { label: "Planos", icon: "copiloto" },
   },
   { path: "/judite", title: "Judite", nav: { label: "Judite", icon: "help" } },
   { path: "/espaco", title: "Nosso espaço" },
 ];
 
 export function titleFor(pathname: string): string {
-  return APP_ROUTES.find((r) => r.path === pathname)?.title ?? "Nosso mês";
+  return APP_ROUTES.find((r) => r.path === pathname)?.title ?? "Agora";
 }
 
 /** Links antigos: `?view=` -> rota nova. "future" já era redirecionado ao Panorama. */

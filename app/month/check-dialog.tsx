@@ -95,21 +95,27 @@ export function CheckDialog({
             />
           </label>
           {selected.candidates.length > 0 && (
-            <label>
-              Vincular a movimento já registrado (opcional)
-              <Select name="event_id" defaultValue={selected.event_id ?? ""}>
-                <option value="">Apenas atualizar a lista</option>
-                {selected.candidates.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {brDate(e.transaction_date)} · {e.name.slice(0, 75)}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <>
+              <label>
+                Vincular a movimento do Extrato
+                <Select name="event_id" defaultValue={selected.event_id ?? ""}>
+                  <option value="">Apenas marcar no plano (sem vincular)</option>
+                  {selected.candidates.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {brDate(e.transaction_date)} · {e.name.slice(0, 75)}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              {!selected.event_id && selected.candidates.length === 1 && (
+                <p className="ds-caption">
+                  Encontramos 1 movimento parecido no Extrato — selecione acima para marcar como contabilizado.
+                </p>
+              )}
+            </>
           )}
           <p className="ds-caption">
-            Atualiza o acompanhamento do mês sem repetir os movimentos
-            bancários. Uma coincidência de valor é sugestão, não confirmação.
+            Vincular liga este item ao lançamento real do Extrato, sem contar duas vezes.
           </p>
           <Button
             type="submit"

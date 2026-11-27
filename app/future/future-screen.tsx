@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { maskMoney } from "../lib/cents.ts";
-import { Button } from "../ds/index.ts";
-import { Panel } from "../ds/panel.tsx";
+import { AccordionGroup, Button } from "../ds/index.ts";
+import { FlatPanelsProvider, Panel } from "../ds/panel.tsx";
 import { RowList } from "../ds/row-list.tsx";
 import { CardBillChart } from "./card-bill-chart.tsx";
 import { FutureProvider, useFutureContext } from "./future-context.tsx";
@@ -84,49 +84,61 @@ function FutureBody({
   return (
     <div className="fut-screen flex flex-col gap-6">
       <Headline />
-      <GoalLanes />
-      <MonthStations />
-      <CardBillChart />
+      {onMode ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button
+            variant="primary"
+            size="sm"
+            icon="spark"
+            onClick={() => onMode("simular")}
+          >
+            Simular compra ou meta
+          </Button>
+        </div>
+      ) : null}
+      <NextStep />
       <ReservesSection
         hidden={f.hidden}
         reader={f.reader}
         syncKey={reservesSyncKey}
         onMutated={() => void reload()}
+        showTotalPanel={false}
+        collapseMargin
       />
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-        <NextStep onSimulate={onMode ? () => onMode("simular") : undefined} />
-        <Premises />
-      </div>
+      <AccordionGroup
+        variant="card"
+        defaultOpen={false}
+        title="Ver projeção detalhada"
+        subtitle="Trilhos no tempo, conta mês a mês, fatura futura e premissas"
+        contentClassName="flex flex-col gap-5 pt-4"
+      >
+        <FlatPanelsProvider>
+          <GoalLanes />
+          <MonthStations />
+          <CardBillChart />
+          <Premises />
+        </FlatPanelsProvider>
+      </AccordionGroup>
       <FutureDraftBar onSaved={bumpReserves} />
     </div>
   );
 }
 
-function NextStep({ onSimulate }: { onSimulate?: () => void }) {
+function NextStep() {
   const f = useFutureContext();
   const first = f.draft?.decisions[0];
+  if (!first) return null;
   return (
     <Panel title="Próximo passo" className="mb-0">
-      {first ? (
-        <RowList
-          bordered={false}
-          rows={[
-            {
-              title: maskMoney(first.title, f.hidden),
-              sub: maskMoney(first.impact, f.hidden),
-            },
-          ]}
-        />
-      ) : (
-        <p className="ds-caption">Nada pede atenção neste horizonte.</p>
-      )}
-      {onSimulate ? (
-        <div>
-          <Button variant="quiet" size="sm" onClick={onSimulate}>
-            Simular mudanças
-          </Button>
-        </div>
-      ) : null}
+      <RowList
+        bordered={false}
+        rows={[
+          {
+            title: maskMoney(first.title, f.hidden),
+            sub: maskMoney(first.impact, f.hidden),
+          },
+        ]}
+      />
     </Panel>
   );
 }

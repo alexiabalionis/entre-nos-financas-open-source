@@ -146,7 +146,7 @@ export function BankPanel({
               ? "movimento bancário aguardando conferência"
               : "movimentos bancários aguardando conferência"
           }`}
-          meta="A fila de conferência fica centralizada em Movimentos."
+          meta="A fila de conferência fica centralizada no Extrato."
         >
           <div className="mt-2">
             <Button
@@ -159,7 +159,7 @@ export function BankPanel({
                 )
               }
             >
-              Conferir em Movimentos
+              Conferir no Extrato
             </Button>
           </div>
         </Callout>
@@ -234,7 +234,7 @@ export function BankPanel({
                       throw new Error(
                         "Aguarde um minuto entre leituras ou conclua a leitura já em andamento.",
                       );
-                  }, "Leitura concluída. Novos movimentos aparecerão em Movimentos.")
+                  }, "Leitura concluída. Novos movimentos aparecerão no Extrato.")
                 }
                 onTogglePause={() =>
                   void work(

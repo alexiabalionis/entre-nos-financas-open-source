@@ -7,7 +7,6 @@ import { OutflowBlock } from "../budgets/outflow-block";
 import { MonthHeader } from "./blocks/month-header.tsx";
 import { Greeting } from "./blocks/greeting.tsx";
 import { categoryIconFor } from "./blocks/category-icon-for.tsx";
-import { PathBlock } from "./blocks/path-block.tsx";
 import { balanceCentsFor, monthCategories, projectionScreen } from "./screen-input.ts";
 import { AttentionStrip } from "./attention-strip.tsx";
 import { PlanSection } from "./plan-section.tsx";
@@ -43,7 +42,7 @@ type Modal = "item" | "fixed" | "movement" | "check" | "entry" | "period" | null
  * Página / (Mês): hierarquia opinativa em 3 zonas:
  *   1. Herói da marca + alertas críticos
  *   2. Atenção agora (vencimentos, pendências e próximos compromissos)
- *   3. Grade editorial 2 colunas (Plano do mês + Cartões | Saídas + Caminho do saldo)
+ *   3. Grade editorial 2 colunas (Plano do mês + Cartões | Saídas)
  */
 export function MonthPage() {
   const session = useSession();
@@ -281,7 +280,7 @@ export function MonthPage() {
             hidden={hidden}
             onReview={(account) => {
               router.push(
-                withMonth("/movimentos", month, { filtro: "review", conta: account }),
+                withMonth("/movimentos", month, { filtro: "card", conta: account }),
                 { scroll: false },
               );
               window.scrollTo({ top: 0 });
@@ -298,26 +297,8 @@ export function MonthPage() {
             reader={reader}
             reload={period.reload}
           />
-          <PathBlock model={monthModel} currency={currency} />
         </div>
       </div>
-
-      <p className="ds-caption mt-6 px-1 text-xs leading-relaxed">
-        Fixos e variáveis têm uma classificação sugerida pelo nome. Toque em uma
-        conta para ajustar. Marcar como pago ou recebido atualiza o plano, sem
-        duplicar os movimentos.
-      </p>
-
-      {items.some((i) => i.source_line_id) && (
-        <p className="ds-caption mt-2 px-1 text-xs">
-          Preenchido com seu planejamento. As marcações “pago” da planilha foram
-          preservadas; valores sem confirmação não foram tratados como
-          pagamentos.{" "}
-          {items.some((i) => i.derived)
-            ? "Este mês usa os valores reais como base do plano, conforme você pediu."
-            : ""}
-        </p>
-      )}
 
       {!modal && (
         <QuickActions

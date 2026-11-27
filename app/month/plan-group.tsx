@@ -7,9 +7,9 @@ import { brDate } from "../../src/domain/format.ts";
 import { eventName } from "../../src/domain/event-name.ts";
 import type { Currency } from "../../src/domain/finance.ts";
 import { FixedItemMeta } from "../fixed/fixed-item-meta";
+import { AccordionGroup } from "../ds/accordion-group.tsx";
 import { Button } from "../ds/button";
 import { Icon } from "../ds/icon";
-import { Panel } from "../ds/panel";
 import { StatusChip } from "../ds/status-chip";
 import {
   fixedSubtitle,
@@ -55,32 +55,68 @@ export function PlanGroup({
   onAdd: () => void;
 }) {
   const groupItems = itemsInGroup(items, group.id);
-  const meta =
-    money(plannedTotal(groupItems).toString(), currency, hidden) +
-    " previsto" +
-    (groupItems.some((i) => i.planned_cents === null) ? " · parcial" : "");
+  const plannedSum = plannedTotal(groupItems, false);
+  const paidSum = plannedTotal(groupItems, true);
+  const doneCount = groupItems.filter((i) => i.status === "done").length;
+  const linkableCount = groupItems.filter(
+    (i) => !reader && i.event_id === null && !i.derived && i.candidates.length > 0,
+  ).length;
+  const [singular, plural] =
+    group.id === "income"
+      ? ["recebido", "recebidos"]
+      : group.id === "saving"
+        ? ["reservado", "reservados"]
+        : ["pago", "pagos"];
+
+  const badge =
+    groupItems.length > 0 ? (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <StatusChip
+          tone={doneCount === groupItems.length ? "ok" : "neutral"}
+          label={`${doneCount}/${groupItems.length} ${doneCount === 1 ? singular : plural}`}
+        />
+        {linkableCount > 0 ? (
+          <StatusChip tone="accent" label={`${linkableCount} p/ vincular`} />
+        ) : null}
+      </span>
+    ) : undefined;
+
+  const partialSuffix = groupItems.some((i) => i.planned_cents === null)
+    ? " · parcial"
+    : "";
+  const trailing =
+    (paidSum > 0n && plannedSum > 0n
+      ? `${money(paidSum.toString(), currency, hidden)} / ${money(plannedSum.toString(), currency, hidden)}`
+      : `${money(plannedSum.toString(), currency, hidden)} previsto`) +
+    partialSuffix;
+
+  const progress =
+    groupItems.length > 0 && plannedSum > 0n
+      ? Math.min(100, Math.round(Number((paidSum * 100n) / plannedSum)))
+      : undefined;
+  const progressTone =
+    progress !== undefined && progress >= 100 ? "ok" : "accent";
 
   const content = (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="min-w-0">
-          {flat ? (
-            <h3 className="m-0 text-sm font-semibold text-ink">{group.title}</h3>
-          ) : null}
-          <p className="ds-caption m-0 text-xs">{group.description}</p>
-        </div>
-        {flat ? (
-          <span className="font-numeric text-xs font-semibold tabular-nums text-muted">
-            {meta}
-          </span>
-        ) : null}
-      </div>
-
       {groupItems.length > 0 ? (
         <div className="flex flex-col divide-y divide-border">
           {groupItems.map((i) => {
             const done = i.status === "done";
             const partial = i.status === "partial";
+            const isCounted = i.event_id !== null || i.derived;
+            const unlinkedPaidCents = paidWithoutEntryCents(i);
+            const showLinkButton =
+              !reader && !isCounted && i.candidates.length > 0;
+            const hasStatusRow =
+              isCounted ||
+              unlinkedPaidCents > 0n ||
+              isLegacyFixed(i) ||
+              showLinkButton;
+            const hasMetaStrip =
+              isSeriesBill(i) ||
+              hasStatusRow ||
+              (i.derived && i.category_id && !hidden);
             return (
               <article
                 key={i.id}
@@ -158,23 +194,32 @@ export function PlanGroup({
                   </strong>
                 </div>
 
-                {(isSeriesBill(i) ||
-                  paidWithoutEntryCents(i) > 0n ||
-                  isLegacyFixed(i) ||
-                  (i.derived && i.category_id && !hidden)) && (
+                {hasMetaStrip && (
                   <div className="mt-2 flex flex-col gap-1.5 pl-10">
                     {isSeriesBill(i) && <FixedItemMeta item={i} hidden={hidden} />}
-                    {paidWithoutEntryCents(i) > 0n && (
+                    {hasStatusRow && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <StatusChip label="Pago sem lançamento associado" />
-                        <span className="font-numeric text-xs tabular-nums text-muted">
-                          {money(paidWithoutEntryCents(i).toString(), currency, hidden)}
-                        </span>
-                      </div>
-                    )}
-                    {isLegacyFixed(i) && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusChip label="Fixa antiga" />
+                        {isCounted ? (
+                          <StatusChip tone="ok" icon="✓" label="Contabilizado" />
+                        ) : unlinkedPaidCents > 0n ? (
+                          <>
+                            <StatusChip tone="warn" label="Marcado sem extrato" />
+                            <span className="font-numeric text-xs tabular-nums text-muted">
+                              {money(unlinkedPaidCents.toString(), currency, hidden)}
+                            </span>
+                          </>
+                        ) : null}
+                        {isLegacyFixed(i) && <StatusChip label="Fixa antiga" />}
+                        {showLinkButton && (
+                          <Button
+                            variant="quiet"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => onCheck(i)}
+                          >
+                            Vincular ({i.candidates.length})
+                          </Button>
+                        )}
                       </div>
                     )}
                     {i.derived && i.category_id && !hidden && (
@@ -231,23 +276,20 @@ export function PlanGroup({
     </div>
   );
 
-  if (flat) {
-    return (
-      <div
-        role="region"
-        aria-label={group.title}
-        className="border-t border-border pt-4 first:border-t-0 first:pt-0"
-      >
-        {content}
-      </div>
-    );
-  }
-
   return (
     <div role="region" aria-label={group.title}>
-      <Panel title={group.title} meta={meta} className="mb-0">
+      <AccordionGroup
+        title={group.title}
+        subtitle={group.description}
+        badge={badge}
+        trailing={trailing}
+        progress={progress}
+        progressTone={progressTone}
+        defaultOpen={false}
+        variant={flat ? "row" : "card"}
+      >
         {content}
-      </Panel>
+      </AccordionGroup>
     </div>
   );
 }

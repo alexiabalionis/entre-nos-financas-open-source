@@ -55,11 +55,8 @@ const VALID_FILTERS = new Set<MovementFilter>([
 
 const filters: [MovementFilter, string][] = [
   ["all", "Todos"],
-  ["income", "Entradas"],
   ["expense", "Gastos"],
-  ["transfer", "Entre contas"],
-  ["card", "Cartão"],
-  ["fixed", "Fixas"],
+  ["income", "Entradas"],
   ["review", "A conferir"],
 ];
 
@@ -130,7 +127,12 @@ export function MovementsPanel({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const f = params.get("filtro") as MovementFilter | null;
-    if (f && VALID_FILTERS.has(f)) setFilter(f);
+    if (f && VALID_FILTERS.has(f)) {
+      setFilter(f);
+      if (f === "card" || f === "fixed" || f === "transfer") {
+        setRefineOpen(true);
+      }
+    }
     const c = params.get("conta");
     if (c) {
       const matched = state.accounts.find((a) => a.id === c || a.name === c);
@@ -357,6 +359,10 @@ export function MovementsPanel({
   for (const row of filtered.slice(0, limit))
     groups.set(row.date, [...(groups.get(row.date) ?? []), row]);
 
+  const isSpecificType =
+    filter === "card" || filter === "fixed" || filter === "transfer";
+  const primaryFilter: MovementFilter = isSpecificType ? "all" : filter;
+
   const typeOptions = filters.filter(
     ([value]) => value !== "review" || triageCount > 0 || filter === "review",
   );
@@ -372,7 +378,7 @@ export function MovementsPanel({
           size="sm"
           fill
           label="Tipo de movimento"
-          value={filter}
+          value={primaryFilter}
           options={typeOptions.map(([value, label]) => ({
             value,
             label,
@@ -385,7 +391,7 @@ export function MovementsPanel({
         size="sm"
         className="@min-[36rem]:hidden"
         aria-label="Tipo de movimento"
-        value={filter}
+        value={primaryFilter}
         onChange={(e) => pickType(e.target.value as MovementFilter)}
       >
         {typeOptions.map(([value, label]) => (
@@ -428,7 +434,26 @@ export function MovementsPanel({
   );
 
   const refinements = (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      className={cx(
+        "grid grid-cols-1 gap-2 sm:grid-cols-2",
+        tagOptions.length > 0 ? "lg:grid-cols-4" : "lg:grid-cols-3",
+      )}
+    >
+      <Select
+        size="sm"
+        aria-label="Tipo específico"
+        value={isSpecificType ? filter : ""}
+        onChange={(e) => {
+          setFilter((e.target.value || "all") as MovementFilter);
+          setLimit(40);
+        }}
+      >
+        <option value="">Qualquer tipo</option>
+        <option value="card">Compras no cartão</option>
+        <option value="fixed">Contas fixas</option>
+        <option value="transfer">Entre contas</option>
+      </Select>
       <Select
         size="sm"
         aria-label="Filtrar por conta"
@@ -477,7 +502,12 @@ export function MovementsPanel({
     </div>
   );
 
-  const refineCount = [account, category, tag].filter(Boolean).length;
+  const refineCount = [
+    account,
+    category,
+    tag,
+    isSpecificType ? filter : "",
+  ].filter(Boolean).length;
   const targetMonth = month ?? state.month;
 
   return (
@@ -507,18 +537,6 @@ export function MovementsPanel({
           tone="danger"
           title="Saídas"
           value={money(state.summary.expense_cents)}
-          rows={(
-            [
-              ["Saiu da conta", state.summary.expense_left_cents],
-              ["Agendado", state.summary.expense_scheduled_cents],
-              [
-                "No cartão, sai ao pagar a fatura",
-                state.summary.expense_card_cents,
-              ],
-            ] as const
-          )
-            .filter(([, cents]) => BigInt(cents) !== 0n)
-            .map(([label, cents]) => ({ label, value: money(cents) }))}
         />
       </Stats>
 

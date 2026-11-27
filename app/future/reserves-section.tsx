@@ -1,11 +1,15 @@
 "use client";
 import { useEffect } from "react";
+import { AccordionGroup } from "../ds/accordion-group.tsx";
 import { Button } from "../ds/button.tsx";
 import { Icon } from "../ds/icon.tsx";
+import { FlatPanelsProvider } from "../ds/panel.tsx";
+import { StatusChip } from "../ds/status-chip.tsx";
 import { TotalPanel } from "../copilot/total-panel.tsx";
 import { GoalCard } from "../copilot/goal-card.tsx";
 import { GoalFormDialog } from "../copilot/goal-form-dialog.tsx";
 import { MarginPanel } from "../copilot/margin-panel.tsx";
+import { totals } from "../copilot/model.ts";
 import { moneyOf } from "../copilot/money.ts";
 import { useGoalForm } from "../copilot/use-goal-form.ts";
 import { useReserves } from "../hooks/use-reserves.ts";
@@ -20,11 +24,15 @@ export function ReservesSection({
   reader,
   syncKey,
   onMutated,
+  showTotalPanel = true,
+  collapseMargin = false,
 }: {
   hidden: boolean;
   reader: boolean;
   syncKey: number;
   onMutated: () => void;
+  showTotalPanel?: boolean;
+  collapseMargin?: boolean;
 }) {
   const currentDay = today();
   const money = moneyOf(hidden);
@@ -38,17 +46,65 @@ export function ReservesSection({
     if (syncKey > 0) void reload();
   }, [syncKey, reload]);
 
+  const marginNode =
+    goals && copilot ? (
+      collapseMargin ? (
+        <AccordionGroup
+          variant="card"
+          defaultOpen={false}
+          title="Margem de segurança"
+          subtitle="Reserva automática que fica na conta para imprevistos"
+          trailing={money(BigInt(copilot.margin))}
+        >
+          <FlatPanelsProvider>
+            <MarginPanel
+              copilot={copilot}
+              money={money}
+              reader={reader}
+              write={write}
+            />
+          </FlatPanelsProvider>
+        </AccordionGroup>
+      ) : (
+        <MarginPanel
+          copilot={copilot}
+          money={money}
+          reader={reader}
+          write={write}
+        />
+      )
+    ) : null;
+
   return (
     <section
       id="reservas"
       aria-label="Reservas e metas"
-      className="flex scroll-mt-6 flex-col gap-4 border-t border-border pt-6"
+      className={
+        showTotalPanel
+          ? "flex scroll-mt-6 flex-col gap-4 border-t border-border pt-6"
+          : "flex scroll-mt-6 flex-col gap-4 pt-1"
+      }
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="m-0 text-base font-semibold tracking-tight text-ink">
-            Reservas e metas
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="m-0 text-base font-semibold tracking-tight text-ink">
+              Reservas e metas
+            </h2>
+            {!showTotalPanel && goals ? (
+              <StatusChip
+                tone="accent"
+                label={
+                  <>
+                    Total acumulado:{" "}
+                    <span className="font-numeric font-semibold tabular-nums">
+                      {money(totals(goals).total)}
+                    </span>
+                  </>
+                }
+              />
+            ) : null}
+          </div>
           <p className="m-0 mt-0.5 text-xs text-muted">
             Registre depósitos, retiradas, metas e a margem de segurança do casal.
           </p>
@@ -79,15 +135,12 @@ export function ReservesSection({
 
       {goals && copilot && (
         <>
-          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-            <TotalPanel goals={goals} money={money} />
-            <MarginPanel
-              copilot={copilot}
-              money={money}
-              reader={reader}
-              write={write}
-            />
-          </div>
+          {showTotalPanel ? (
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+              <TotalPanel goals={goals} money={money} />
+              {marginNode}
+            </div>
+          ) : null}
 
           {goals.length === 0 ? (
             <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-border-strong bg-surface p-6">
@@ -131,6 +184,8 @@ export function ReservesSection({
               ))}
             </div>
           )}
+
+          {!showTotalPanel ? marginNode : null}
 
           <GoalFormDialog
             open={form.editing !== null}

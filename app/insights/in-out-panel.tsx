@@ -24,24 +24,29 @@ export function InOutPanel({
   money,
   hidden,
   colorByName,
+  showCategoryToggle = true,
 }: {
   data: InsightsWire;
   money: Money;
   hidden: boolean;
   colorByName: Map<string, number | null>;
+  showCategoryToggle?: boolean;
 }) {
   const [range, setRange] = useState<MonthRange>("ano");
   const [view, setView] = useState<View>("flow");
   const months = monthsIn(data, range);
+  const effectiveView: View = showCategoryToggle ? view : "flow";
   return (
     <Panel title="Entradas e saídas" meta={`últimos ${months.length} meses`}>
       {/* Visão e período numa linha (quebram só se não couberem): a área de
           controle não pode ocupar mais altura que a leitura do gráfico. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <ChoiceChips label="Visão" options={VIEWS} value={view} onChange={setView} />
+        {showCategoryToggle ? (
+          <ChoiceChips label="Visão" options={VIEWS} value={view} onChange={setView} />
+        ) : null}
         <ChoiceChips label="Período" options={RANGES} value={range} onChange={setRange} />
       </div>
-      {view === "category" ? (
+      {effectiveView === "category" ? (
         hidden ? (
           <p className="text-[0.875rem] text-ink-2">Valores ocultos.</p>
         ) : (
