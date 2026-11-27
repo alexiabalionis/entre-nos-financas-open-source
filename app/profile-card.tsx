@@ -54,8 +54,8 @@ export function ProfileCard({
     <section
       ref={ref}
       className={cx(
-        "profile-card card min-w-0 scroll-mt-4 border bg-base-100 shadow-sm transition-colors duration-200",
-        expanded ? "border-primary" : "border-base-300",
+        "profile-card min-w-0 scroll-mt-4 rounded-2xl border bg-surface shadow-xs transition-colors duration-200",
+        expanded ? "border-accent" : "border-border",
       )}
       data-expanded={expanded}
     >
@@ -67,18 +67,18 @@ export function ProfileCard({
           aria-controls={id}
           onClick={onToggle}
           className={cx(
-            "flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-box border-0 bg-transparent px-4 py-3 text-left font-normal text-base-content transition-colors hover:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+            "ui-reset-btn flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left font-normal text-ink transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
             expanded && "rounded-b-none",
           )}
         >
           <span className="flex min-w-0 flex-col gap-0.5">
             <strong className="text-sm font-semibold">{title}</strong>
-            <small className="text-xs text-base-content/60">
+            <small className="text-xs text-muted">
               {description}
             </small>
           </span>
           <span
-            className="ds-collapse-arrow shrink-0 text-base-content/60"
+            className="ds-collapse-arrow shrink-0 text-muted"
             aria-hidden="true"
           >
             <Icon name="down" size={20} />
@@ -89,7 +89,7 @@ export function ProfileCard({
         <div
           role="region"
           aria-labelledby={id + "-title"}
-          className="flex min-w-0 flex-col gap-4 border-t border-base-300 p-4"
+          className="flex min-w-0 flex-col gap-4 border-t border-border p-4"
         >
           <FlatPanelsProvider>{children}</FlatPanelsProvider>
         </div>

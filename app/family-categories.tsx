@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Button } from "./ds/button.tsx";
 // Desenho do ícone por categoria. A ordem importa: a primeira regex que casa
 // vence, então as categorias mais específicas vêm antes das mais amplas. Cobre
 // as categorias-semente (auth.ts) e as criadas pelo categorizador (assisted.ts);
@@ -52,7 +53,7 @@ export function CategoryIcon({ name }: { name: string }) {
   const path = ICON_RULES.find(([re]) => re.test(n))?.[1] ?? GENERIC_ICON;
   return (
     <svg
-      className="category-svg"
+      className="size-5 shrink-0"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -79,33 +80,40 @@ export function CategoryPicker({
     ? categories
     : categories.filter((c, i) => i < 8 || c.id === value);
   return (
-    <fieldset className="category-picker">
-      <legend>Categoria{required ? "" : " (opcional)"}</legend>
-      <div className="category-grid">
+    <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
+      <legend className="mb-1 text-sm font-medium text-ink">
+        Categoria{required ? "" : " (opcional)"}
+      </legend>
+      <div className="grid grid-cols-3 gap-2">
         {!required && (
-          <label className="category-choice">
+          <label className="category-choice relative block min-w-0 cursor-pointer">
             <input
+              className="peer sr-only"
               type="radio"
               name="category_id"
               value=""
               defaultChecked={!value}
             />
-            <span>
+            <span className="flex h-full min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-1.5 py-2 text-center text-xs leading-snug text-ink transition-colors hover:bg-surface-2 peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-accent-ink peer-focus-visible:ring-2 peer-focus-visible:ring-accent [overflow-wrap:anywhere]">
               <CategoryIcon name="Sem categoria" />
               Sem categoria
             </span>
           </label>
         )}
         {shown.map((c) => (
-          <label className="category-choice" key={c.id}>
+          <label
+            className="category-choice relative block min-w-0 cursor-pointer"
+            key={c.id}
+          >
             <input
+              className="peer sr-only"
               type="radio"
               name="category_id"
               value={c.id}
               required={required}
               defaultChecked={c.id === value}
             />
-            <span>
+            <span className="flex h-full min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-1.5 py-2 text-center text-xs leading-snug text-ink transition-colors hover:bg-surface-2 peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-accent-ink peer-focus-visible:ring-2 peer-focus-visible:ring-accent [overflow-wrap:anywhere]">
               <CategoryIcon name={c.name} />
               {c.name}
             </span>
@@ -113,9 +121,14 @@ export function CategoryPicker({
         ))}
       </div>
       {!expanded && categories.length > 8 && (
-        <button className="btn btn-sm btn-soft" type="button" onClick={() => setExpanded(true)}>
+        <Button
+          variant="quiet"
+          size="sm"
+          className="self-start"
+          onClick={() => setExpanded(true)}
+        >
           Ver todas as categorias
-        </button>
+        </Button>
       )}
     </fieldset>
   );

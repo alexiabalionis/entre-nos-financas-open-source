@@ -81,19 +81,22 @@ export function CategoriesPanel({
 
   return (
     <>
-      <Panel title="Categorias" meta={categoryCount(categories.length)}>
-        <p className="ds-caption fine">{INTRO}</p>
+      <Panel title="Categorias" meta={categoryCount(categories.length)} className="mb-0">
+        <p className="ds-caption">{INTRO}</p>
         {reader ? (
-          <p className="fine">Seu acesso é somente para leitura.</p>
+          <p className="ds-caption">Seu acesso é somente para leitura.</p>
         ) : null}
         {categories.length === 0 ? (
-          <p className="fine">
+          <p className="ds-caption">
             Você ainda não tem categorias. Crie a primeira para organizar os
             gastos.
           </p>
         ) : null}
         {rowError ? (
-          <p className="family-error" role="alert">
+          <p
+            className="m-0 rounded-xl border border-danger/25 bg-danger-bg px-4 py-3 text-sm font-medium text-danger"
+            role="alert"
+          >
             {rowError}
           </p>
         ) : null}

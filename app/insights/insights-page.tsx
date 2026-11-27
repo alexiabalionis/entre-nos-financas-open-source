@@ -27,7 +27,15 @@ export function InsightsPage() {
   const categories = fresh && kept?.source !== fresh ? monthCategories(fresh) : (kept?.list ?? null);
   return (
     <>
-      <div className="mb-3">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-[1.625rem] leading-tight font-medium tracking-tight text-ink">
+            Panorama
+          </h1>
+          <p className="mt-0.5 text-[0.875rem] text-ink-2">
+            Como o dinheiro entra, sai e se distribui ao longo dos meses.
+          </p>
+        </div>
         <MonthHeader
           label={monthTitle(month)}
           prevLabel="Mês anterior"

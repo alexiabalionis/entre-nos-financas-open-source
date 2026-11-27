@@ -30,20 +30,24 @@ export function RenewBank({
       defaultOpen
       summary="Renovar autorização sem criar outras contas"
     >
-      <p className="ds-caption text-xs opacity-60">
+      <p className="ds-caption mb-3">
         Depois de renovar no Meu Pluggy e autorizar novamente no painel, informe
-        o novo itemId. Confira as correspondências; finais iguais e nomes
-        parecidos não comprovam que são a mesma conta.
+        o novo código da conexão (itemId). Confira as correspondências; finais
+        iguais e nomes parecidos não comprovam que são a mesma conta.
       </p>
       {error && (
-        <p role="alert" className="family-error alert alert-soft alert-error">
+        <p
+          role="alert"
+          className="mb-3 rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm font-medium text-danger"
+        >
           {error}
         </p>
       )}
       {!preview ? (
         <form
-          className="flex flex-col gap-2"
+          className="flex flex-col gap-3"
           onSubmit={async (e) => {
+            e.preventDefault();
             const v = fields(e);
             setWorking(true);
             setError("");
@@ -61,7 +65,7 @@ export function RenewBank({
             }
           }}
         >
-          <Field label="Novo itemId">
+          <Field label="Novo código da conexão (itemId)">
             <input
               name="item_id"
               required
@@ -70,17 +74,22 @@ export function RenewBank({
               spellCheck={false}
             />
           </Field>
-          <button
-            className="btn btn-sm btn-primary"
-            disabled={busy || working || !ready}
-          >
-            Conferir nova autorização
-          </button>
+          <div>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={busy || working || !ready}
+            >
+              Conferir nova autorização
+            </Button>
+          </div>
         </form>
       ) : (
         <form
-          className="flex flex-col gap-2"
+          className="flex flex-col gap-3"
           onSubmit={async (e) => {
+            e.preventDefault();
             const v = fields(e);
             setWorking(true);
             setError("");
@@ -132,22 +141,25 @@ export function RenewBank({
               </Select>
             </Field>
           ))}
-          <label className="bank-consent flex items-start gap-2 text-sm">
+          <label className="bank-consent flex items-start gap-2 text-sm text-ink">
             <input type="checkbox" required />
             Conferi que são as mesmas contas. Quero preservar os vínculos e o
             histórico.
           </label>
-          <Button type="submit" variant="primary" disabled={busy || working}>
-            Confirmar renovação dos vínculos
-          </Button>
-          <button
-            className="btn btn-sm btn-soft"
-            type="button"
-            disabled={working}
-            onClick={() => setPreview(null)}
-          >
-            Recomeçar conferência
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="primary" disabled={busy || working}>
+              Confirmar renovação dos vínculos
+            </Button>
+            <Button
+              variant="quiet"
+              size="sm"
+              type="button"
+              disabled={working}
+              onClick={() => setPreview(null)}
+            >
+              Recomeçar conferência
+            </Button>
+          </div>
         </form>
       )}
     </Collapsible>

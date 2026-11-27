@@ -39,6 +39,7 @@ export function MovementsPage() {
           />
           <MovementsPanel
             key={month}
+            month={month}
             state={data.state}
             currency={currency}
             hidden={session.hidden}

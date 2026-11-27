@@ -9,23 +9,16 @@ type StepperProps = {
   caption?: ReactNode;
   canPrev?: boolean;
   canNext?: boolean;
-  /** aria-label dos botões (acessibilidade). */
   prevLabel?: string;
   nextLabel?: string;
   onPrev?: () => void;
   onNext?: () => void;
-  /** Presente: o label vira um botão focável (mesmas classes de texto) que
-   *  dispara isto ao ser clicado — ex.: abrir o seletor de período. Ausente:
-   *  nada muda, o label continua um texto simples. */
   onLabelClick?: () => void;
-  /** aria-label do botão do label, quando onLabelClick está presente. */
   labelAriaLabel?: string;
 };
 
 /**
- * Navegador ‹ label › genérico (sem domínio). Os botões desabilitam via
- * canPrev/canNext e disparam onPrev/onNext. Setas e label clicável são
- * `btn btn-ghost` do daisyUI; o layout continua em family.css.
+ * Navegador ‹ label › em formato pílula compacta.
  */
 export function Stepper({
   label,
@@ -41,41 +34,50 @@ export function Stepper({
 }: StepperProps) {
   const labelContent = (
     <>
-      <b className="text-sm">{label}</b>
-      {caption != null ? <small className="block text-xs font-normal opacity-60">{caption}</small> : null}
+      <b className="block text-sm font-semibold text-ink leading-tight">{label}</b>
+      {caption != null ? (
+        <small className="block text-[0.75rem] font-normal text-muted leading-tight">
+          {caption}
+        </small>
+      ) : null}
     </>
   );
+  const arrowBtn =
+    "ui-stepper-btn inline-flex size-9 [@media(pointer:coarse)]:size-10 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent";
+
   return (
-    <div className="ds-stepper flex items-center justify-between gap-1">
+    <div className="ds-stepper inline-flex w-full sm:w-auto items-center justify-between gap-1 rounded-full border border-border bg-surface p-1">
       <button
         type="button"
-        className="btn btn-ghost btn-square"
+        className={arrowBtn}
         disabled={!canPrev}
         aria-label={prevLabel}
         onClick={onPrev}
       >
-        <Icon name="left" size={18} />
+        <Icon name="left" size={16} />
       </button>
       {onLabelClick ? (
         <button
           type="button"
-          className="ds-stepper-label ds-stepper-label-button btn btn-ghost h-auto flex-1 flex-col gap-0 py-1"
+          className="ds-stepper-label ds-stepper-label-button ui-stepper-btn flex min-w-0 flex-1 flex-col items-center justify-center rounded-full px-3.5 py-1 text-center transition-colors hover:bg-surface-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label={labelAriaLabel}
           onClick={onLabelClick}
         >
           {labelContent}
         </button>
       ) : (
-        <span className="ds-stepper-label flex-1 text-center">{labelContent}</span>
+        <span className="ds-stepper-label flex min-w-0 flex-1 flex-col items-center px-3.5 py-1 text-center">
+          {labelContent}
+        </span>
       )}
       <button
         type="button"
-        className="btn btn-ghost btn-square"
+        className={arrowBtn}
         disabled={!canNext}
         aria-label={nextLabel}
         onClick={onNext}
       >
-        <Icon name="right" size={18} />
+        <Icon name="right" size={16} />
       </button>
     </div>
   );

@@ -3,11 +3,13 @@
 // (Entradas e saídas, Gastos, Onde vai); cada bloco termina com uma leitura
 // curta. É a aba Panorama do menu (substituiu a antiga aba Futuro).
 import { useState } from "react";
-import { Button } from "../button.tsx";
+import { Button } from "../ds/button.tsx";
 import type { Category } from "../month/model.ts";
 import { moneyOf } from "../copilot/money.ts";
+import { InvestmentsPanel } from "../copilot/investments-panel.tsx";
 import { monthTitle } from "../lib/dates.ts";
 import { useInsights } from "../hooks/use-insights.ts";
+import { useInvestments } from "../hooks/use-investments.ts";
 import { ChoiceChips } from "./choice-chips.tsx";
 import { SummaryCards } from "./summary-cards.tsx";
 import { InOutPanel } from "./in-out-panel.tsx";
@@ -31,46 +33,75 @@ export function InsightsScreen({
 }) {
   const [tab, setTab] = useState<Tab>("io");
   const { data, error, reload, refreshing, updatedAt } = useInsights(month);
+  const investments = useInvestments(month);
+  const hasInvestments = (investments?.positions ?? []).some((p) => p.currency === "BRL");
   const money = moneyOf(hidden);
   const colorByName = new Map(categories.map((c) => [c.name, c.colorIndex ?? null]));
   return (
-    <div className="ds-list ins-screen">
-      <ChoiceChips label="Parte do panorama" options={TABS} value={tab} onChange={setTab} />
+    <div className="ins-screen flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ChoiceChips label="Parte do panorama" options={TABS} value={tab} onChange={setTab} />
+        {data && (
+          <p
+            className="inline-flex items-center gap-2 text-[0.75rem] font-medium text-ink-2"
+            role="status"
+            data-busy={refreshing || undefined}
+          >
+            <span
+              className={`size-2 rounded-full ${refreshing ? "animate-pulse bg-accent" : "bg-success"}`}
+              aria-hidden="true"
+            />
+            {refreshing ? "atualizando…" : freshLabel(data, month, updatedAt)}
+          </p>
+        )}
+      </div>
+
       {error && (
-        <p role="alert" className="ds-caption alert alert-soft alert-error">
-          {error}{" "}
-          <Button variant="text" onClick={() => void reload()}>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/25 bg-danger-soft px-4 py-3 text-[0.875rem] text-danger"
+        >
+          <span>{error}</span>
+          <Button variant="quiet" size="sm" onClick={() => void reload()}>
             Tentar novamente
           </Button>
-        </p>
+        </div>
       )}
+
       {!data && !error && (
-        <p role="status" className="ds-caption alert alert-soft alert-info">
+        <p
+          role="status"
+          className="rounded-2xl border border-border bg-surface px-4 py-3.5 text-[0.875rem] text-ink-2"
+        >
           Carregando o panorama…
         </p>
       )}
-      {data && (
-        <p className="ins-fresh" role="status" data-busy={refreshing || undefined}>
-          <span className="ins-fresh-dot" aria-hidden="true" />
-          {refreshing ? "atualizando…" : freshLabel(data, month, updatedAt)}
-        </p>
-      )}
+
       {data && (
         // A chave troca com a aba: o conteúdo novo entra subindo (ds-stagger).
         // Uma releitura dos dados não troca a chave; só os números e as barras mudam.
-        <div key={tab} className="ds-list ds-stagger">
+        <div key={tab} className="ds-stagger flex flex-col gap-5">
           {tab === "io" && (
             <>
               <SummaryCards data={data} hidden={hidden} />
               <InOutPanel data={data} money={money} hidden={hidden} colorByName={colorByName} />
-              <BalancePanel data={data} money={money} hidden={hidden} />
+              {hasInvestments ? (
+                <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+                  <BalancePanel data={data} money={money} hidden={hidden} />
+                  <InvestmentsPanel data={investments} money={money} />
+                </div>
+              ) : (
+                <BalancePanel data={data} money={money} hidden={hidden} />
+              )}
             </>
           )}
           {tab === "spend" && (
             <>
               <CategoryPanel data={data} money={money} hidden={hidden} colorByName={colorByName} />
-              <FixedPanel data={data} money={money} />
-              <DaysPanel data={data} money={money} hidden={hidden} />
+              <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+                <FixedPanel data={data} money={money} />
+                <DaysPanel data={data} money={money} hidden={hidden} />
+              </div>
             </>
           )}
           {tab === "places" && <PlacesPanel data={data} money={money} />}

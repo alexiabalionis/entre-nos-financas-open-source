@@ -63,7 +63,7 @@ export function AmountAllDialog({
           />
         </label>
         {showError && (
-          <p className="text-error text-sm" id="amount-all-error" role="alert">
+          <p className="text-sm text-danger" id="amount-all-error" role="alert">
             {amount.error}
           </p>
         )}

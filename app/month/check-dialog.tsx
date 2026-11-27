@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "../ds/button.tsx";
 import { Select } from "../ds/select";
 import { FamilyDialog } from "../dialogs/family-dialog";
 import { api } from "../lib/api.ts";
@@ -110,9 +111,14 @@ export function CheckDialog({
             Atualiza o acompanhamento do mês sem repetir os movimentos
             bancários. Uma coincidência de valor é sugestão, não confirmação.
           </p>
-          <button className="primary btn btn-primary" disabled={busy}>
-            {busy ? "Salvando…" : "Atualizar compromisso"}
-          </button>
+          <Button
+            type="submit"
+            variant="primary"
+            busy={busy}
+            busyLabel="Salvando…"
+          >
+            Atualizar compromisso
+          </Button>
         </form>
       )}
     </FamilyDialog>

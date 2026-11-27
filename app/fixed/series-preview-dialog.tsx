@@ -132,7 +132,7 @@ export function SeriesPreviewDialog({
           </label>
         )}
         {mode === "end" && endError && (
-          <p className="text-error text-sm" id="series-end-error" role="alert">
+          <p className="text-sm text-danger" id="series-end-error" role="alert">
             {endError}
           </p>
         )}
@@ -154,7 +154,7 @@ export function SeriesPreviewDialog({
           </label>
         )}
         {mode === "next" && !changes && "error" in amount && (
-          <p className="alert alert-soft alert-error" role="alert">
+          <p className="rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm text-danger" role="alert">
             {amount.error}
           </p>
         )}
@@ -165,7 +165,7 @@ export function SeriesPreviewDialog({
         )}
         {error && (
           <>
-            <p className="alert alert-soft alert-error" role="alert">
+            <p className="rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm text-danger" role="alert">
               {error}
             </p>
             <Button variant="quiet" onClick={again}>

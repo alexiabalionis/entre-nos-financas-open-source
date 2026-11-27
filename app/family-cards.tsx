@@ -8,7 +8,6 @@ import { Collapsible } from "./collapsible";
 import { Field } from "./field";
 import { Panel } from "./ds/panel";
 import { RowList } from "./ds/row-list";
-import { StatBanner } from "./ds/stat-banner";
 import type { ReactNode } from "react";
 type Cards = Awaited<ReturnType<typeof readCards>>;
 type CardProjection = Awaited<ReturnType<typeof readCardProjection>>;
@@ -77,23 +76,19 @@ export function CardsPanel({
   const money = (v: string | null) =>
     hidden ? "••••" : v === null ? "Não informado" : formatted(v, "BRL");
   if (!cards.length) return null;
+  const totalLabel =
+    overview.unknown === cards.length
+      ? "A conferir"
+      : money(overview.total_cents);
   return (
     <div role="region" aria-label="Compras e faturas do cartão" className="credit-overview flex flex-col gap-3">
-      <StatBanner
-        eyebrow={
-          overview.unknown
-            ? "Total conhecido do mês"
-            : "Total das faturas do mês"
-        }
-        value={
-          overview.unknown === cards.length
-            ? "A conferir"
-            : money(overview.total_cents)
-        }
-      />
-      <Panel title="Cartões do mês">
+      <Panel
+        title="Cartões do mês"
+        meta={totalLabel}
+        className="mb-0"
+      >
       <div
-        className="flex h-3 overflow-hidden rounded-full bg-base-200"
+        className="flex h-2.5 overflow-hidden rounded-full bg-surface-2"
         role="img"
         aria-label={
           hidden
@@ -112,7 +107,7 @@ export function CardsPanel({
               />
             ))}
       </div>
-      <p className="ds-caption text-xs opacity-60">
+      <p className="ds-caption text-xs">
         {overview.hasEstimates ? "Inclui estimativas. " : ""}
         {overview.unknown
           ? `${overview.unknown} cartão(ões) com valor a conferir. `
@@ -123,7 +118,7 @@ export function CardsPanel({
         <details
           key={c.id}
           id={"card-" + c.local_account_id}
-          className="credit-account border-t border-base-300 first:border-t-0"
+          className="credit-account border-t border-border first:border-t-0"
           open={expandedCard === c.id}
         >
           <summary
@@ -416,13 +411,13 @@ function Bill({
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded-box bg-base-200 p-3 flex flex-col gap-1">
+    <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface-2/60 p-3.5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <strong className="block text-sm font-medium">{title}</strong>
-          <small className="block text-xs opacity-60">{sub}</small>
+          <strong className="block text-sm font-medium text-ink">{title}</strong>
+          <small className="block text-xs text-muted">{sub}</small>
         </div>
-        <strong className="text-sm font-medium whitespace-nowrap tabular-nums">{amount}</strong>
+        <strong className="font-numeric text-sm font-semibold whitespace-nowrap tabular-nums text-ink">{amount}</strong>
       </div>
       {children}
     </div>
@@ -616,7 +611,14 @@ function CycleForm({
           </Button>
         </form>
       )}
-      {message && <p role="status" className="alert alert-soft alert-info">{message}</p>}
+      {message && (
+        <p
+          role="status"
+          className="rounded-xl border border-info/25 bg-info-bg px-3.5 py-2.5 text-sm text-ink"
+        >
+          {message}
+        </p>
+      )}
     </Collapsible>
   );
 }
@@ -729,7 +731,14 @@ function ManualCardForm({
           Salvar limite e fatura
         </Button>
       </form>
-      {message && <p role="status" className="alert alert-soft alert-info">{message}</p>}
+      {message && (
+        <p
+          role="status"
+          className="rounded-xl border border-info/25 bg-info-bg px-3.5 py-2.5 text-sm text-ink"
+        >
+          {message}
+        </p>
+      )}
     </Collapsible>
   );
 }

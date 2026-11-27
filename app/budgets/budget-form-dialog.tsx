@@ -68,7 +68,9 @@ export function BudgetFormDialog({
         {card ? (
           <div>
             <p className="ds-caption">Categoria</p>
-            <div className="budget-readonly">{name}</div>
+            <div className="rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm font-medium text-ink">
+              {name}
+            </div>
             <p className="ds-caption">
               Hoje o teto é {fmt(card.ceiling)} e vale desde{" "}
               {monthTitle(card.from.slice(0, 7))}.

@@ -5,80 +5,77 @@ import { cx } from "./shared";
 import { useExpandHeight } from "./use-expand-height.ts";
 
 type ProgressRailProps = Toned & {
-  /** Percentual 0..100. É DADO -> a largura vai inline via style (a cor vem do
-   *  tom/token no CSS, nunca inline). */
+  /** Percentual 0..100. */
   pct: number;
   inverted?: boolean;
 };
 
-const progressTone: Record<NonNullable<Toned["tone"]>, string> = {
-  ok: "progress-success",
-  warn: "progress-warning",
-  danger: "progress-error",
-  accent: "progress-accent",
-  neutral: "",
+const railFillTone: Record<NonNullable<Toned["tone"]>, string> = {
+  ok: "bg-ok",
+  warn: "bg-warn",
+  danger: "bg-danger",
+  accent: "bg-accent",
+  neutral: "bg-muted",
 };
 
 /**
- * Trilha de progresso. Átomo LOCAL do StatBanner (único consumidor). A cor é
- * resolvida por data-tone no CSS; só a largura (dado) é inline.
+ * Trilha de progresso pura em Tailwind (sem daisyUI progress).
  */
-function ProgressRail({ pct, tone }: ProgressRailProps) {
+function ProgressRail({ pct, tone, inverted }: ProgressRailProps) {
   const width = Math.max(0, Math.min(100, pct));
   return (
-    <progress
-      className={cx("ds-rail progress mt-4 w-full", tone && progressTone[tone])}
-      value={width}
-      max={100}
+    <div
+      role="progressbar"
       aria-valuenow={width}
       aria-valuemin={0}
       aria-valuemax={100}
-    />
+      className={cx(
+        "ds-rail mt-4 h-2 w-full overflow-hidden rounded-full",
+        inverted ? "bg-white/15" : "bg-surface-2",
+      )}
+    >
+      <div
+        className={cx(
+          "h-full rounded-full transition-[width] duration-300",
+          inverted ? "bg-white" : tone ? railFillTone[tone] : "bg-accent",
+        )}
+        style={{ width: `${width}%` }}
+      />
+    </div>
   );
 }
 
 type StatBannerProps = {
-  /** Rótulo pequeno em caixa alta acima do valor. ReactNode para caber um
-   *  IconBadge junto do texto (ex.: GoalCard). */
+  /** Rótulo pequeno acima do valor. */
   eyebrow?: ReactNode;
-  /** Valor em destaque. ReactNode porque o chamador pode já formatar (MoneyText). */
+  /** Valor em destaque. */
   value: ReactNode;
   /** Usa a variante "title" (valor menor, multilinha). */
   title?: boolean;
   /** Texto de apoio abaixo do valor. */
   caption?: ReactNode;
-  /** Percentual da trilha (0..100). Se não for null/undefined, renderiza a ProgressRail. */
+  /** Percentual da trilha (0..100). */
   rail?: number | null;
   /** Tom da trilha. */
   railTone?: Toned["tone"];
   /** Slot à direita do eyebrow (chip, botão, etc.). */
   trailing?: ReactNode;
-  /** Variante escura (hero). */
+  /** Variante de marca (Branded Hero). */
   inverted?: boolean;
   /** Marca o valor como negativo (cor). */
   neg?: boolean;
-  /** Slot livre no rodapé do banner — sempre visível (ex.: a ressalva do
-   *  porquê). Não confundir com `expand`, que é o conteúdo recolhido. */
+  /** Slot livre no rodapé do banner — sempre visível. */
   children?: ReactNode;
-  /** Quando presente, o cartão inteiro vira um disclosure: tocar em qualquer
-   *  parte (inclui `children`) revela `content` — o "como chegamos nesse
-   *  número". `label` é o texto do gatilho, com a setinha ↓/↑ do CSS. Gatilho
-   *  é um <button> com aria-expanded/aria-controls, não <details> nativo —
-   *  ver comentário no corpo da função sobre por que <details> não dá pra
-   *  animar aqui. `content` fica sempre no DOM (precisa pra medir a altura
-   *  real em px); só a CHAVE do nó muda a cada abertura real, remontando-o
-   *  pra tocar de novo as animações de entrada dos gráficos/barras lá
-   *  dentro — sem isso elas tocariam só uma vez. */
+  /** Quando presente, o cartão inteiro vira um disclosure para detalhar a conta. */
   expand?: { label: ReactNode; content: ReactNode };
-  /** Tocar no valor revela `content` logo abaixo dele (ex.: saldo por conta).
-   *  Com isto, o gatilho do `expand` fica só na linha do rótulo, para os dois
-   *  botões não ficarem um dentro do outro. */
+  /** Tocar no valor revela `content` logo abaixo dele (ex.: saldo por conta). */
   valueDetail?: { label: string; content: ReactNode };
+  className?: string;
 };
 
 /**
- * Banner de métrica em destaque. Porta do StatBanner do ds-kit: compõe as
- * classes de family.css e delega a trilha à ProgressRail.
+ * Banner de métrica em destaque.
+ * `inverted` = Branded Hero do topo da tela Mês (gradiente profundo da marca + texto branco).
  */
 export function StatBanner({
   eyebrow,
@@ -93,55 +90,59 @@ export function StatBanner({
   children,
   expand,
   valueDetail,
+  className,
 }: StatBannerProps) {
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const detailId = useId();
-  // Sobe a cada abertura real (não a cada re-render) pra virar a key do
-  // conteúdo revelado — remonta só ELE (não o wrap que anima a altura),
-  // reiniciando as animações de entrada de dentro a cada vez que abre.
   const [openCount, setOpenCount] = useState(0);
-  // Altura animada: ver use-expand-height.ts (o porquê de px medido em vez
-  // de grid 0fr->1fr ou <details> nativo, que não animam o fechar aqui).
   const height = useExpandHeight(open, openCount);
   const contentId = useId();
 
-  // "inverted" = herói da tela Mês. Era um bloco âmbar (bg-primary) que brigava
-  // com chips, legendas e valores coloridos dentro dele; agora é o mesmo
-  // cartão neutro dos outros, com o número maior dando o destaque.
   const shell = inverted
-    ? "inverted card card-border bg-base-100 p-5 shadow-sm"
-    : "stats w-full";
-  const wrap = (node: ReactNode) => (inverted ? node : <div className="stat">{node}</div>);
+    ? "inverted is-hero-inverted rounded-2xl border p-5 sm:p-6 shadow-sm"
+    : "rounded-xl border border-border/80 bg-surface-2/60 p-4";
 
   const top = (
     <>
-      <div className="ds-stat-top flex items-center justify-between gap-2.5">
-        <span className={cx("ds-eyebrow", inverted ? "text-sm opacity-60" : "stat-title whitespace-normal")}>
+      <div className="ds-stat-top flex items-center justify-between gap-3">
+        <span
+          className={cx(
+            "ds-eyebrow text-xs font-medium tracking-wide",
+            inverted ? "uppercase text-white/75" : "text-muted",
+          )}
+        >
           {eyebrow ?? ""}
         </span>
         {trailing}
       </div>
       <div
         className={cx(
-          // fonte numérica do app (Space Grotesk) nos valores
-          "ds-value tabular-nums [font-family:var(--family-font-numeric)]",
-          inverted ? "text-4xl font-semibold" : "stat-value",
-          title && "title !text-2xl whitespace-normal",
-          neg && "is-neg",
+          "ds-value font-numeric tabular-nums mt-2 tracking-tight",
+          inverted
+            ? "text-[2.125rem] sm:text-[2.625rem] font-semibold leading-[1.08] text-white"
+            : "text-2xl font-semibold leading-tight text-ink",
+          title && "!text-xl sm:!text-2xl leading-snug whitespace-normal",
+          neg && (inverted ? "is-neg !text-red-300" : "is-neg text-danger"),
         )}
       >
         {valueDetail ? (
           <button
             type="button"
-            className="ds-stat-value-btn inline-flex min-h-0 cursor-pointer items-baseline gap-2 rounded-none border-0 bg-transparent p-0 text-left [color:inherit] [font:inherit] hover:bg-transparent"
+            className="ds-stat-value-btn ui-reset-btn inline-flex cursor-pointer items-baseline gap-2 text-left [color:inherit] [font:inherit]"
             aria-expanded={detailOpen}
             aria-controls={detailId}
             aria-label={valueDetail.label}
             onClick={() => setDetailOpen(!detailOpen)}
           >
             {value}
-            <span className="ds-stat-expand-arrow text-base opacity-60" aria-hidden="true">
+            <span
+              className={cx(
+                "ds-stat-expand-arrow text-base",
+                inverted ? "text-white/75" : "text-muted",
+              )}
+              aria-hidden="true"
+            >
               ↓
             </span>
           </button>
@@ -150,20 +151,35 @@ export function StatBanner({
         )}
       </div>
       {valueDetail ? (
-        <div id={detailId} hidden={!detailOpen} className="mt-2" data-stat-detail>
+        <div
+          id={detailId}
+          hidden={!detailOpen}
+          className={cx(
+            "mt-3 rounded-xl px-3 py-2",
+            inverted ? "bg-white/10" : "bg-surface border border-border",
+          )}
+          data-stat-detail
+        >
           {valueDetail.content}
         </div>
       ) : null}
       {caption != null ? (
-        <p className={cx("ds-caption", inverted ? "text-sm opacity-60" : "stat-desc whitespace-normal")}>{caption}</p>
+        <div
+          className={cx(
+            "ds-caption mt-2 text-sm leading-relaxed",
+            inverted ? "!text-white/80" : "text-muted",
+          )}
+        >
+          {caption}
+        </div>
       ) : null}
       {rail != null ? <ProgressRail pct={rail} tone={railTone} inverted={inverted} /> : null}
-      {children ? <div className="ds-stat-slot mt-4">{children}</div> : null}
+      {children ? <div className="ds-stat-slot mt-3.5">{children}</div> : null}
     </>
   );
 
   if (!expand) {
-    return <section className={cx("ds-stat", shell)}>{wrap(top)}</section>;
+    return <section className={cx("ds-stat", shell, className)}>{top}</section>;
   }
 
   function handleToggleClick() {
@@ -172,66 +188,59 @@ export function StatBanner({
     if (nowOpen) setOpenCount((c) => c + 1);
   }
 
+  const expandTriggerHint = (
+    <span
+      className={cx(
+        "ds-stat-expand-hint mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+        inverted
+          ? "bg-white/12 text-white/90 hover:bg-white/18"
+          : "bg-surface text-muted border border-border",
+      )}
+    >
+      {expand.label}
+      <span className="ds-stat-expand-arrow" aria-hidden="true">
+        ↓
+      </span>
+    </span>
+  );
+
   return (
-    <section className={cx("ds-stat", shell, open && "is-open")}>
-      {wrap(
-        <>
-      {valueDetail ? (
-        <>
-          {/* Tocar em qualquer parte do card abre o detalhe, menos no botão do
-              valor e na lista que ele abre; o teclado usa o botão do rótulo. */}
-          <div
-            className="cursor-pointer"
-            onClick={(e) => {
-              if ((e.target as HTMLElement).closest("button, a, [data-stat-detail]")) return;
-              handleToggleClick();
-            }}
-          >
-            {top}
-          </div>
-          <button
-            type="button"
-            className="ds-stat-summary ds-stat-expand-hint mt-4 flex min-h-0 cursor-pointer items-center gap-1 rounded-none border-0 bg-transparent p-0 text-left text-xs font-medium opacity-70 [color:inherit] [font:inherit] hover:bg-transparent"
-            aria-expanded={open}
-            aria-controls={contentId}
-            onClick={handleToggleClick}
-          >
-            {expand.label}
-            <span className="ds-stat-expand-arrow" aria-hidden="true">
-              ↓
-            </span>
-          </button>
-        </>
-      ) : (
+    <section className={cx("ds-stat", shell, open && "is-open", className)}>
+      <div
+        className="cursor-pointer"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button, a, [data-stat-detail]")) return;
+          handleToggleClick();
+        }}
+      >
+        {top}
+      </div>
       <button
         type="button"
-        // utilitários zeram a base legada de <button> (fundo, borda, raio, padding, 46px)
-        className="ds-stat-summary block min-h-0 w-full cursor-pointer rounded-none border-0 bg-transparent p-0 text-left [color:inherit] [font:inherit] hover:bg-transparent"
+        className="ds-stat-summary ui-reset-btn mt-4 cursor-pointer text-left [color:inherit] [font:inherit]"
         aria-expanded={open}
         aria-controls={contentId}
         onClick={handleToggleClick}
       >
-        {top}
-        <span className="ds-stat-expand-hint mt-4 flex items-center gap-1 text-xs font-medium opacity-70">
-          {expand.label}
-          <span className="ds-stat-expand-arrow" aria-hidden="true">
-            ↓
-          </span>
-        </span>
+        {expandTriggerHint}
       </button>
-      )}
       <div
         id={contentId}
         className="ds-stat-expand-wrap"
         style={height.style}
         onTransitionEnd={height.onTransitionEnd}
       >
-        <div className="ds-stat-expand-body mt-5 border-t border-base-300 pt-5" key={openCount} ref={height.bodyRef}>
+        <div
+          className={cx(
+            "ds-stat-expand-body mt-5 border-t pt-4",
+            inverted ? "border-white/15" : "border-border",
+          )}
+          key={openCount}
+          ref={height.bodyRef}
+        >
           {expand.content}
         </div>
       </div>
-        </>,
-      )}
     </section>
   );
 }

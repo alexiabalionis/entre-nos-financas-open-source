@@ -1,5 +1,4 @@
 "use client";
-// Total em reservas no topo. Com 2+ objetivos, mostra quanto há em cada um.
 import { Panel } from "../ds/panel.tsx";
 import { RowList } from "../ds/row-list.tsx";
 import { SegmentedBar } from "../ds/segmented-bar.tsx";
@@ -10,7 +9,7 @@ export function TotalPanel({ goals, money }: { goals: Goal[]; money: Money }) {
   const { total, moves } = totals(goals);
   const color = (i: number) => GOAL_COLORS[i % GOAL_COLORS.length];
   return (
-    <Panel title="Total em reservas" meta={money(total)}>
+    <Panel title="Total em reservas" meta={money(total)} className="mb-0">
       <p className="ds-caption">{pendingText(moves, money)}</p>
       {goals.length > 1 && (
         <>

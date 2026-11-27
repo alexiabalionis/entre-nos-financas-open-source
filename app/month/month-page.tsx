@@ -1,19 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { buildMonthModel } from "./model.ts";
 import { HeroBlock } from "./blocks/hero-block.tsx";
 import { OutflowBlock } from "../budgets/outflow-block";
 import { MonthHeader } from "./blocks/month-header.tsx";
 import { Greeting } from "./blocks/greeting.tsx";
 import { categoryIconFor } from "./blocks/category-icon-for.tsx";
-import { MONTH_BLOCKS, MONTH_BLOCK_ORDER } from "./blocks/registry.ts";
+import { PathBlock } from "./blocks/path-block.tsx";
 import { balanceCentsFor, monthCategories, projectionScreen } from "./screen-input.ts";
-import { PaymentAlerts } from "./payment-alerts";
+import { AttentionStrip } from "./attention-strip.tsx";
+import { PlanSection } from "./plan-section.tsx";
+import { type PlanGroupId } from "./plan-model.ts";
+import { Button } from "../ds/button.tsx";
 import { Panel } from "../ds/panel";
-import { PlanGroup } from "./plan-group";
-import { PLAN_GROUPS } from "./plan-model.ts";
 import { ItemDialog } from "./item-dialog";
 import { FixedItemActions } from "../fixed/fixed-item-actions";
 import { isSeriesBill } from "../fixed/fixed-status.ts";
@@ -22,7 +22,6 @@ import { EntryDialog } from "./entry-dialog";
 import { PeriodDialog } from "../dialogs/period-dialog";
 import { RecordMovementDialog } from "../dialogs/record-movement-dialog";
 import { CardsPanel } from "../family-cards";
-import { HomeBlock, HomeLayout } from "../family-personalization";
 import { QuickActions } from "../family-quick-actions";
 import { ActionBanner } from "../shell/action-banner";
 import { PeriodLoading } from "../shell/period-loading";
@@ -37,21 +36,19 @@ import { currentMonth, monthTitle, moveMonth, today } from "../lib/dates.ts";
 import { money } from "../lib/money.ts";
 import { paymentReminders } from "../../src/domain/reminders.ts";
 import { brDate } from "../../src/domain/format.ts";
-import type { HomeCardId } from "../../src/domain/preferences";
 
 type Modal = "item" | "fixed" | "movement" | "check" | "entry" | "period" | null;
 
 /**
- * Página / (Mês): planejamento do mês, alertas, cartões e blocos
- * personalizáveis. Dona dos dados do mês, dos diálogos de item/conferência/
- * entrada/mês e do modo de edição do início.
+ * Página / (Mês): hierarquia opinativa em 3 zonas:
+ *   1. Herói da marca + alertas críticos
+ *   2. Atenção agora (vencimentos, pendências e próximos compromissos)
+ *   3. Grade editorial 2 colunas (Plano do mês + Cartões | Saídas + Caminho do saldo)
  */
 export function MonthPage() {
   const session = useSession();
   const { user, hidden, reader } = session;
   const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
   const period = usePeriodData();
   const action = useAction();
   const { members, error: membersError } = useMembers(true);
@@ -60,17 +57,17 @@ export function MonthPage() {
     [itemPurpose, setItemPurpose] = useState("expense"),
     [newCostType, setNewCostType] = useState("auto"),
     [movementKind, setMovementKind] = useState("expense"),
-    // Vindo do Meu perfil ("Personalizar início"): abre já editando.
-    [homeEditing, setHomeEditing] = useState(() => params.get("editar") === "1");
-  const { month, currency, setMonth } = period;
+    [isDesktop, setIsDesktop] = useState(false);
 
-  // O pedido de edição é de uma vez só: sai da URL depois de lido.
   useEffect(() => {
-    if (params.get("editar") !== "1") return;
-    const query = new URLSearchParams(params.toString());
-    query.delete("editar");
-    router.replace(pathname + "?" + query.toString(), { scroll: false });
-  }, [params, pathname, router]);
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setIsDesktop(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const { month, currency, setMonth } = period;
 
   function open(kind: Exclude<Modal, null>, item: MonthItem | null = null, initialKind = "expense") {
     if (kind === "movement") setMovementKind(initialKind);
@@ -85,6 +82,20 @@ export function MonthPage() {
   const close = () => setModal(null);
   const openItem = (item: MonthItem) =>
     open(isSeriesBill(item) ? "fixed" : "item", item);
+  const openAddGroup = (groupId: PlanGroupId) => {
+    open(
+      "item",
+      null,
+      groupId === "income"
+        ? "income"
+        : groupId === "saving"
+          ? "saving"
+          : "expense",
+    );
+    setNewCostType(
+      groupId === "fixed" || groupId === "variable" ? groupId : "auto",
+    );
+  };
   const goSpace = (extra: Record<string, string>) => {
     router.push(withMonth("/espaco", month, extra), { scroll: false });
     window.scrollTo({ top: 0 });
@@ -100,8 +111,6 @@ export function MonthPage() {
     );
 
   const items = data.routine.items.filter((i) => i.currency === currency);
-  // O item aberto segue a versão recarregada (depois de mudar o vencimento, o
-  // diálogo mostra a data nova, não a de quando foi aberto).
   const selectedNow = selected ? (items.find((i) => i.id === selected.id) ?? selected) : null;
   const current = today();
   const reminders = paymentReminders(items, current);
@@ -118,8 +127,6 @@ export function MonthPage() {
     iconFor: categoryIconFor,
     hidden,
   });
-  // Saudação: os dois membros do casal quando chegam (ou só a pessoa logada se
-  // a busca falhar), sem trocar de nome depois de aparecer.
   const greetPeople = (members.length > 0 ? members : [user]).map((m) => ({
     name: m.name,
   }));
@@ -128,110 +135,161 @@ export function MonthPage() {
 
   return (
     <>
-      {session.headerSlot &&
-        greetingReady &&
-        createPortal(<Greeting people={greetPeople} />, session.headerSlot)}
       <ActionBanner error={action.error || period.error} notice={action.notice} />
-      <section
-        className="month-controls"
-        aria-label="Mês e contas do planejamento"
-      >
-        <MonthHeader
-          label={label}
-          caption={screen.statusWord ?? monthModel.defaultStepperCaption}
-          prevLabel="Mês anterior"
-          nextLabel="Próximo mês"
-          labelAriaLabel={`Escolher mês: ${label}`}
-          onPrev={() => setMonth(moveMonth(month, -1))}
-          onNext={() => setMonth(moveMonth(month, 1))}
-          onLabelClick={() => open("period")}
+
+      {/* Cabeçalho do mês + ações rápidas no desktop */}
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          {greetingReady ? (
+            <Greeting people={greetPeople} />
+          ) : (
+            <div className="h-7 w-40 rounded-lg bg-surface-2" aria-hidden="true" />
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <section aria-label="Mês e contas do planejamento" className="w-full sm:w-auto">
+            <MonthHeader
+              label={label}
+              caption={screen.statusWord ?? monthModel.defaultStepperCaption}
+              prevLabel="Mês anterior"
+              nextLabel="Próximo mês"
+              labelAriaLabel={`Escolher mês: ${label}`}
+              onPrev={() => setMonth(moveMonth(month, -1))}
+              onNext={() => setMonth(moveMonth(month, 1))}
+              onLabelClick={() => open("period")}
+            />
+          </section>
+
+          <div
+            className="hidden lg:inline-flex items-center gap-2"
+            data-tour={isDesktop ? "quick-actions" : undefined}
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="in"
+              disabled={reader}
+              onClick={() =>
+                isCurrentMonth ? open("entry") : open("item", null, "income")
+              }
+            >
+              {isCurrentMonth ? "Entrada" : "Planejar entrada"}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon="plus"
+              disabled={reader}
+              onClick={() =>
+                isCurrentMonth ? open("movement") : open("item", null, "expense")
+              }
+            >
+              {isCurrentMonth ? "Registrar gasto" : "Planejar gasto"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ZONA 1: Branded Hero + alertas + recebimentos */}
+      <div className="mb-6 flex flex-col gap-3">
+        <HeroBlock model={monthModel} currency={currency} />
+
+        {data.routine.receipts.map((r, index) => (
+          <Panel key={index} title={r.label + " · para o próximo mês"} className="mb-0">
+            <p className="ds-caption">
+              {r.received_date
+                ? "Crédito identificado em " +
+                  brDate(r.received_date) +
+                  " · " +
+                  money(r.amount_cents, "BRL", hidden)
+                : "Recebimento previsto em " + brDate(r.expected_date)}
+              . Destinado ao planejamento de {r.budget_month.slice(5, 7)}/
+              {r.budget_month.slice(0, 4)}.
+            </p>
+            <p className="ds-caption">{r.note}</p>
+          </Panel>
+        ))}
+
+        {!items.length && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-4">
+            <p className="m-0 text-sm text-muted">
+              Este mês ainda não tem itens planejados.
+            </p>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={action.busy || reader}
+              onClick={() =>
+                void action.work(async () => {
+                  await api("routine/copy", {
+                    from: moveMonth(month, -1),
+                    to: month,
+                  });
+                  await period.reload();
+                }, "Planejamento copiado. Os pagamentos começam em aberto.")
+              }
+            >
+              Usar planejamento do mês anterior
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* ZONA 2: Atenção agora */}
+      <div className="mb-6">
+        <AttentionStrip
+          cards={data.cards}
+          reminders={reminders}
+          items={items}
+          model={monthModel}
+          currency={currency}
+          hidden={hidden}
+          onConfigureAlarms={() => goSpace({ painel: "notifications" })}
+          onReviewCard={(account) => {
+            router.push(
+              withMonth("/movimentos", month, { filtro: "review", conta: account }),
+              { scroll: false },
+            );
+            window.scrollTo({ top: 0 });
+          }}
+          onOpenItem={openItem}
         />
-      </section>
-      <HeroBlock model={monthModel} currency={currency} />
-      <HomeLayout
-        preferences={session.preferences}
-        editing={homeEditing}
-        onEditingChange={setHomeEditing}
-        onSaved={session.updatePreferences}
-      >
-        <HomeBlock cardId="receipts">
-          {data.routine.receipts.map((r, index) => (
-            <Panel key={index} title={r.label + " · para o próximo mês"}>
-              <p className="ds-caption">
-                {r.received_date
-                  ? "Crédito identificado em " +
-                    brDate(r.received_date) +
-                    " · " +
-                    money(r.amount_cents, "BRL", hidden)
-                  : "Recebimento previsto em " + brDate(r.expected_date)}
-                . Destinado ao planejamento de {r.budget_month.slice(5, 7)}/
-                {r.budget_month.slice(0, 4)}.
-              </p>
-              <p className="ds-caption">{r.note}</p>
-            </Panel>
-          ))}
-        </HomeBlock>
-        <HomeBlock cardId="alerts">
-          <PaymentAlerts
-            cards={data.cards}
-            reminders={reminders}
+      </div>
+
+      {/* ZONA 3: Grade editorial 2 colunas no desktop */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <div className="flex min-w-0 flex-col gap-6 lg:col-span-7">
+          <PlanSection
             items={items}
+            categories={data.state.categories}
+            events={data.state.events}
             currency={currency}
             hidden={hidden}
-            onConfigureAlarms={() => goSpace({ painel: "notifications" })}
-            onReviewCard={(account) =>
-              goSpace({ painel: "banks", conta: account })
-            }
+            today={current}
+            busy={action.busy}
+            reader={reader}
+            onCheck={(item) => open("check", item)}
             onOpenItem={openItem}
+            onAddGroup={openAddGroup}
           />
-        </HomeBlock>
-        <HomeBlock cardId="cards">
           <CardsPanel
             month={month}
             onRefresh={period.reload}
             reader={reader}
             cards={data.cards}
             hidden={hidden}
-            onReview={(account) => goSpace({ painel: "banks", conta: account })}
+            onReview={(account) => {
+              router.push(
+                withMonth("/movimentos", month, { filtro: "review", conta: account }),
+                { scroll: false },
+              );
+              window.scrollTo({ top: 0 });
+            }}
           />
-        </HomeBlock>
-        {PLAN_GROUPS.map((group) => (
-          <HomeBlock cardId={group.id as HomeCardId} key={group.id}>
-            <PlanGroup
-              group={group}
-              items={items}
-              categories={data.state.categories}
-              events={data.state.events}
-              currency={currency}
-              hidden={hidden}
-              today={current}
-              busy={action.busy}
-              reader={reader}
-              onCheck={(item) => open("check", item)}
-              onOpenItem={openItem}
-              onAdd={() => {
-                open(
-                  "item",
-                  null,
-                  group.id === "income"
-                    ? "income"
-                    : group.id === "saving"
-                      ? "saving"
-                      : "expense",
-                );
-                setNewCostType(
-                  group.id === "fixed" || group.id === "variable"
-                    ? group.id
-                    : "auto",
-                );
-              }}
-            />
-          </HomeBlock>
-        ))}
-        {/* "composition" virou "Saídas por categoria" (composição + tetos),
-            que precisa dos dados do mês e do reload; os outros blocos do
-            registry só leem o model. */}
-        <HomeBlock cardId="composition" collapsible={false}>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-6 lg:col-span-5">
           <OutflowBlock
             data={data}
             month={month}
@@ -240,40 +298,18 @@ export function MonthPage() {
             reader={reader}
             reload={period.reload}
           />
-        </HomeBlock>
-        {MONTH_BLOCK_ORDER.filter((id) => id !== "composition").map((id) => {
-          const { Component } = MONTH_BLOCKS[id];
-          return (
-            <HomeBlock cardId={id} collapsible={false} key={id}>
-              <Component model={monthModel} currency={currency} />
-            </HomeBlock>
-          );
-        })}
-      </HomeLayout>
-      <p className="ds-caption mt-6 px-1 text-xs leading-relaxed opacity-60">
+          <PathBlock model={monthModel} currency={currency} />
+        </div>
+      </div>
+
+      <p className="ds-caption mt-6 px-1 text-xs leading-relaxed">
         Fixos e variáveis têm uma classificação sugerida pelo nome. Toque em uma
         conta para ajustar. Marcar como pago ou recebido atualiza o plano, sem
         duplicar os movimentos.
       </p>
-      {!items.length && (
-        <button
-          className="btn btn-primary btn-sm"
-          disabled={action.busy || reader}
-          onClick={() =>
-            void action.work(async () => {
-              await api("routine/copy", {
-                from: moveMonth(month, -1),
-                to: month,
-              });
-              await period.reload();
-            }, "Planejamento copiado. Os pagamentos começam em aberto.")
-          }
-        >
-          Usar planejamento do mês anterior
-        </button>
-      )}
+
       {items.some((i) => i.source_line_id) && (
-        <p className="ds-caption">
+        <p className="ds-caption mt-2 px-1 text-xs">
           Preenchido com seu planejamento. As marcações “pago” da planilha foram
           preservadas; valores sem confirmação não foram tratados como
           pagamentos.{" "}
@@ -282,23 +318,22 @@ export function MonthPage() {
             : ""}
         </p>
       )}
-      {!homeEditing && !modal && (
+
+      {!modal && (
         <QuickActions
           key={month}
           planning={!isCurrentMonth}
           reader={reader}
+          tourTarget={!isDesktop}
           onIncome={() =>
             isCurrentMonth ? open("entry") : open("item", null, "income")
           }
           onExpense={() =>
             isCurrentMonth ? open("movement") : open("item", null, "expense")
           }
-          onEdit={() => {
-            setHomeEditing(true);
-            window.scrollTo({ top: 0, behavior: "instant" });
-          }}
         />
       )}
+
       <PeriodDialog
         open={modal === "period"}
         month={month}

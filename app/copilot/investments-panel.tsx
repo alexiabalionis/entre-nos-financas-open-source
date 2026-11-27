@@ -10,8 +10,15 @@ import type { Money } from "./money.ts";
 export function InvestmentsPanel({ data, money }: { data: Investments | null; money: Money }) {
   const positions = (data?.positions ?? []).filter((p) => p.currency === "BRL");
   if (!positions.length) return null;
+  const known = positions
+    .map((p) => p.observed_cents ?? p.calculated_cents)
+    .filter((v): v is string => v !== null);
+  const total = known.reduce((acc, v) => acc + BigInt(v), 0n);
   return (
-    <Panel title="Investimentos">
+    <Panel
+      title="Investimentos"
+      meta={known.length > 0 ? money(total) : `${positions.length} posições`}
+    >
       <RowList
         rows={positions.map((p) => {
           const value = p.observed_cents ?? p.calculated_cents;

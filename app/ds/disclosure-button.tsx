@@ -5,10 +5,7 @@ import { cx } from "./shared.ts";
 
 /**
  * Cabeçalho que abre e fecha um bloco (use com o Collapse do DS): a linha toda
- * é o alvo, com uma seta discreta à direita que gira quando aberto. O conteúdo
- * do cabeçalho é livre (título, valor, frase). `action` é o que o leitor de
- * tela ouve além do conteúdo (ex.: "Ver itens da fatura"); fechado e aberto
- * podem ter textos diferentes.
+ * é o alvo, com uma seta discreta à direita que gira quando aberto.
  */
 export function DisclosureButton({
   expanded,
@@ -20,7 +17,6 @@ export function DisclosureButton({
   iconSize = 18,
 }: {
   expanded: boolean;
-  /** id do bloco que abre e fecha. */
   controls: string;
   onToggle: () => void;
   children: ReactNode;
@@ -31,16 +27,24 @@ export function DisclosureButton({
   return (
     <button
       type="button"
-      className={cx("ds-discbtn btn btn-ghost group h-auto w-full justify-between py-2 text-left", className)}
+      className={cx(
+        "ds-discbtn ui-btn group flex h-auto w-full items-center justify-between gap-2 rounded-xl px-2 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-surface-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        className,
+      )}
       aria-expanded={expanded}
       aria-controls={controls}
       onClick={onToggle}
     >
       {children}
-      <span className="ds-discbtn-icon transition-transform group-aria-expanded:rotate-180" aria-hidden>
+      <span
+        className="ds-discbtn-icon shrink-0 text-muted transition-transform duration-200 group-aria-expanded:rotate-180"
+        aria-hidden
+      >
         <Icon name="down" size={iconSize} />
       </span>
-      {action ? <span className="sr-only">{expanded ? action.close : action.open}</span> : null}
+      {action ? (
+        <span className="sr-only">{expanded ? action.close : action.open}</span>
+      ) : null}
     </button>
   );
 }

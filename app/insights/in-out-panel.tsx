@@ -43,7 +43,7 @@ export function InOutPanel({
       </div>
       {view === "category" ? (
         hidden ? (
-          <p className="ds-caption">Valores ocultos.</p>
+          <p className="text-[0.875rem] text-ink-2">Valores ocultos.</p>
         ) : (
           <CategoryTrendChart key={range} data={data} money={money} range={range} colorByName={colorByName} />
         )
@@ -54,7 +54,7 @@ export function InOutPanel({
             animate
             groups={months.map((m) => ({ label: shortMonth(m.month), values: [toReais(m.in), toReais(m.out)] }))}
             series={[
-              { label: "Entrou", color: "var(--family-success)" },
+              { label: "Entrou", color: "var(--ui-success)" },
               { label: "Saiu", color: "var(--family-cat-6)" },
             ]}
             empty={hidden}
@@ -62,8 +62,8 @@ export function InOutPanel({
             fmt={(v) => money(BigInt(Math.round(v * 100)))}
             yFmt={compactReais}
           />
-          <p className="ds-caption">
-            <b>{inOutReading(data, range)}</b>
+          <p className="text-[0.875rem] leading-relaxed text-ink-2">
+            <strong className="font-semibold text-ink">{inOutReading(data, range)}</strong>
           </p>
         </>
       )}

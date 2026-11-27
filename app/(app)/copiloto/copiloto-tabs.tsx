@@ -4,18 +4,19 @@ import { Segmented } from "../../ds/index.ts";
 import { FutureScreen } from "../../future/index.ts";
 import { useSession } from "../../session/session-context";
 
-type Tab = "futuro" | "simular" | "agora";
+type Tab = "futuro" | "simular";
 const TABS: { value: Tab; label: string }[] = [
   { value: "futuro", label: "Futuro" },
   { value: "simular", label: "Simular" },
-  { value: "agora", label: "Agora" },
 ];
 
-const TabContext = createContext<{ tab: Tab; pick: (t: Tab) => void }>({ tab: "futuro", pick: () => {} });
+const TabContext = createContext<{ tab: Tab; pick: (t: Tab) => void }>({
+  tab: "futuro",
+  pick: () => {},
+});
 
 /**
- * O Futuro com a sessão. Futuro e Simular são a mesma tela em dois modos: o
- * componente fica montado entre as duas abas, então o rascunho não se perde.
+ * O Futuro com a sessão. Futuro e Simular dividem o mesmo rascunho.
  */
 export function FutureSlot() {
   const session = useSession();
@@ -31,15 +32,27 @@ export function FutureSlot() {
 }
 
 /**
- * Alterna entre Futuro (padrão), Simular e Agora (reservas e margem do mês, a
- * tela anterior). A aba fica na URL (?aba=simular|agora) para voltar ao mesmo lugar.
+ * Cabeçalho do Copiloto com alternância em 2 modos: Futuro e Simular.
+ * Links legados com `?aba=agora` redirecionam suavemente para Futuro (#reservas).
  */
-export function CopilotoTabs({ future, now }: { future: ReactNode; now: ReactNode }) {
+export function CopilotoTabs({ future }: { future: ReactNode; now?: ReactNode }) {
   const [tab, setTab] = useState<Tab>("futuro");
+
   useEffect(() => {
-    const q = new URLSearchParams(location.search).get("aba");
-    if (q === "agora" || q === "simular") setTab(q);
+    const url = new URL(location.href);
+    const q = url.searchParams.get("aba");
+    if (q === "simular") {
+      setTab("simular");
+    } else if (q === "agora") {
+      setTab("futuro");
+      url.searchParams.delete("aba");
+      history.replaceState(history.state, "", url);
+      requestAnimationFrame(() => {
+        document.getElementById("reservas")?.scrollIntoView({ behavior: "smooth" });
+      });
+    }
   }, []);
+
   const pick = (t: Tab) => {
     setTab(t);
     const url = new URL(location.href);
@@ -48,12 +61,21 @@ export function CopilotoTabs({ future, now }: { future: ReactNode; now: ReactNod
     history.replaceState(history.state, "", url);
     window.scrollTo({ top: 0 });
   };
+
   return (
     <TabContext.Provider value={{ tab, pick }}>
-      <div className="fut-tabs">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="m-0 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+            Copiloto
+          </h1>
+          <p className="m-0 mt-0.5 text-sm text-muted">
+            Horizonte do casal, reservas e simulações antes de decidir.
+          </p>
+        </div>
         <Segmented label="Parte do Copiloto" value={tab} options={TABS} onChange={pick} />
       </div>
-      {tab === "agora" ? now : future}
+      {future}
     </TabContext.Provider>
   );
 }

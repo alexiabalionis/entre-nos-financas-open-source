@@ -35,7 +35,7 @@ export function CategoryTrendChart({
   const last = trend.months.length - 1;
   const selected = Math.min(picked ?? last, last);
   const colorOf = (name: string) =>
-    name === OTHERS ? "var(--family-track-2)" : categoryColor(name, colorByName);
+    name === OTHERS ? "var(--ui-surface-3)" : categoryColor(name, colorByName);
   const reading = categoryTrendReading(trend, money, data.today);
   return (
     <>
@@ -61,8 +61,8 @@ export function CategoryTrendChart({
         }))}
       />
       {reading && (
-        <p className="ds-caption">
-          <b>{reading}</b>
+        <p className="text-[0.875rem] leading-relaxed text-ink-2">
+          <strong className="font-semibold text-ink">{reading}</strong>
         </p>
       )}
     </>

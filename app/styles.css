@@ -1,319 +1,733 @@
 /* Entrada única de CSS do app.
  *
- * Ordem das camadas: o CSS antigo (legacy) tem a MENOR prioridade, então as
- * classes do daisyUI/Tailwind sempre vencem quando aplicadas a um elemento.
- * Sem o preflight do Tailwind: ele resetaria botões, títulos e listas que as
- * telas antigas ainda usam. Conforme cada tela migrar, o CSS dela sai de legacy.
+ * Camadas: `theme` -> `base` -> `components` (ds-extra, future.css, controles
+ * nativos) -> `utilities` (utilitários Tailwind v4).
  */
-@layer legacy, theme, base, components, utilities;
-
-@import "./globals.css" layer(legacy);
-@import "./family.css" layer(legacy);
-@import "./ds/ds-extra.css" layer(legacy);
-@import "./future/future.css" layer(legacy);
+@layer theme, base, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
+@import "./ds/ds-extra.css" layer(components);
+@import "./future/future.css" layer(components);
 @import "tailwindcss/utilities.css" layer(utilities);
 
-/* Classes usadas em app/ e src/ entram no build. */
 @source "../app";
 @source "../src";
 
-@plugin "daisyui" {
-  themes: false;
+/* ==========================================================================
+ * Tokens do Design System (--ui-*) · Crisp Fintech Editorial
+ * ========================================================================== */
+:root {
+  color-scheme: light;
+
+  --ui-bg: #f6f6fa;
+  --ui-surface: #ffffff;
+  --ui-surface-2: #efeff5;
+  --ui-surface-3: #e4e3ee;
+  --ui-border: #e4e3ee;
+  --ui-border-strong: #cfcde0;
+  --ui-ink: #16151f;
+  --ui-muted: #5c5870;
+  --ui-subtle: #78748c;
+  --ui-ink-2: var(--ui-muted);
+  --ui-ink-3: var(--ui-subtle);
+
+  --ui-ok: #15803d;
+  --ui-ok-bg: #e7f6ec;
+  --ui-success: var(--ui-ok);
+  --ui-success-soft: var(--ui-ok-bg);
+  --ui-warn: #b45309;
+  --ui-warn-bg: #fef3c7;
+  --ui-warning: var(--ui-warn);
+  --ui-warning-soft: var(--ui-warn-bg);
+  --ui-danger: #dc2626;
+  --ui-danger-bg: #fee2e2;
+  --ui-danger-soft: var(--ui-danger-bg);
+  --ui-info: #0369a1;
+  --ui-info-bg: #e0f2fe;
+
+  --ui-lime: #c7e86a;
+  --ui-on-lime: #1f2909;
+
+  /* Preset padrão: Roxo */
+  --ui-accent: #5844d8;
+  --ui-accent-hover: #4935c4;
+  --ui-on-accent: #ffffff;
+  --ui-accent-soft: #eeebfc;
+  --ui-accent-ink: #4330b8;
+
+  --ui-hero-bg: linear-gradient(135deg, #241952 0%, #3b288f 100%);
+  --ui-hero-fg: #ffffff;
+  --ui-hero-muted: rgba(255, 255, 255, 0.78);
+  --ui-hero-border: rgba(255, 255, 255, 0.14);
+  --ui-hero-surface: rgba(255, 255, 255, 0.1);
+  --ui-hero-surface-hover: rgba(255, 255, 255, 0.16);
+  --ui-hero-divider: rgba(255, 255, 255, 0.16);
+
+  /* Categorias (matiz fixo) */
+  --family-on-category: #ffffff;
+  --family-cat-1: #1f9d6b;
+  --family-cat-2: #d84a86;
+  --family-cat-3: #d98a2e;
+  --family-cat-4: #2a90ac;
+  --family-cat-5: #8a7fcf;
+  --family-cat-6: #5844d8;
+  --family-cat-7: #c2523c;
+  --family-cat-8: #6f8f22;
+  --family-cat-9: #3a72c9;
+  --family-cat-10: #a3489a;
+  --family-cat-11: #a8841a;
+  --family-cat-12: #2f8a78;
+  --family-cat-cards: #4a4560;
+  --family-cat-none: #9a96a8;
 }
 
-/* Par escuro do emerald (mesmo âmbar/verde), no lugar do "dark" roxo do daisyUI.
- * Nome "dark" para casar com data-theme="dark" gravado pelo app. */
-@plugin "daisyui/theme" {
-  name: "dark";
-  default: false;
-  prefersdark: true;
-  color-scheme: "dark";
-  --color-base-100: oklch(22% 0.006 285.885);
-  --color-base-200: oklch(19% 0.005 285.885);
-  --color-base-300: oklch(28% 0.006 285.885);
-  --color-base-content: oklch(95% 0.003 285.885);
-  --color-primary: oklch(76% 0.157 75.834);
-  --color-primary-content: oklch(22% 0.04 75.834);
-  --color-secondary: oklch(68% 0.18 262.881);
-  --color-secondary-content: oklch(97% 0.014 254.604);
-  --color-accent: oklch(72% 0.14 163.225);
-  --color-accent-content: oklch(20% 0.03 166.113);
-  --color-neutral: oklch(32% 0.006 286.033);
-  --color-neutral-content: oklch(96% 0 0);
-  --color-info: oklch(72% 0.13 241.966);
-  --color-info-content: oklch(20% 0.03 236.62);
-  --color-success: oklch(72% 0.17 149.214);
-  --color-success-content: oklch(20% 0.03 155.826);
-  --color-warning: oklch(76% 0.157 75.834);
-  --color-warning-content: oklch(22% 0.04 75.834);
-  --color-error: oklch(68% 0.2 17.585);
-  --color-error-content: oklch(97% 0.015 12.422);
-  --radius-selector: 0rem;
-  --radius-field: 0.625rem;
-  --radius-box: 1rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
+:root[data-accent="esmeralda"] {
+  --ui-accent: #0f766e;
+  --ui-accent-hover: #0d625b;
+  --ui-on-accent: #ffffff;
+  --ui-accent-soft: #e6f5f3;
+  --ui-accent-ink: #0c5d56;
+  --ui-hero-bg: linear-gradient(135deg, #0d3632 0%, #13574f 100%);
 }
 
-@plugin "daisyui/theme" {
-  name: "emerald";
-  default: true;
-  prefersdark: false;
-  color-scheme: "light";
-  --color-base-100: oklch(98% 0 0);
-  --color-base-200: oklch(96% 0.001 286.375);
-  --color-base-300: oklch(92% 0.004 286.32);
-  --color-base-content: oklch(21% 0.006 285.885);
-  --color-primary: oklch(68% 0.162 75.834);
-  /* Texto escuro sobre o âmbar: o claro dava 2,6:1 (botões, balão do chat). */
-  --color-primary-content: oklch(22% 0.04 75.834);
-  --color-secondary: oklch(54% 0.245 262.881);
-  --color-secondary-content: oklch(97% 0.014 254.604);
-  --color-accent: oklch(59% 0.145 163.225);
-  --color-accent-content: oklch(97% 0.021 166.113);
-  --color-neutral: oklch(27% 0.006 286.033);
-  --color-neutral-content: oklch(98% 0 0);
-  --color-info: oklch(58% 0.158 241.966);
-  --color-info-content: oklch(97% 0.013 236.62);
-  --color-success: oklch(62% 0.194 149.214);
-  --color-success-content: oklch(98% 0.018 155.826);
-  --color-warning: oklch(68% 0.162 75.834);
-  --color-warning-content: oklch(22% 0.04 75.834);
-  --color-error: oklch(58% 0.253 17.585);
-  --color-error-content: oklch(96% 0.015 12.422);
-  --radius-selector: 0rem;
-  --radius-field: 0.625rem;
-  --radius-box: 1rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
+:root[data-accent="oceano"] {
+  --ui-accent: #1d4ed8;
+  --ui-accent-hover: #1841b8;
+  --ui-on-accent: #ffffff;
+  --ui-accent-soft: #eaf0fd;
+  --ui-accent-ink: #173da6;
+  --ui-hero-bg: linear-gradient(135deg, #142654 0%, #1e4099 100%);
 }
 
-/* Ponte: os tokens antigos (--family-*) passam a ler as cores do tema daisyUI.
- * Fora de camada, então vencem as definições de family.css (claro, escuro e
- * prefers-color-scheme) e o app todo segue o tema, migrado ou não. As cores de
- * categoria (--family-cat-*) ficam: são dado, não tema. */
+:root[data-accent="ameixa"] {
+  --ui-accent: #9333ea;
+  --ui-accent-hover: #7e25cf;
+  --ui-on-accent: #ffffff;
+  --ui-accent-soft: #f5ebfe;
+  --ui-accent-ink: #7220bd;
+  --ui-hero-bg: linear-gradient(135deg, #35154d 0%, #5c2282 100%);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ui-bg: #111117;
+  --ui-surface: #181822;
+  --ui-surface-2: #222230;
+  --ui-surface-3: #2a2a3a;
+  --ui-border: #2a2a3a;
+  --ui-border-strong: #3d3d54;
+  --ui-ink: #f4f3f9;
+  --ui-muted: #a4a0b8;
+  --ui-subtle: #85809c;
+
+  --ui-ok: #4ade80;
+  --ui-ok-bg: #132c1f;
+  --ui-warn: #fbbf24;
+  --ui-warn-bg: #2e2411;
+  --ui-danger: #f87171;
+  --ui-danger-bg: #32181a;
+  --ui-info: #38bdf8;
+  --ui-info-bg: #112636;
+
+  --ui-lime: #d6f786;
+  --ui-on-lime: #1b2208;
+
+  --ui-accent: #a988ff;
+  --ui-accent-hover: #b89cff;
+  --ui-on-accent: #16112b;
+  --ui-accent-soft: #262044;
+  --ui-accent-ink: #c8b3ff;
+
+  --ui-hero-bg: linear-gradient(135deg, #241b4d 0%, #17132b 100%);
+  --ui-hero-fg: #f5f3ff;
+  --ui-hero-muted: rgba(245, 243, 255, 0.76);
+  --ui-hero-border: rgba(255, 255, 255, 0.12);
+
+  --family-cat-1: #4fcf97;
+  --family-cat-2: #f06ba3;
+  --family-cat-3: #f0a650;
+  --family-cat-4: #5fc3dc;
+  --family-cat-5: #b0a4d0;
+  --family-cat-6: #a988ff;
+  --family-cat-7: #ef7a63;
+  --family-cat-8: #a9c654;
+  --family-cat-9: #6aa5f0;
+  --family-cat-10: #d27ac8;
+  --family-cat-11: #e0bd4a;
+  --family-cat-12: #5fbfa9;
+  --family-cat-cards: #8c86a6;
+  --family-cat-none: #5d5970;
+}
+
+:root[data-theme="dark"][data-accent="esmeralda"] {
+  --ui-accent: #34d399;
+  --ui-accent-hover: #4ee0ac;
+  --ui-on-accent: #07261c;
+  --ui-accent-soft: #132c26;
+  --ui-accent-ink: #6ee7b7;
+  --ui-hero-bg: linear-gradient(135deg, #10322e 0%, #121f22 100%);
+}
+
+:root[data-theme="dark"][data-accent="oceano"] {
+  --ui-accent: #60a5fa;
+  --ui-accent-hover: #7bb5fc;
+  --ui-on-accent: #0b1b36;
+  --ui-accent-soft: #18233c;
+  --ui-accent-ink: #93c5fd;
+  --ui-hero-bg: linear-gradient(135deg, #16264d 0%, #121728 100%);
+}
+
+:root[data-theme="dark"][data-accent="ameixa"] {
+  --ui-accent: #c084fc;
+  --ui-accent-hover: #cd9bfd;
+  --ui-on-accent: #250b3b;
+  --ui-accent-soft: #2c1d3d;
+  --ui-accent-ink: #d8b4fe;
+  --ui-hero-bg: linear-gradient(135deg, #311745 0%, #1b1326 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ui-bg: #111117;
+    --ui-surface: #181822;
+    --ui-surface-2: #222230;
+    --ui-surface-3: #2a2a3a;
+    --ui-border: #2a2a3a;
+    --ui-border-strong: #3d3d54;
+    --ui-ink: #f4f3f9;
+    --ui-muted: #a4a0b8;
+    --ui-subtle: #85809c;
+
+    --ui-ok: #4ade80;
+    --ui-ok-bg: #132c1f;
+    --ui-warn: #fbbf24;
+    --ui-warn-bg: #2e2411;
+    --ui-danger: #f87171;
+    --ui-danger-bg: #32181a;
+    --ui-info: #38bdf8;
+    --ui-info-bg: #112636;
+
+    --ui-lime: #d6f786;
+    --ui-on-lime: #1b2208;
+
+    --ui-accent: #a988ff;
+    --ui-accent-hover: #b89cff;
+    --ui-on-accent: #16112b;
+    --ui-accent-soft: #262044;
+    --ui-accent-ink: #c8b3ff;
+
+    --ui-hero-bg: linear-gradient(135deg, #241b4d 0%, #17132b 100%);
+    --ui-hero-fg: #f5f3ff;
+    --ui-hero-muted: rgba(245, 243, 255, 0.76);
+    --ui-hero-border: rgba(255, 255, 255, 0.12);
+
+    --family-cat-1: #4fcf97;
+    --family-cat-2: #f06ba3;
+    --family-cat-3: #f0a650;
+    --family-cat-4: #5fc3dc;
+    --family-cat-5: #b0a4d0;
+    --family-cat-6: #a988ff;
+    --family-cat-7: #ef7a63;
+    --family-cat-8: #a9c654;
+    --family-cat-9: #6aa5f0;
+    --family-cat-10: #d27ac8;
+    --family-cat-11: #e0bd4a;
+    --family-cat-12: #5fbfa9;
+    --family-cat-cards: #8c86a6;
+    --family-cat-none: #5d5970;
+  }
+  :root:not([data-theme="light"])[data-accent="esmeralda"] {
+    --ui-accent: #34d399;
+    --ui-accent-hover: #4ee0ac;
+    --ui-on-accent: #07261c;
+    --ui-accent-soft: #132c26;
+    --ui-accent-ink: #6ee7b7;
+    --ui-hero-bg: linear-gradient(135deg, #10322e 0%, #121f22 100%);
+  }
+  :root:not([data-theme="light"])[data-accent="oceano"] {
+    --ui-accent: #60a5fa;
+    --ui-accent-hover: #7bb5fc;
+    --ui-on-accent: #0b1b36;
+    --ui-accent-soft: #18233c;
+    --ui-accent-ink: #93c5fd;
+    --ui-hero-bg: linear-gradient(135deg, #16264d 0%, #121728 100%);
+  }
+  :root:not([data-theme="light"])[data-accent="ameixa"] {
+    --ui-accent: #c084fc;
+    --ui-accent-hover: #cd9bfd;
+    --ui-on-accent: #250b3b;
+    --ui-accent-soft: #2c1d3d;
+    --ui-accent-ink: #d8b4fe;
+    --ui-hero-bg: linear-gradient(135deg, #311745 0%, #1b1326 100%);
+  }
+}
+
+@theme inline {
+  --color-canvas: var(--ui-bg);
+  --color-surface: var(--ui-surface);
+  --color-surface-2: var(--ui-surface-2);
+  --color-surface-3: var(--ui-surface-3);
+  --color-border: var(--ui-border);
+  --color-border-strong: var(--ui-border-strong);
+  --color-ink: var(--ui-ink);
+  --color-ink-2: var(--ui-muted);
+  --color-ink-3: var(--ui-subtle);
+  --color-muted: var(--ui-muted);
+  --color-subtle: var(--ui-subtle);
+  --color-accent: var(--ui-accent);
+  --color-accent-hover: var(--ui-accent-hover);
+  --color-on-accent: var(--ui-on-accent);
+  --color-accent-soft: var(--ui-accent-soft);
+  --color-accent-ink: var(--ui-accent-ink);
+  --color-lime: var(--ui-lime);
+  --color-on-lime: var(--ui-on-lime);
+  --color-ok: var(--ui-ok);
+  --color-ok-bg: var(--ui-ok-bg);
+  --color-success: var(--ui-ok);
+  --color-success-soft: var(--ui-ok-bg);
+  --color-warn: var(--ui-warn);
+  --color-warn-bg: var(--ui-warn-bg);
+  --color-warning: var(--ui-warn);
+  --color-warning-soft: var(--ui-warn-bg);
+  --color-danger: var(--ui-danger);
+  --color-danger-bg: var(--ui-danger-bg);
+  --color-danger-soft: var(--ui-danger-bg);
+  --color-info: var(--ui-info);
+  --color-info-bg: var(--ui-info-bg);
+  --font-sans: var(--family-font-sans), system-ui, -apple-system, sans-serif;
+  --font-display: var(--family-font-sans), system-ui, -apple-system, sans-serif;
+  --font-numeric: var(--family-font-numeric), var(--family-font-sans), system-ui, sans-serif;
+}
+
+/* Aliases `--family-*` consumidos por `ds-extra.css`, `future.css` e gráficos JS */
 :root,
-:root[data-theme] {
-  --family-accent: var(--color-primary);
-  --family-on-accent: var(--color-primary-content);
-  --family-accent-soft: color-mix(in oklab, var(--color-primary) 22%, var(--color-base-100));
-  --family-lime: var(--color-accent);
-  --family-on-lime: var(--color-accent-content);
+:root[data-theme],
+:root[data-accent] {
+  --family-accent: var(--ui-accent);
+  --family-on-accent: var(--ui-on-accent);
+  --family-accent-soft: var(--ui-accent-soft);
+  --family-lime: var(--ui-lime);
+  --family-on-lime: var(--ui-on-lime);
 
-  --family-bg: var(--color-base-200);
-  --family-surface: var(--color-base-100);
-  --family-surface-2: var(--color-base-200);
-  --family-tint: color-mix(in oklab, var(--color-primary) 8%, var(--color-base-100));
-  --family-text: var(--color-base-content);
-  --family-muted: color-mix(in oklab, var(--color-base-content) 62%, var(--color-base-100));
-  --family-line: var(--color-base-300);
-  --family-soft: var(--color-base-200);
-  --family-track: var(--color-base-300);
-  --family-track-2: color-mix(in oklab, var(--color-base-content) 22%, var(--color-base-100));
+  --family-bg: var(--ui-bg);
+  --family-surface: var(--ui-surface);
+  --family-surface-2: var(--ui-surface-2);
+  --family-tint: var(--ui-accent-soft);
+  --family-text: var(--ui-ink);
+  --family-muted: var(--ui-muted);
+  --family-line: var(--ui-border);
+  --family-soft: var(--ui-surface-2);
+  --family-soft-strong: var(--ui-border-strong);
+  --family-track: var(--ui-border);
+  --family-track-2: var(--ui-border-strong);
 
-  --family-success: var(--color-success);
-  --family-success-bg: color-mix(in oklab, var(--color-success) 14%, var(--color-base-100));
-  --family-danger: var(--color-error);
-  --family-danger-bg: color-mix(in oklab, var(--color-error) 12%, var(--color-base-100));
-  --family-warn: var(--color-warning);
-  --family-warn-bg: color-mix(in oklab, var(--color-warning) 16%, var(--color-base-100));
-  --family-info: var(--color-info);
+  --family-success: var(--ui-ok);
+  --family-success-bg: var(--ui-ok-bg);
+  --family-danger: var(--ui-danger);
+  --family-danger-bg: var(--ui-danger-bg);
+  --family-warn: var(--ui-warn);
+  --family-warn-bg: var(--ui-warn-bg);
+  --family-info: var(--ui-info);
 
-  --family-chart-grid: var(--color-base-300);
-  --family-chart-axis: var(--family-track-2);
-  --family-chart-label: var(--family-muted);
+  --family-chart-grid: var(--ui-border);
+  --family-chart-axis: var(--ui-border-strong);
+  --family-chart-label: var(--ui-muted);
 
-  --family-radius-sm: var(--radius-field);
-  --family-radius-md: var(--radius-box);
-  --family-radius-lg: var(--radius-box);
-  --family-radius-xl: var(--radius-box);
+  --family-hero-bg: var(--ui-accent-soft);
+  --family-hero-bg-gradient: var(--ui-hero-bg);
+  --family-hero-fg: var(--ui-hero-fg);
+  --family-hero-sub: var(--ui-hero-muted);
+  --family-hero-line: var(--ui-accent);
 
-  /* Texto/ícone no tom da marca sobre fundo claro tingido (botão suave, aba).
-   * O primary puro (âmbar) sobre fundo claro fica ~2,5:1; misturado ao texto
-   * base passa de 4,5:1 e continua lendo como "da marca". No escuro a mistura
-   * clareia (base-content é claro), então serve aos dois temas. */
-  --color-primary-ink: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content));
-  /* Superfície tingida da marca: fundo de grupo de abas, botão suave. */
-  --color-primary-tint: color-mix(in oklab, var(--color-primary) 12%, var(--color-base-100));
+  --family-radius-sm: 10px;
+  --family-radius-md: 14px;
+  --family-radius-lg: 16px;
+  --family-radius-xl: 20px;
+  --family-radius-pill: 999px;
 
-  /* tokens do globals.css (telas mais antigas) */
-  --green: var(--color-primary);
-  --green-deep: color-mix(in oklab, var(--color-primary) 80%, black);
-  --mint: color-mix(in oklab, var(--color-accent) 14%, var(--color-base-100));
-  --lime: var(--color-accent);
-  --ink: var(--color-base-content);
-  --muted: var(--family-muted);
-  --line: var(--color-base-300);
-  --paper: var(--color-base-200);
-  --white: var(--color-base-100);
-  --red: var(--color-error);
-  --radius: var(--radius-box);
+  --family-space-1: 4px;
+  --family-space-2: 8px;
+  --family-space-3: 12px;
+  --family-space-4: 14px;
+  --family-space-5: 18px;
+  --family-space-6: 22px;
+  --family-space-7: 28px;
 }
 
-/* family.css:2583 redefine soft/line/fundo em .family-app misturando o accent
- * (que agora é o primary âmbar) — era o bege e os blocos âmbar. Neutros aqui. */
 .family-app,
 .family-login {
-  --family-soft: var(--color-base-200);
-  --family-soft-strong: var(--color-base-300);
-  --family-line: var(--color-base-300);
-  background: var(--color-base-200);
-}
-.family-app .family-nav {
-  background: var(--color-base-100);
+  background: var(--ui-bg);
+  color: var(--ui-ink);
 }
 
-/* Campos nativos no visual do daisyUI, sem precisar de classe em cada um dos
- * ~100 <input>/<select>/<textarea> espalhados pelas telas. */
-@layer components {
-  /* Input dentro de <label class="input"> (ícone + campo) não vira outra caixa;
-   * nem o campo do AmountStepper, que já é a caixa (ds-amount-row) e tem visual próprio. */
-  .family-app :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"], .input *, .ds-amount-field *)),
-  .family-login :where(input:not([type="checkbox"], [type="radio"], [type="hidden"])) {
-    @apply input w-full;
-  }
-  .family-app :where(select),
-  .family-login :where(select) {
-    @apply select w-full;
-  }
-  .family-app :where(textarea:not(.chat-composer textarea)) {
-    @apply textarea w-full;
-  }
-  /* O compositor do chat já é a caixa; o textarea dentro dele fica sem borda. */
-  .family-app .chat-composer textarea {
-    @apply textarea textarea-ghost border-0 bg-transparent shadow-none focus:outline-none;
-  }
-  /* min-h-0 e max-w-none: o CSS antigo dá min-height de 46px, padding e
-   * largura 100% a todo input, e isso esticava a caixinha (ficava um retângulo
-   * alto e fino com o ✓ vazando). O daisyUI dimensiona pelo --size. */
-  .family-app :where(input[type="checkbox"]:not([role="switch"])) {
-    @apply checkbox checkbox-sm min-h-0 max-w-none;
-  }
-  .family-app :where(input[type="checkbox"][role="switch"]) {
-    @apply toggle toggle-sm min-h-0 max-w-none;
-  }
-  /* Fora o rádio do tile de categoria: ele é oculto (o tile é o controle). O
-   * `radio` do daisyUI o devolvia ao fluxo (position: relative + tamanho) e
-   * empurrava o tile 23px para baixo, por cima do que vinha depois. */
-  .family-app :where(input[type="radio"]:not(.category-choice > input)) {
-    @apply radio radio-sm min-h-0 max-w-none;
-  }
-  .family-app :where(input[type="range"]) {
-    @apply range range-sm;
-  }
-  .family-app :where(input[type="file"]) {
-    @apply file-input w-full;
-  }
-}
-
-/* Sem o preflight do Tailwind, [hidden] perdia para qualquer utilitário de
- * display (flex, grid…) e o bloco "escondido" continuava na tela. */
+/* ==========================================================================
+ * Base: reset mínimo (sem preflight destrutivo), tipografia e piso de 12px
+ * ========================================================================== */
 @layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    box-sizing: border-box;
+    border: 0 solid;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--family-font-sans), system-ui, -apple-system, sans-serif;
+    background: var(--ui-bg);
+    color: var(--ui-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  input,
+  select,
+  optgroup,
+  textarea,
+  ::file-selector-button {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+    opacity: 1;
+  }
+
+  button {
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  a {
+    color: inherit;
+  }
+
   [hidden]:where(:not([hidden="until-found"])) {
     display: none !important;
   }
-}
 
-/* BASE LEGADA × COMPONENTES DO DS — causa única dos tamanhos inconsistentes.
- *
- * globals.css e family.css estilizam <button>/<input>/<select>/<label> pelo
- * ELEMENTO: min-height 46px, padding 10px 16px, peso 600, justify-content
- * center, font: inherit. Como estão na camada legacy, o daisyUI vence só nas
- * propriedades que ele mesmo declara; as outras vazavam para todo componente:
- *   - .btn/.input/.select com 46px em vez da altura do tema (--size-field);
- *   - item de menu centralizado, com 44px e peso 500;
- *   - valor do <select> herdando o peso 600 do <label> que o envolve;
- *   - o <input> da busca com 16px dentro de uma caixa de 14px.
- * Aqui a base legada é desfeita UMA vez para os componentes do DS. Fica em
- * `base` (acima de legacy, abaixo do daisyUI): os modificadores de tamanho do
- * daisyUI (btn-sm, select-sm, tabs-sm…) continuam valendo. Nenhuma tela
- * precisa de remendo próprio de altura. */
-@layer base {
-  /* Vale para os campos com classe (.input/.select) e também para os crus
-   * (<input>/<select> sem classe), que recebem o visual do daisyUI pela regra
-   * automática em @layer components acima — o vazamento é o mesmo. */
-  .family-app :is(.btn, .tab, .input, .select, .textarea, .menu li > *),
-  .family-app :is(select, textarea),
-  .family-app input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]),
-  .family-login :is(.btn, .input, .select, select, input:not([type="checkbox"], [type="radio"], [type="hidden"])) {
-    min-height: auto;
-  }
-  .family-app .btn,
-  .family-login .btn {
-    padding-block: 0;
-  }
-  .family-app :is(.btn-circle, .btn-square) {
-    padding: 0;
-  }
-  .family-app :is(.input, .select, .textarea, select, textarea),
-  .family-app input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]),
-  .family-login :is(.input, .select, select, input) {
-    font-weight: 400;
-  }
-  /* Campo de uma linha: altura vem do tema (--size); o padding vertical
-   * legado (10–12px) só apertava o texto dentro dela. */
-  .family-app :is(.input, .select, select),
-  .family-app input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]),
-  .family-login :is(.input, .select, select, input) {
-    padding-block: 0;
-  }
-  /* O campo dentro de label.input é só texto: tamanho e peso da caixa. */
-  .family-app .input > input {
-    font-size: inherit;
-    font-weight: inherit;
-    min-height: 0;
-    background: transparent;
-    padding: 0;
-  }
-  .family-app .menu li > :is(button, a) {
-    justify-content: start;
-    text-align: start;
-    font-weight: 400;
-    border: 0;
-    background-color: transparent;
-  }
-  .family-app .tab {
-    font-weight: 500;
-  }
-  .family-app .tab.tab-active {
+  .family-app h1,
+  .family-login h1 {
+    font-family: var(--family-font-sans), system-ui, sans-serif;
     font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+  :root .fut-scope {
+    --family-font-sans: var(--family-font-sans), system-ui, sans-serif;
+  }
+
+  .family-app dd {
+    margin-inline-start: 0;
+  }
+  .family-app ::placeholder,
+  .family-login ::placeholder {
+    color: var(--ui-subtle);
+  }
+
+  .family-app .fine,
+  .family-login .fine {
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--ui-muted);
+  }
+
+  .family-app .ds-caption {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--ui-muted);
+  }
+
+  .family-header-slot {
+    display: contents;
   }
 }
 
-/* Toque: a mesma escala, um degrau acima. Um token só (--size-field) leva
- * botão, campo, select e aba de 40 para 44px — a área mínima de toque — e os
- * campos ficam com 16px, abaixo disso o iOS dá zoom ao focar. Fora de camada
- * para vencer o tamanho de letra que o daisyUI dá a cada campo. */
+/* ==========================================================================
+ * Controles nativos e formulários de diálogo (Tailwind v4 / --ui-*)
+ * ========================================================================== */
+@layer components {
+  .family-app :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"], .ds-chip-input, .ds-search-field, .ds-amount-field *)),
+  .family-login :where(input:not([type="checkbox"], [type="radio"], [type="hidden"])),
+  .family-app :where(select),
+  .family-login :where(select),
+  .family-app :where(textarea:not(.chat-composer textarea)) {
+    width: 100%;
+    min-height: 2.5rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 0.75rem;
+    background: var(--ui-surface);
+    color: var(--ui-ink);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    line-height: 1.4;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .family-app :where(select),
+  .family-login :where(select) {
+    appearance: none;
+  }
+
+  .family-app :where(.ds-select-sm) {
+    min-height: 2rem;
+    padding: 0.25rem 2rem 0.25rem 0.625rem;
+    font-size: 0.8125rem;
+  }
+
+  .family-app :where(textarea:not(.chat-composer textarea)) {
+    min-height: 5.5rem;
+    resize: vertical;
+  }
+
+  .family-app :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"], .ds-chip-input, .ds-search-field, .ds-amount-field *), select, textarea:not(.chat-composer textarea)):hover:not(:disabled),
+  .family-login :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select):hover:not(:disabled) {
+    border-color: var(--ui-border-strong);
+  }
+
+  .family-app :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"], .ds-chip-input, .ds-search-field, .ds-amount-field *), select, textarea:not(.chat-composer textarea)):focus-visible,
+  .family-login :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select):focus-visible {
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ui-accent) 20%, transparent);
+  }
+
+  .family-app :where(input, select, textarea):disabled,
+  .family-login :where(input, select):disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .family-app :where(input[type="checkbox"]:not([role="switch"]), input[type="radio"]:not(.sr-only)) {
+    accent-color: var(--ui-accent);
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .family-app :where(input[type="checkbox"][role="switch"]) {
+    appearance: none;
+    position: relative;
+    width: 2.5rem;
+    height: 1.375rem;
+    border-radius: 999px;
+    background: var(--ui-border-strong);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 150ms ease;
+  }
+  .family-app :where(input[type="checkbox"][role="switch"])::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: calc(1.375rem - 4px);
+    height: calc(1.375rem - 4px);
+    border-radius: 999px;
+    background: var(--ui-surface);
+    box-shadow: 0 1px 2px rgba(16, 15, 28, 0.18);
+    transition: transform 150ms ease;
+  }
+  .family-app :where(input[type="checkbox"][role="switch"]:checked) {
+    background: var(--ui-accent);
+  }
+  .family-app :where(input[type="checkbox"][role="switch"]:checked)::before {
+    transform: translateX(1.125rem);
+  }
+
+  .family-app :where(input[type="range"]) {
+    accent-color: var(--ui-accent);
+    width: 100%;
+    cursor: pointer;
+  }
+
+  .family-app :where(input[type="file"]:not(.hidden)) {
+    width: 100%;
+    border: 1px dashed var(--ui-border-strong);
+    border-radius: 0.75rem;
+    background: var(--ui-surface-2);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .family-dialog form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .family-dialog label:not(.category-choice):not(:has(> input[type="checkbox"], > input[type="radio"])) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ui-ink);
+  }
+
+  .family-app label:not(.category-choice):has(> input[type="checkbox"], > input[type="radio"]) {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.625rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--ui-ink);
+  }
+
+  .family-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+/* ==========================================================================
+ * Layout adaptativo do AppShell
+ * ========================================================================== */
+.family-app .family-main {
+  max-width: 1048px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.25rem 1rem calc(6.25rem + env(safe-area-inset-bottom));
+}
+.family-app.is-chat {
+  height: var(--chat-viewport-height, 100dvh);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.family-app.is-chat .family-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  padding: 0.5rem 1rem 0.5rem;
+}
+.family-chat-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.family-chat-slot[hidden] {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .family-app .family-main {
+    padding: 1.5rem 1.5rem calc(6.5rem + env(safe-area-inset-bottom));
+  }
+  .family-app.is-chat .family-main {
+    padding: 0.75rem 1.5rem 0.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .family-app .family-main {
+    padding: 2rem 2.25rem 3rem;
+  }
+  .family-app.is-chat {
+    flex-direction: row;
+  }
+  .family-app.is-chat .family-main {
+    max-width: 920px;
+    padding: 1.25rem 2rem 1.5rem;
+  }
+}
+
+/* Foco acessível limpo */
+.family-app :focus-visible,
+.family-login :focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+/* Toque: 44px mínimos e 16px nos inputs para evitar zoom no iOS */
 @media (pointer: coarse) {
   :root:root {
     --size-field: 0.275rem;
   }
-  .family-app :is(.input, .select, .textarea),
-  .family-login :is(.input, .select) {
+  .family-app :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]), select, textarea),
+  .family-login :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select) {
+    min-height: 2.75rem;
     font-size: 1rem;
   }
 }
 
-/* Botão suave sem cor própria (btn-soft solto, variante quiet do Button):
- * o daisyUI cai no cinza neutro (base-content a 8%), sem relação com a marca.
- * Aqui o padrão vira o primary. Quem pede outra cor (btn-error…) mantém. */
-.family-app .btn-soft:not(.btn-secondary, .btn-accent, .btn-neutral, .btn-info, .btn-success, .btn-warning, .btn-error) {
-  --btn-color: var(--color-primary);
-  --btn-rest-fg: var(--color-primary-ink);
-  --btn-soft-bg: var(--color-base-100);
+/* ==========================================================================
+ * Herói invertido (Branded Hero)
+ * ========================================================================== */
+.family-app .is-hero-inverted {
+  background: var(--ui-hero-bg);
+  color: var(--ui-hero-fg);
+  border-color: var(--ui-hero-border);
+}
+.family-app .is-hero-inverted .ds-value .ds-cur {
+  color: var(--ui-hero-muted);
+}
+.family-app .is-hero-inverted .ds-money.is-neg,
+.family-app .is-hero-inverted .ds-value.is-neg {
+  color: #fca5a5;
+}
+.family-app .is-hero-inverted .ds-caption {
+  color: var(--ui-hero-muted);
+}
+.family-app .is-hero-inverted .ds-row {
+  color: var(--ui-hero-fg);
+}
+.family-app .is-hero-inverted .ds-row b {
+  color: var(--ui-hero-fg);
+}
+.family-app .is-hero-inverted .ds-row small {
+  color: var(--ui-hero-muted);
+}
+.family-app .is-hero-inverted .ds-row-trail {
+  color: var(--ui-hero-fg);
+}
+.family-app .is-hero-inverted .ds-chip {
+  background-color: var(--ui-hero-surface);
+  color: var(--ui-hero-fg);
+  border-color: var(--ui-hero-border);
+}
+.family-app .is-hero-inverted .ds-chip[data-tone="ok"] .ds-dot {
+  color: #4ade80;
+}
+.family-app .is-hero-inverted .ds-chip[data-tone="warn"] .ds-dot {
+  color: #fbbf24;
+}
+.family-app .is-hero-inverted .ds-chip[data-tone="danger"] .ds-dot {
+  color: #f87171;
+}
+.family-app .is-hero-inverted .ds-segbar {
+  background: var(--ui-hero-surface);
+}
+.family-app .is-hero-inverted .ds-stat-expand-body {
+  border-color: var(--ui-hero-divider);
 }
 
-/* SELECT (app/ds/select.tsx) — o único do app. Fora de camada: precisa vencer
- * o .select do daisyUI. A seta do daisyUI (dois gradientes de 4px) sai; entra
- * a seta do DS, num elemento próprio, para poder girar com a lista aberta. */
+/* ==========================================================================
+ * Primitivos do DS (Select, ExpandingSearch, Segmented pill, Motion)
+ * ========================================================================== */
 .family-app .ds-select {
   background-image: none;
   padding-inline: 0.75rem 2.25rem;
@@ -323,57 +737,50 @@
     border-color var(--ds-dur-fast) var(--ds-ease),
     box-shadow var(--ds-dur-fast) var(--ds-ease);
 }
-.family-app .ds-select.select-sm {
+.family-app .ds-select.ds-select-sm {
   padding-inline: 0.625rem 2rem;
 }
-/* sm = degrau de filtro, 13px como as abas do Segmented sm. Só com mouse: no
- * toque o campo fica em 16px (regra de pointer: coarse acima, anti-zoom iOS). */
 @media (pointer: fine) {
-  .family-app .ds-select.select-sm {
+  .family-app .ds-select.ds-select-sm {
     font-size: 0.8125rem;
   }
 }
 .family-app .ds-select:hover:not(:disabled) {
-  border-color: color-mix(in oklab, var(--color-base-content) 32%, transparent);
+  border-color: var(--ui-border-strong);
 }
-/* Regras separadas: navegador sem :open descartaria a lista inteira. */
-.family-app .ds-select:focus-visible {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
-}
+.family-app .ds-select:focus-visible,
 .family-app .ds-select:open {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ui-accent) 20%, transparent);
 }
-/* Opção vazia marcada ("Todas as contas", "Escolher conta"): tom de dica. */
 .family-app .ds-select:has(option[value=""]:checked) {
-  color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+  color: var(--ui-muted);
 }
 .family-app .ds-select-chevron {
-  color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  color: var(--ui-muted);
   transition:
     rotate var(--ds-dur) var(--ds-ease-move),
     color var(--ds-dur-fast) var(--ds-ease);
 }
 .family-app .ds-select-wrap:has(.ds-select:open) .ds-select-chevron {
   rotate: 180deg;
-  color: var(--color-primary-ink);
+  color: var(--ui-accent-ink);
 }
 .family-app .ds-select-wrap:has(.ds-select:disabled) .ds-select-chevron {
   opacity: 0.4;
 }
-/* Lista aberta (só onde há appearance: base-select; o resto usa a nativa). */
+
 @supports (appearance: base-select) {
   .family-app .ds-select::picker(select) {
     margin-block: 4px;
     padding: 4px;
-    border: 1px solid var(--color-base-300);
+    border: 1px solid var(--ui-border);
     border-radius: 12px;
+    background: var(--ui-surface);
     box-shadow:
-      0 12px 32px -8px color-mix(in oklab, var(--color-base-content) 22%, transparent),
-      0 2px 6px -2px color-mix(in oklab, var(--color-base-content) 12%, transparent);
+      0 12px 32px -8px rgba(16, 15, 28, 0.16),
+      0 2px 6px -2px rgba(16, 15, 28, 0.08);
     opacity: 1;
     translate: 0 0;
     transition:
@@ -398,44 +805,40 @@
     padding-inline: 0.625rem;
     gap: 0.5rem;
     font-size: 0.875rem;
-    color: var(--color-base-content);
+    color: var(--ui-ink);
     border-radius: 8px;
   }
   .family-app .ds-select option:not(:disabled):hover,
   .family-app .ds-select option:focus-visible {
-    background-color: var(--color-primary-tint);
+    background-color: var(--ui-accent-soft);
     outline: none;
   }
   .family-app .ds-select option:checked {
-    background-color: var(--color-primary-tint);
-    color: var(--color-primary-ink);
+    background-color: var(--ui-accent-soft);
+    color: var(--ui-accent-ink);
     font-weight: 500;
   }
   .family-app .ds-select option::checkmark {
-    color: var(--color-primary-ink);
+    color: var(--ui-accent-ink);
   }
 }
 
-/* BUSCA EXPANSÍVEL (app/ds/expanding-search.tsx). Fechada = círculo do
- * tamanho do campo (--size do .input: 40px, 44px no toque), lupa no tom da
- * marca; aberta = o .input do DS.
- * Cresce só no ESPAÇO LIVRE da linha (flex-grow 0 → 1), ancorada à direita:
- * quem está à esquerda não é coberto nem se mexe. A base sobe para 12rem para
- * caber o texto; se a linha não tiver isso livre (celular), o vizinho
- * .ds-search-sibling cede largura rolando por dentro, sem sumir. */
+/* Busca expansível */
 .family-app .ds-search {
   --ds-search-size: calc(var(--size-field, 0.25rem) * 10);
+  display: inline-flex;
+  align-items: center;
+  height: var(--ds-search-size);
   flex: 0 0 var(--ds-search-size);
   min-width: var(--ds-search-size);
   margin-inline-start: auto;
   gap: 0;
-  /* (círculo − ícone) / 2, menos a borda de 1px de cada lado. */
   padding-inline: calc((var(--ds-search-size) - 18px) / 2 - 1px);
-  border-color: transparent;
+  border: 1px solid transparent;
   border-radius: 999px;
-  background-color: var(--color-primary-tint);
+  background-color: var(--ui-accent-soft);
   box-shadow: none;
-  color: var(--color-primary-ink);
+  color: var(--ui-accent-ink);
   cursor: pointer;
   transition:
     flex-grow var(--ds-dur-move) var(--ds-ease-move),
@@ -446,7 +849,7 @@
     border-color var(--ds-dur) var(--ds-ease);
 }
 .family-app .ds-search:hover:not([data-open]) {
-  background-color: color-mix(in oklab, var(--color-primary) 20%, var(--color-base-100));
+  background-color: color-mix(in oklab, var(--ui-accent) 18%, var(--ui-surface));
 }
 .family-app .ds-search[data-open] {
   flex-grow: 1;
@@ -454,20 +857,19 @@
   flex-basis: min(12rem, 100%);
   gap: 0.5rem;
   padding-inline: 0.75rem 0.375rem;
-  border-color: var(--color-primary);
-  border-radius: var(--radius-field);
-  background-color: var(--color-base-100);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
-  color: var(--color-base-content);
+  border-color: var(--ui-accent);
+  border-radius: 12px;
+  background-color: var(--ui-surface);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ui-accent) 18%, transparent);
+  color: var(--ui-ink);
   cursor: text;
 }
-/* Aberta com texto mas sem foco: borda normal, sem anel. */
 .family-app .ds-search[data-open]:not(:focus-within) {
-  border-color: var(--color-base-300);
+  border-color: var(--ui-border);
   box-shadow: none;
 }
 .family-app .ds-search[data-open] .ds-search-icon {
-  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+  color: var(--ui-muted);
 }
 .family-app .ds-search:focus-within {
   outline: none;
@@ -475,7 +877,13 @@
 .family-app .ds-search .ds-search-field {
   flex: 0 0 0;
   width: 0;
+  min-width: 0;
   opacity: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 0.9375rem;
+  color: var(--ui-ink);
   transition: opacity var(--ds-dur-fast) var(--ds-ease);
 }
 .family-app .ds-search[data-open] .ds-search-field {
@@ -490,134 +898,37 @@
 .family-app .ds-search .ds-search-field::-webkit-search-cancel-button {
   appearance: none;
 }
-/* Vizinho da busca: largura do próprio conteúdo; só encolhe (rolando por
- * dentro) quando a busca aberta precisa da base de 12rem. */
 .family-app .ds-search-sibling {
   flex: 0 1 auto;
   min-width: 0;
 }
-/* Com espaço (≥640px) o vizinho não cede nada: a busca fica com o que sobra
- * (ela encolhe abaixo dos 12rem se preciso). No celular, cede rolando. */
 @media (min-width: 640px) {
   .family-app .ds-search-sibling {
     flex-shrink: 0;
   }
 }
 
-/* Grupo de abas (Segmented e afins): trilho tingido da marca (o base-200
- * padrão era um cinza quase branco, solto do resto da tela) e a opção marcada
- * numa pílula clara (base-100) com sombra curta. */
-.family-app .tabs-box {
-  background-color: var(--color-primary-tint);
-  box-shadow: none;
-}
-.family-app .tabs-box > .tab:not(.tab-active) {
-  color: color-mix(in oklab, var(--color-base-content) 72%, transparent);
-}
-.family-app .tabs-box > .tab:not(.tab-active):hover {
-  color: var(--color-primary-ink);
-}
-.family-app .tabs-box > .tab.tab-active,
-.family-app .ds-seg-pill {
-  background-color: var(--color-base-100);
-  color: var(--color-base-content);
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-base-content) 12%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--color-primary) 18%, transparent);
-}
-/* Segmented: a pílula é um elemento só, que DESLIZA até a opção marcada (as
- * abas ficam transparentes por cima dela). Transform + largura, nos tokens de
- * movimento do DS — que zeram com "reduzir movimento". A cor do texto da aba
- * troca no mesmo ritmo, para não "acender" antes da pílula chegar. */
+/* Segmented sliding pill */
 .family-app .ds-seg-pill {
   position: absolute;
   top: 0;
   left: 0;
   z-index: -1;
-  border-radius: var(--radius-field);
+  border-radius: 9px;
+  background-color: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  box-shadow: 0 1px 2px rgba(16, 15, 28, 0.06);
   pointer-events: none;
   will-change: transform, width;
   transition:
     transform var(--ds-dur) var(--ds-ease-move),
     width var(--ds-dur) var(--ds-ease-move);
 }
-.family-app .ds-seg[data-pill] > .tab {
+.family-app .ds-seg[data-pill] > .ui-seg-tab {
   transition: color var(--ds-dur) var(--ds-ease-move);
 }
-.family-app .ds-seg[data-pill] > .tab.tab-active {
-  background-color: transparent;
-  box-shadow: none;
-}
 
-.family-app .tabs > .tab {
-  padding-block: 0;
-  align-items: center;
-  border: 0;
-  border-radius: var(--radius-field);
-}
-.family-app .tabs > .tab:not(.tab-active) {
-  background: transparent;
-}
-/* label {display:flex; column; 12px/600} do globals.css empilhava ícone e campo. */
-.family-app label.input {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--color-base-content);
-}
-/* Label que envolve checkbox, rádio ou interruptor: caixinha e texto na mesma
- * linha (o label do globals.css empilha em coluna). Fora o tile de categoria:
- * lá o rádio é invisível e o tile inteiro é o botão — virar linha centralizada
- * encolhia cada tile ao tamanho do texto (larguras irregulares na grade).
- * Em `base` (vence o legado, perde para utilitário): rótulo de várias linhas
- * pede `items-start` e o utilitário precisa poder vencer. */
-@layer base {
-  .family-app label:not(.category-choice):has(> input[type="checkbox"], > input[type="radio"]) {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 400;
-  }
-  /* Legenda do DS: usada em ~160 lugares e nunca definida — saía no tamanho e
-   * na cor do corpo. 13px, entrelinha folgada, tom apagado, sem margem própria
-   * (o espaçamento é do contêiner). Utilitários na mesma tag continuam valendo. */
-  .family-app .ds-caption {
-    margin: 0;
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
-  }
-}
-
-/* Botão secundário (variante padrão do Button): o .btn sem cor do daisyUI é
- * um bloco cinza (base-200) com sombra — pesado e sem relação com a marca.
- * Aqui vira contornado: fundo da superfície, borda da linha, sem sombra; o
- * hover tinge de leve na marca. */
-.family-app .ds-button.ds-secondary {
-  --btn-bg: var(--color-base-100);
-  --btn-border: var(--color-base-300);
-  --btn-shadow: none;
-  --btn-noise: none;
-}
-.family-app .ds-button.ds-secondary:hover:not(:disabled) {
-  --btn-bg: var(--color-primary-tint);
-  --btn-border: color-mix(in oklab, var(--color-primary) 30%, var(--color-base-300));
-}
-/* Conteúdo de painel alinha com o título do painel: linhas de lista e o stat
- * embutido (Caminho do saldo) perdem o recuo lateral próprio do daisyUI. */
-.family-app .ds-panel .list-row {
-  padding-inline: 0;
-}
-.family-app .ds-panel .list-row::after {
-  inset-inline: 0;
-}
-.family-app .ds-panel .stats > .stat {
-  padding-inline: 0;
-}
-
-/* Movimento: expandir/recolher e barras no mesmo ritmo dos tokens --ds-*
- * (eram 650ms + barras esperando até 1,2s para começar). */
+/* Movimento DS */
 .family-app .ds-stat-expand-wrap,
 .family-app .ds-collapse {
   transition-duration: var(--ds-dur-move);
@@ -634,53 +945,224 @@
   animation-duration: var(--ds-dur-shape);
   animation-timing-function: var(--ds-ease);
 }
-.family-app .ds-segbar span:nth-child(1) { animation-delay: 220ms; }
-.family-app .ds-segbar span:nth-child(2) { animation-delay: 160ms; }
-.family-app .ds-segbar span:nth-child(n + 3) { animation-delay: 100ms; }
+.family-app .ds-segbar span:nth-child(1) { animation-delay: 180ms; }
+.family-app .ds-segbar span:nth-child(2) { animation-delay: 120ms; }
+.family-app .ds-segbar span:nth-child(n + 3) { animation-delay: 80ms; }
 
-/* Sem o preflight do Tailwind, <dd> mantém o recuo de 40px do navegador. */
-.family-app dd {
-  margin-inline-start: 0;
-}
-.family-app ::placeholder {
-  color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
-}
-
-/* Nav (dock): o indicador ativo é só o do daisyUI (barrinha + cor primária);
- * o CSS antigo pintava um quadrado no ícone. Itens com largura máxima para
- * não se espalharem até as bordas em tela larga. */
-.family-nav.dock {
-  justify-content: center;
-}
-.family-nav.dock > button {
-  max-width: 7.5rem;
-}
-.family-nav.dock button[aria-current] .family-svg {
-  background: transparent;
-  box-shadow: none;
-  color: var(--color-primary);
-}
-.family-nav.dock .family-svg {
-  margin: 0;
-}
-
-/* Chat: a nav fica no fluxo (abaixo do chat) e some com o teclado aberto.
- * O `dock` do daisyUI é fixed + flex e venceria as regras antigas. */
-.family-app.is-chat .family-nav.dock {
+/* Mobile bottom bar em Chat (Judite): fica no fluxo para respeitar o teclado iOS */
+.family-app.is-chat .ui-mobile-nav {
   position: static;
   flex-shrink: 0;
-  margin-top: 8px;
 }
-:root[data-chat-keyboard="open"] .family-app.is-chat .family-nav.dock {
+:root[data-chat-keyboard="open"] .family-app.is-chat .ui-mobile-nav {
   display: none;
 }
 
-/* Teclado aberto (iOS): o FamilyDialog sobe para o topo. Fora de camada para
- * vencer o place-items do modal do daisyUI. */
-:root[data-chat-keyboard="open"] .modal:has(> .family-dialog) {
+/* Teclado aberto (iOS): o FamilyDialog sobe para o topo. */
+:root[data-chat-keyboard="open"] .ui-dialog-backdrop:has(> .family-dialog) {
   align-items: start;
   padding-top: calc(env(safe-area-inset-top) + 12px);
 }
 
-/* Tema "system" = sem data-theme (prefersdark decide). "light" forçado não
- * tem tema próprio no daisyUI, então cai no emerald (default). */
+/* MonthRail dentro de Panel sem .card-body */
+.family-app .ds-panel > .ds-panel-h + .ds-mrail > .ds-mrail-nav {
+  margin-top: -36px;
+}
+
+/* Judite: tipografia, fluxo de texto e animações */
+.family-app .chat-empty h2 {
+  font-family: var(--family-font-sans), system-ui, sans-serif;
+}
+.family-app .chat-disclaimer {
+  font-size: 0.75rem;
+}
+.family-app .chat-text {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+.family-app .chat-text p {
+  color: inherit;
+  margin: 0 0 0.45rem;
+}
+.family-app .chat-text p:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes judite-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes chat-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes chat-appear {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.family-app .judite-avatar {
+  position: relative;
+}
+.family-app .judite-avatar.is-working::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  border-top-color: var(--ui-accent);
+  border-right-color: var(--ui-accent-ink);
+  pointer-events: none;
+}
+.family-app .chat-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.family-app .chat-dots > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.5;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .family-app .judite-avatar.is-working::after {
+    animation: judite-orbit 1.1s linear infinite;
+  }
+  .family-app .chat-dots > span {
+    animation: chat-dot 1.2s ease-in-out infinite;
+  }
+  .family-app .chat-dots > span:nth-child(2) {
+    animation-delay: 0.16s;
+  }
+  .family-app .chat-dots > span:nth-child(3) {
+    animation-delay: 0.32s;
+  }
+  .family-app .chat-message:last-of-type,
+  .family-app .chat-waiting {
+    animation: chat-appear 200ms var(--ds-ease) both;
+  }
+}
+
+/* Barra de rascunho no Copiloto desktop: sem bottom dock, desce para 1rem. */
+@media (min-width: 1024px) {
+  :root .family-app .fut-screen .ds-draftbar {
+    bottom: 1rem;
+  }
+}
+
+/* Guided tour (overlay nativo) */
+dialog.guided-tour {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  background: transparent;
+  overflow: hidden;
+  color: var(--ui-ink);
+}
+dialog.guided-tour:not([open]) {
+  display: none;
+}
+.guided-tour::backdrop {
+  background: transparent;
+}
+.guided-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.guided-bubble {
+  position: absolute;
+  width: min(340px, calc(100vw - 32px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 18px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  box-shadow: 0 16px 48px rgba(16, 15, 28, 0.28);
+}
+.guided-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: var(--ui-muted);
+}
+.guided-bubble h2 {
+  font-size: 1.125rem;
+  line-height: 1.3;
+  margin: 8px 0 8px;
+  color: var(--ui-ink);
+}
+.guided-bubble p {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  margin: 0 0 16px;
+  color: var(--ui-muted);
+}
+.guided-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Home editor (reordenação de blocos em Nosso espaço / Início) */
+.is-editing .personal-home-block {
+  border: 2px dashed var(--ui-accent);
+  border-radius: 18px;
+  padding: 8px;
+  background: var(--ui-surface);
+  transition: box-shadow 150ms ease, opacity 150ms ease;
+}
+.is-editing .personal-home-block.is-dragging {
+  opacity: 0.65;
+  border-style: solid;
+}
+.home-card-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px;
+  min-width: 0;
+}
+.home-card-tools > div {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+.family-app .home-drag-handle {
+  touch-action: none;
+  cursor: grab;
+  flex: 1;
+  justify-content: flex-start;
+  gap: 8px;
+  text-align: left;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.75rem;
+}
+.home-remove-card {
+  color: var(--ui-danger) !important;
+}

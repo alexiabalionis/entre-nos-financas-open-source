@@ -24,12 +24,12 @@ export function ProfilePhotoField({
         url={photoUrl}
         name={name}
         className="size-24"
-        shape="rounded-box"
+        shape="rounded-2xl"
       />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div>
-          <p className="m-0 text-sm font-semibold">Foto de perfil</p>
-          <p className="m-0 text-xs text-base-content/60">
+          <p className="m-0 text-sm font-semibold text-ink">Foto de perfil</p>
+          <p className="m-0 text-xs text-muted">
             Use uma imagem sua. Ela é reduzida antes do envio, sem metadados, e
             não tem link público.
           </p>

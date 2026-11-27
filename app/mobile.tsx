@@ -100,14 +100,22 @@ export function InstallApp() {
     };
   }, []);
   return (
-    <>
+    <div className="flex flex-col gap-3">
       {offline && (
-        <p className="offline-banner alert alert-soft alert-warning" role="status">
+        <p
+          className="m-0 rounded-xl border border-warn/30 bg-warn-bg px-4 py-3 text-sm font-medium text-ink"
+          role="status"
+        >
           Sem conexão com o servidor. Reconecte antes de salvar alterações.
         </p>
       )}
       {standalone && (
-        <p role="status" className="alert alert-soft alert-success">O Entre Nós já está aberto como app neste aparelho.</p>
+        <p
+          role="status"
+          className="m-0 rounded-xl border border-ok/25 bg-ok-bg px-4 py-3 text-sm font-medium text-ok"
+        >
+          O Entre Nós já está aberto como app neste aparelho.
+        </p>
       )}
       {!standalone && (
         <Collapsible
@@ -115,18 +123,18 @@ export function InstallApp() {
           defaultOpen
           summary="Instalar no iPhone ou outro celular"
         >
-          <p>
+          <p className="m-0 mb-2 text-sm leading-relaxed text-ink">
             {ios
               ? "No Safari, toque em Compartilhar, depois em Adicionar à Tela de Início e ative Abrir como App."
               : "No iPhone, abra no Safari e use Compartilhar → Adicionar à Tela de Início → Abrir como App. No Android, use Instalar app no menu do navegador."}
           </p>
-          <p className="fine">
+          <p className="ds-caption">
             Para o casal usar fora deste computador, é necessário o endereço
             HTTPS da versão hospedada. O endereço 127.0.0.1 pertence apenas ao
             aparelho em que foi aberto.
           </p>
         </Collapsible>
       )}
-    </>
+    </div>
   );
 }

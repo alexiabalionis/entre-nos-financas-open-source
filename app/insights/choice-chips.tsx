@@ -15,7 +15,7 @@ export function ChoiceChips<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="ins-chips">
+    <div className="max-w-full overflow-x-auto">
       <Segmented
         size="sm"
         label={label}

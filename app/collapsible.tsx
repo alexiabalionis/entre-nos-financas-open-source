@@ -5,6 +5,8 @@ import {
   type ReactNode,
   type DetailsHTMLAttributes,
 } from "react";
+import { Icon } from "./ds/icon";
+import { cx } from "./ds/shared";
 
 type Variant = "inline" | "card";
 
@@ -12,44 +14,20 @@ type CollapsibleProps = Omit<
   DetailsHTMLAttributes<HTMLDetailsElement>,
   "onToggle" | "children" | "open"
 > & {
-  /**
-   * Cabeçalho clicável. No `inline` é o conteúdo do summary; no `card` é o
-   * título (com `description` abaixo).
-   */
   summary: ReactNode;
-  /** Só no `card`: subtítulo mostrado abaixo do título. */
   description?: ReactNode;
-  /** `inline` (default): summary discreto. `card`: cartão com chevron. */
   variant?: Variant;
-  /** Controlado: estado aberto. Para não-controlado, use `defaultOpen`. */
   open?: boolean;
-  /** Não-controlado: estado inicial. */
   defaultOpen?: boolean;
-  /** Notifica a mudança de estado (aberto/fechado). */
   onOpenChange?: (open: boolean) => void;
-  /**
-   * Só não-controlado: abre automaticamente quando `location.hash` começa com
-   * este prefixo (ex. `"#card-"` para deep-link de cartão).
-   */
   revealOnHash?: string;
-  /** Só no `card`: realça a borda quando aberto (destaque de seção ativa). */
   activeBorder?: boolean;
-  /** Seta do daisyUI à direita (padrão). false quando a linha já tem ação própria ali (ex. menu ⋯). */
   arrow?: boolean;
   children: ReactNode;
 };
 
 /**
- * Bloco expansível único do projeto, sobre o `<details>/<summary>` nativo
- * (acessibilidade de graça: o summary já é o controle com estado). Dois
- * visuais via `variant`:
- *
- * - `inline` (default): summary discreto dentro de formulários/listas.
- * - `card`: cartão com título, descrição opcional e chevron — substitui os
- *   antigos `HomeDisclosure` e `ProfileCard`.
- *
- * Controlado (`open` + `onOpenChange`, ex. accordion de perfil) ou
- * não-controlado (`defaultOpen`, com `revealOnHash` opcional).
+ * Bloco expansível sobre `<details>/<summary>` nativo em Tailwind v4 puro.
  */
 export function Collapsible({
   summary,
@@ -79,23 +57,18 @@ export function Collapsible({
     return () => window.removeEventListener("hashchange", reveal);
   }, [controlled, revealOnHash]);
 
-  // Visual do daisyUI (collapse + seta). As classes ui-collapsible-* ficam
-  // porque as telas as usam em regras de layout.
-  const classes = [
-    "ui-collapsible",
-    `ui-collapsible--${variant}`,
-    "collapse border border-base-300 bg-base-100",
-    arrow && "collapse-arrow",
-    activeBorder ? "ui-collapsible--active-border open:border-primary" : "",
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
     <details
       {...rest}
-      className={classes}
+      className={cx(
+        "ui-collapsible group",
+        `ui-collapsible--${variant}`,
+        variant === "card"
+          ? "rounded-2xl border border-border bg-surface"
+          : "rounded-xl border border-border bg-surface",
+        activeBorder && "open:border-accent",
+        className,
+      )}
       open={isOpen}
       onToggle={(e) => {
         const next = e.currentTarget.open;
@@ -103,24 +76,35 @@ export function Collapsible({
         onOpenChange?.(next);
       }}
     >
-      {/* flex: o daisyUI põe display:block no summary e empilhava ícone,
-          título e valor que as telas montam lado a lado. */}
-      <summary className="collapse-title flex items-center gap-2.5">
-        {variant === "card" ? (
-          <span className="ui-collapsible-heading min-w-0">
-            <strong className="block">{summary}</strong>
-            {description && <small className="block text-xs font-normal opacity-60">{description}</small>}
-          </span>
-        ) : (
-          summary
-        )}
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 px-4 py-3 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 flex-1 items-center gap-2.5">
+          {variant === "card" ? (
+            <span className="ui-collapsible-heading min-w-0">
+              <strong className="block text-sm font-semibold text-ink">{summary}</strong>
+              {description && (
+                <small className="block text-xs font-normal text-muted">
+                  {description}
+                </small>
+              )}
+            </span>
+          ) : (
+            summary
+          )}
+        </span>
+        {arrow ? (
+          <Icon
+            name="down"
+            size={16}
+            className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180"
+          />
+        ) : null}
       </summary>
       <div
-        className={
+        className={cx(
           variant === "card"
-            ? "ui-collapsible-body collapse-content"
-            : "collapse-content"
-        }
+            ? "ui-collapsible-body border-t border-border px-4 pb-4 pt-3"
+            : "px-4 pb-3.5 pt-0.5",
+        )}
       >
         {children}
       </div>

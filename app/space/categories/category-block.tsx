@@ -42,8 +42,8 @@ export function CategoryBlock({
   const color = categoryColor(category.name);
   const byId = (id: string) => category.tags.find((t) => t.id === id);
   return (
-    <section className="card card-border bg-base-100 shadow-sm">
-      <div className="card-body flex-row flex-wrap items-center gap-x-4 gap-y-3 p-3">
+    <section className="rounded-2xl border border-border bg-surface p-3.5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex min-w-48 items-center gap-3 sm:w-64">
           <IconBadge
             size="lg"
@@ -52,10 +52,10 @@ export function CategoryBlock({
             style={{ "--tone": color, "--badge-color": color } as CSSProperties}
           />
           <div className="min-w-0">
-            <h3 className="m-0 text-base font-semibold leading-snug">
+            <h3 className="m-0 text-sm font-semibold leading-snug text-ink">
               {category.name}
             </h3>
-            <p className="m-0 flex flex-wrap items-center gap-1 text-sm text-base-content/60">
+            <p className="m-0 mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
               {tagCount(category.tags.length)}
               {category.essential ? (
                 <StatusChip tone="ok" label="Essencial" />

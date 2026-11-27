@@ -22,7 +22,7 @@ export function Collapse({
     <div
       id={id}
       className="ds-collapse"
-      data-open={open || undefined}
+      data-open={open ? "" : undefined}
       style={height.style}
       onTransitionEnd={height.onTransitionEnd}
       inert={!open}

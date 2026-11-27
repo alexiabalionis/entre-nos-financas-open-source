@@ -46,10 +46,10 @@ export function OutflowList({
     <div className="flex flex-col">
       {main.map(row)}
       {rest.length > 0 && (
-        <div className="border-t border-base-300">
+        <div className="border-t border-border">
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="ui-reset-btn inline-flex items-center gap-1.5 py-2.5 text-sm font-medium text-accent-ink hover:underline cursor-pointer"
             aria-expanded={restOpen}
             aria-controls={restId}
             onClick={onToggleRest}

@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "./ds/button";
+import { Icon } from "./ds/icon";
 import { Panel } from "./ds/panel";
 import { Collapsible } from "./collapsible";
 import { Field } from "./field";
@@ -15,6 +16,7 @@ type Props = {
   ownConnections: Banks["connections"];
   ownAccounts: Banks["accounts"];
   unmapped: Banks["accounts"];
+  onClose?: () => void;
 };
 
 /** Passo a passo de 5 etapas para conectar os bancos da pessoa. */
@@ -27,135 +29,170 @@ export function BankOnboarding({
   ownConnections,
   ownAccounts,
   unmapped,
+  onClose,
 }: Props) {
+  const stepLabels = [
+    "Autorizar",
+    "Chaves de acesso",
+    "Adicionar banco",
+    "Vincular contas",
+    "Conferir",
+  ];
+
   return (
     <div
       id="bank-onboarding"
-      className="bank-onboarding min-w-0 scroll-mt-6 rounded-box bg-base-200 p-4 [overflow-wrap:anywhere]"
+      className="min-w-0 scroll-mt-6 [overflow-wrap:anywhere]"
       role="region"
       aria-label="Conectar meus bancos"
     >
-      <Panel title="Conectar meus bancos">
-        <p className="ds-caption text-xs opacity-60">
-          Cada pessoa faz este passo a passo no próprio perfil. Seus movimentos
-          ficam apenas na sua família no Entre Nós; o outro casal não tem
-          acesso. A Pluggy processa os dados que você autorizar.
-        </p>
+      <Panel title="Conectar meus bancos" className="mb-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="ds-caption min-w-0 flex-1">
+            Cada pessoa faz este passo a passo no próprio perfil. Seus
+            movimentos ficam apenas na sua família no Entre Nós.
+          </p>
+          {onClose ? (
+            <Button variant="quiet" size="sm" onClick={onClose}>
+              Fechar guia
+            </Button>
+          ) : null}
+        </div>
+
         <nav aria-label="Etapas da conexão bancária">
-          <ol className="steps w-full overflow-x-auto">
-            {[
-              "Autorizar",
-              "Proteger acesso",
-              "Adicionar banco",
-              "Vincular contas",
-              "Conferir",
-            ].map((label, index) => (
-              <li
-                key={label}
-                className={"step" + (index + 1 <= step ? " step-primary" : "")}
-                data-content={index + 1}
-              >
-                <button
-                  className={
-                    "btn btn-xs btn-ghost" +
-                    (step === index + 1 ? " font-semibold" : "")
-                  }
-                  type="button"
-                  aria-current={step === index + 1 ? "step" : undefined}
-                  disabled={busy}
-                  onClick={() => setGuideStep(index + 1)}
-                >
-                  {label}
-                </button>
-              </li>
-            ))}
+          <ol className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+            {stepLabels.map((label, index) => {
+              const n = index + 1;
+              const current = step === n;
+              const done = n < step;
+              return (
+                <li key={label}>
+                  <button
+                    type="button"
+                    aria-current={current ? "step" : undefined}
+                    disabled={busy}
+                    onClick={() => setGuideStep(n)}
+                    className={`ui-btn inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
+                      current
+                        ? "border-accent bg-accent-soft font-semibold text-accent-ink"
+                        : done
+                          ? "border-ok/30 bg-ok-bg text-ok"
+                          : "border-border bg-surface text-muted hover:text-ink"
+                    }`}
+                  >
+                    <span className="inline-flex size-4 items-center justify-center rounded-full bg-current/15 font-numeric text-[0.6875rem] font-semibold">
+                      {done ? <Icon name="check" size={10} /> : n}
+                    </span>
+                    {label}
+                  </button>
+                </li>
+              );
+            })}
           </ol>
         </nav>
-        <div className="bank-step-content flex flex-col gap-3" key={step}>
-          <h4 tabIndex={-1} className="text-sm font-semibold">
+
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-2/50 p-4" key={step}>
+          <h4 tabIndex={-1} className="m-0 text-sm font-semibold text-ink">
             Etapa {step} de 5 ·{" "}
             {
               [
                 "Autorize suas contas",
-                "Proteja seu acesso",
+                "Conecte seu acesso Pluggy",
                 "Adicione um banco seu",
                 "Escolha as contas correspondentes",
-                "Leia e confira os movimentos",
+                "Leia os movimentos iniciais",
               ][step - 1]
             }
           </h4>
+
           {step === 1 && (
             <>
-              <p className="text-sm">
+              <p className="m-0 text-sm leading-relaxed text-ink">
                 Entre no Meu Pluggy com seu próprio acesso e conecte seus bancos
                 e cartões. Seu parceiro ou parceira fará o mesmo no perfil dele
                 ou dela.
               </p>
-              <p className="text-sm">
+              <p className="m-0 text-sm leading-relaxed text-muted">
                 Confira os dados solicitados e o prazo de autorização na tela do
                 banco. Nunca informe senha bancária no Entre Nós.
               </p>
-              <a
-                className="link link-primary text-sm"
-                href="https://meu.pluggy.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Abrir Meu Pluggy ↗
-              </a>
-              <p className="ds-caption text-xs opacity-60">
+              <div>
+                <a
+                  className="text-sm font-medium text-accent-ink hover:underline"
+                  href="https://meu.pluggy.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Abrir Meu Pluggy ↗
+                </a>
+              </div>
+              <p className="ds-caption">
                 Usamos somente consultas: não fazemos pagamentos ou
-                transferências. As condições e a frequência de atualização
-                dependem do plano da Pluggy e do banco.
+                transferências.
               </p>
-              <Button
-                type="button"
-                variant="primary"
-                disabled={busy}
-                onClick={() => setGuideStep(2)}
-              >
-                Já autorizei meus bancos · continuar
-              </Button>
+              <div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={busy}
+                  onClick={() => setGuideStep(2)}
+                >
+                  Já autorizei meus bancos · continuar
+                </Button>
+              </div>
             </>
           )}
+
           {step === 2 && (
             <>
-              <p className="text-sm">
-                Entre no painel da Pluggy com o mesmo acesso do Meu Pluggy. Abra{" "}
-                <strong>Applications → sua aplicação</strong> e copie o Client
-                ID e o Client Secret. Use as credenciais do seu próprio acesso.
+              <p className="m-0 text-sm leading-relaxed text-ink">
+                No painel da Pluggy, copie as chaves da sua aplicação pessoal
+                para que o Entre Nós possa consultar seus extratos com segurança.
               </p>
-              <a
-                className="link link-primary text-sm"
-                href="https://dashboard.pluggy.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Abrir painel da Pluggy ↗
-              </a>
-              <p className="ds-caption text-xs opacity-60">
-                Se você já salvou seu acesso aqui, pode continuar. Gerar um novo
-                Client Secret pode invalidar o anterior; não é necessário gerar
-                outro a cada banco.
-              </p>
+              <div>
+                <a
+                  className="text-sm font-medium text-accent-ink hover:underline"
+                  href="https://dashboard.pluggy.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Abrir painel da Pluggy ↗
+                </a>
+              </div>
+              {data.hasCredentials && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ok/25 bg-ok-bg/70 px-3.5 py-2.5">
+                  <span className="text-sm font-medium text-ok">
+                    ✓ Chaves de acesso já configuradas neste perfil.
+                  </span>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setGuideStep(3)}
+                  >
+                    Continuar para adicionar banco
+                  </Button>
+                </div>
+              )}
               <Collapsible
-                className="bank-setup"
-                defaultOpen
+                defaultOpen={!data.hasCredentials}
                 summary={
                   data.hasCredentials
-                    ? "Atualizar meu acesso à API"
-                    : "Configurar meu acesso à API"
+                    ? "Atualizar chaves de acesso (avançado)"
+                    : "Informar chaves de acesso"
                 }
               >
-                <p className="ds-caption text-xs opacity-60">
-                  Credenciais da API da Pluggy. Nunca informe senha bancária.
-                  Elas serão cifradas e não poderão ser vistas pelo outro
-                  titular.
+                <p className="ds-caption mb-3">
+                  Abra <strong>Applications → sua aplicação</strong> na Pluggy e
+                  copie o Client ID e o Client Secret. Elas serão cifradas e não
+                  ficam visíveis para o outro titular.
                 </p>
                 <form
-                  className="flex flex-col gap-2"
+                  className="flex flex-col gap-3"
                   autoComplete="off"
                   onSubmit={(e) => {
+                    e.preventDefault();
                     const v = fields(e),
                       form = e.currentTarget;
                     void work(async () => {
@@ -166,10 +203,10 @@ export function BankOnboarding({
                       });
                       form.reset();
                       setGuideStep(3);
-                    }, "Seu acesso foi protegido. Agora adicione o itemId de cada banco.");
+                    }, "Seu acesso foi protegido. Agora adicione cada banco.");
                   }}
                 >
-                  <Field label="Client ID">
+                  <Field label="Chave pública (Client ID)">
                     <input
                       name="clientId"
                       autoComplete="off"
@@ -178,7 +215,7 @@ export function BankOnboarding({
                       maxLength={300}
                     />
                   </Field>
-                  <Field label="Client Secret">
+                  <Field label="Chave secreta (Client Secret)">
                     <input
                       name="clientSecret"
                       type="password"
@@ -188,73 +225,61 @@ export function BankOnboarding({
                       maxLength={500}
                     />
                   </Field>
-                  <label className="bank-consent flex items-start gap-2 text-sm">
+                  <label className="bank-consent flex items-start gap-2 text-sm text-ink">
                     <input name="consent" type="checkbox" required />
                     Autorizo consultar minhas contas e compartilhar os
                     movimentos com esta família no Entre Nós.
                   </label>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={busy || !data.storageReady}
-                  >
-                    Proteger meu acesso
-                  </Button>
+                  <div>
+                    <Button
+                      type="submit"
+                      variant={data.hasCredentials ? "secondary" : "primary"}
+                      disabled={busy || !data.storageReady}
+                    >
+                      Proteger meu acesso
+                    </Button>
+                  </div>
                 </form>
               </Collapsible>
-              {data.hasCredentials && (
-                <button
-                  className="btn btn-sm btn-soft"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setGuideStep(3)}
-                >
-                  Meu acesso já está salvo · continuar
-                </button>
-              )}
             </>
           )}
+
           {step === 3 && (
             <>
-              <p className="text-sm">
-                No painel da Pluggy, abra{" "}
-                <strong>
-                  Applications → sua aplicação → Demo → Connect Account
-                </strong>
-                . Escolha <strong>MeuPluggy</strong> e selecione um dos bancos
-                já autorizados.
+              <p className="m-0 text-sm leading-relaxed text-ink">
+                No painel da Pluggy (
+                <strong>Demo → Connect Account → MeuPluggy</strong>), selecione
+                o banco autorizado e copie o link ou o código da conexão criada.
               </p>
-              <p className="text-sm">
-                Abra a conexão criada e copie o <strong>itemId</strong>, ou o
-                link completo dessa tela. Repita esta etapa para cada banco.
-              </p>
-              <a
-                className="link link-primary text-sm"
-                href="https://meu.pluggy.ai/api-guide"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Ver guia oficial com as telas ↗
-              </a>
-              <p className="ds-caption text-xs opacity-60">
-                Seu parceiro já conectou o mesmo banco? Confira o titular nas
-                conexões abaixo. Não conecte novamente a mesma conta. Para
-                renovar uma autorização, use “Renovar” na conexão existente.
+              <div>
+                <a
+                  className="text-sm font-medium text-accent-ink hover:underline"
+                  href="https://meu.pluggy.ai/api-guide"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Ver guia oficial com as telas ↗
+                </a>
+              </div>
+              <p className="ds-caption">
+                Seu parceiro já conectou o mesmo banco? Não conecte novamente a
+                mesma conta. Para renovar uma autorização vencida, use “Renovar”
+                na conexão existente.
               </p>
               {!data.hasCredentials && (
-                <p role="status" className="alert alert-soft alert-info">
-                  Primeiro proteja seu acesso na etapa 2.
+                <p
+                  role="status"
+                  className="m-0 rounded-xl border border-info/25 bg-info-bg px-3.5 py-2.5 text-sm text-ink"
+                >
+                  Primeiro informe suas chaves de acesso na etapa 2.
                 </p>
               )}
               {data.hasCredentials && (
-                <Collapsible
-                  className="bank-setup"
-                  defaultOpen
-                  summary="Identificar meu banco"
-                >
+                <Collapsible defaultOpen summary="Identificar meu banco">
                   <form
-                    className="flex flex-col gap-2"
+                    className="flex flex-col gap-3"
                     onSubmit={(e) => {
+                      e.preventDefault();
                       const v = fields(e),
                         form = e.currentTarget;
                       void work(async () => {
@@ -266,7 +291,7 @@ export function BankOnboarding({
                         });
                         form.reset();
                         setGuideStep(4);
-                      }, "Conexão identificada, reutilizando o vínculo se já existia. Vincule as contas antes de ler os movimentos.");
+                      }, "Conexão identificada. Vincule as contas antes de ler os movimentos.");
                     }}
                   >
                     <Field label="Nome para identificar">
@@ -277,7 +302,10 @@ export function BankOnboarding({
                         placeholder="Ex.: meu Nubank…"
                       />
                     </Field>
-                    <Field label="itemId ou link da conexão no painel Pluggy">
+                    <Field
+                      label="Código ou link da conexão"
+                      hint="Cole o link da tela da conexão na Pluggy ou apenas o itemId."
+                    >
                       <input
                         name="item_id"
                         required
@@ -300,84 +328,88 @@ export function BankOnboarding({
                         }
                       />
                     </Field>
-                    <label className="bank-consent flex items-start gap-2 text-sm">
+                    <label className="bank-consent flex items-start gap-2 text-sm text-ink">
                       <input name="consent" type="checkbox" required />
                       Sou titular desta conexão e autorizei a leitura pelo Meu
                       Pluggy.
                     </label>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      disabled={busy || !data.storageReady}
-                    >
-                      Adicionar banco
-                    </Button>
+                    <div>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        disabled={busy || !data.storageReady}
+                      >
+                        Adicionar banco
+                      </Button>
+                    </div>
                   </form>
                 </Collapsible>
               )}
             </>
           )}
+
           {step === 4 && (
             <>
-              <p className="text-sm">
-                Na lista abaixo, escolha a conta do Entre Nós correspondente a
-                cada conta ou cartão do banco. Reutilize as contas que já têm
-                histórico. Crie uma nova apenas quando ela ainda não existir.
+              <p className="m-0 text-sm leading-relaxed text-ink">
+                Escolha a conta do Entre Nós correspondente a cada conta ou
+                cartão do banco. Reutilize as contas que já têm histórico.
               </p>
-              <p className="ds-caption text-xs opacity-60">
+              <p className="ds-caption">
                 Vincular uma conta não altera o saldo inicial nem confirma
-                movimentos. Uma conta já vinculada não pode ser vinculada outra
-                vez.
+                movimentos.
               </p>
-              {unmapped.length > 0 ? (
-                <p role="status" className="alert alert-soft alert-info">
-                  Faltam {unmapped.length} contas ou cartões seus para vincular.
-                </p>
-              ) : (
-                <p role="status" className="alert alert-soft alert-info">
-                  {ownConnections.length
+              <p
+                role="status"
+                className="m-0 rounded-xl border border-info/25 bg-info-bg px-3.5 py-2.5 text-sm text-ink"
+              >
+                {unmapped.length > 0
+                  ? `Faltam ${unmapped.length} contas ou cartões seus para vincular.`
+                  : ownConnections.length
                     ? ownAccounts.length
                       ? "Suas contas disponíveis em reais estão vinculadas."
                       : "Esta conexão ainda não retornou contas em reais. Confira a autorização no Meu Pluggy."
                     : "Adicione um banco na etapa 3 para continuar."}
-                </p>
-              )}
-              <ul className="list-disc pl-5 text-sm">
+              </p>
+              <ul className="m-0 list-disc pl-5 text-sm text-ink">
                 {ownConnections.map((c) => (
                   <li key={c.id}>
-                    <a className="link" href={"#bank-connection-" + c.id}>
+                    <a
+                      className="text-accent-ink hover:underline"
+                      href={"#bank-connection-" + c.id}
+                    >
                       {c.label} · {c.owner_label}
                     </a>
                   </li>
                 ))}
               </ul>
-              <Button
-                type="button"
-                variant="primary"
-                disabled={busy || !ownAccounts.length || unmapped.length > 0}
-                onClick={() => setGuideStep(5)}
-              >
-                Contas vinculadas · continuar
-              </Button>
+              <div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={busy || !ownAccounts.length || unmapped.length > 0}
+                  onClick={() => setGuideStep(5)}
+                >
+                  Contas vinculadas · continuar
+                </Button>
+              </div>
             </>
           )}
+
           {step === 5 && (
             <>
-              <p className="text-sm">
-                Em cada conexão abaixo, toque em{" "}
+              <p className="m-0 text-sm leading-relaxed text-ink">
+                Em cada conexão acima, toque em{" "}
                 <strong>Ler atualização disponível</strong>. Os movimentos
-                aparecem em Movimentos e já contam nos totais do mês.
+                aparecem em <strong>Movimentos</strong> e os pendentes ficam na
+                aba <strong>A conferir</strong>.
               </p>
-              <p className="text-sm">
-                Transferências entre suas contas, aplicações e pagamentos de
-                fatura não contam como gasto. Repetições de algo já lançado
-                contam uma vez só. Se algo não for de vocês, remova em
-                Movimentos.
-              </p>
-              <ul className="list-disc pl-5 text-sm">
+              <ul className="m-0 list-disc pl-5 text-sm text-ink">
                 {ownConnections.map((c) => (
                   <li key={c.id}>
-                    <a className="link" href={"#bank-connection-" + c.id}>
+                    <a
+                      className="text-accent-ink hover:underline"
+                      href={"#bank-connection-" + c.id}
+                    >
                       {c.label} ·{" "}
                       {c.last_read_at
                         ? "Já teve leitura"
@@ -389,28 +421,29 @@ export function BankOnboarding({
             </>
           )}
         </div>
-        <Collapsible className="bank-help" summary="Preciso de ajuda">
-          <p className="text-sm">
-            <strong>Não achei o itemId:</strong> abra a conexão criada em Demo
-            no painel da Pluggy e copie o link que contém itemId. Neste fluxo
-            pessoal, precisamos do itemId de cada conexão; não descobrimos seus
-            bancos automaticamente.
-          </p>
-          <p className="text-sm">
-            <strong>Apareceu o banco direto:</strong> volte à escolha do
-            conector e selecione MeuPluggy para usar a autorização já feita no
-            Meu Pluggy.
-          </p>
-          <p className="text-sm">
-            <strong>A autorização venceu:</strong> renove no Meu Pluggy ou no
-            banco e use “Renovar” na conexão existente aqui. Assim preservamos o
-            vínculo e o histórico.
-          </p>
-          <p className="text-sm">
-            <strong>Quero parar:</strong> “Pausar leitura” interrompe nossas
-            consultas. Para revogar o compartilhamento, use o Meu Pluggy ou o
-            banco. Os registros anteriores permanecem no app.
-          </p>
+
+        <Collapsible summary="Preciso de ajuda">
+          <div className="flex flex-col gap-2 text-sm text-muted">
+            <p className="m-0">
+              <strong className="text-ink">Não achei o código (itemId):</strong>{" "}
+              abra a conexão criada em Demo no painel da Pluggy e copie o link
+              que contém itemId.
+            </p>
+            <p className="m-0">
+              <strong className="text-ink">Apareceu o banco direto:</strong>{" "}
+              volte à escolha do conector e selecione MeuPluggy para usar a
+              autorização já feita no Meu Pluggy.
+            </p>
+            <p className="m-0">
+              <strong className="text-ink">A autorização venceu:</strong> renove
+              no Meu Pluggy ou no banco e use “Renovar” no menu ⋯ da conexão
+              existente.
+            </p>
+            <p className="m-0">
+              <strong className="text-ink">Quero parar:</strong> “Pausar
+              leitura” interrompe nossas consultas mantendo seus registros.
+            </p>
+          </div>
         </Collapsible>
       </Panel>
     </div>

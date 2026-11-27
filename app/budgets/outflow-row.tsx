@@ -31,12 +31,10 @@ export function OutflowRow(props: Props) {
   const [seen, setSeen] = useState(open);
   if (open && !seen) setSeen(true);
   return (
-    <div className="border-t border-base-300 first:border-t-0">
+    <div className="border-t border-border first:border-t-0">
       <button
         type="button"
-        // Grade própria + utilitários que zeram a base legada de <button>
-        // (inline-flex centralizado, borda, fundo, raio, 46px).
-        className="grid min-h-0 w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-none border-0 bg-transparent px-0 py-3 text-left [color:inherit] [font:inherit] hover:bg-transparent"
+        className="ui-reset-btn grid min-h-0 w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-none border-0 bg-transparent px-0 py-3 text-left text-ink hover:bg-transparent"
         aria-expanded={open}
         aria-controls={bodyId}
         onClick={onToggle}
@@ -47,15 +45,15 @@ export function OutflowRow(props: Props) {
           {view ? (
             <StatusChip tone={view.tone} label={view.chip} />
           ) : (
-            <small className="text-xs opacity-60">{row.categoryId ? "Sem teto" : "Saídas sem categoria"}</small>
+            <small className="text-xs text-muted">{row.categoryId ? "Sem teto" : "Saídas sem categoria"}</small>
           )}
         </span>
         <span className="flex flex-col items-end tabular-nums">
           <b className="text-sm font-medium whitespace-nowrap">
             {fmt(row.committed)}
-            <span className="ds-collapse-arrow ml-1 opacity-50" aria-hidden="true">↓</span>
+            <span className="ds-collapse-arrow ml-1 text-muted" aria-hidden="true">↓</span>
           </b>
-          <small className="text-xs opacity-60">{row.percent}%</small>
+          <small className="text-xs text-muted">{row.percent}%</small>
         </span>
       </button>
       <Collapse id={bodyId} open={open}>

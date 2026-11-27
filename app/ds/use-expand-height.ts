@@ -27,26 +27,38 @@ type Height = number | "none";
 export function useExpandHeight(open: boolean, replay: unknown = null) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [maxH, setMaxH] = useState<Height>(open ? "none" : 0);
-  // Último estado animado: na montagem (e no efeito dobrado do StrictMode)
-  // nada mudou, então não há o que animar.
-  const last = useRef({ open, replay });
+  // Último estado efetivamente aplicado: na montagem inicial nada mudou.
+  const committed = useRef({ open, replay });
 
   useLayoutEffect(() => {
     const el = bodyRef.current;
-    if (last.current.open === open && last.current.replay === replay) return;
-    last.current = { open, replay };
+    if (committed.current.open === open && committed.current.replay === replay) return;
     if (!el) return;
     if (prefersReducedMotion()) {
+      committed.current = { open, replay };
       setMaxH(open ? "none" : 0);
       return;
     }
     // Primeiro o valor de partida, o alvo só no próximo quadro: o navegador
     // precisa ver os dois em commits separados para interpolar.
     setMaxH(open ? 0 : el.scrollHeight);
-    const raf = requestAnimationFrame(() =>
-      setMaxH(open ? el.scrollHeight : 0),
-    );
-    return () => cancelAnimationFrame(raf);
+    let doneTimer: number | null = null;
+    const raf = requestAnimationFrame(() => {
+      committed.current = { open, replay };
+      const target: Height = open
+        ? el.scrollHeight > 0
+          ? el.scrollHeight
+          : "none"
+        : 0;
+      setMaxH(target);
+      if (open && target !== "none") {
+        doneTimer = window.setTimeout(() => setMaxH("none"), 450);
+      }
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      if (doneTimer !== null) window.clearTimeout(doneTimer);
+    };
   }, [open, replay]);
 
   const style: CSSProperties = { maxHeight: maxH };

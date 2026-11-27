@@ -13,12 +13,12 @@ export function PathBlock({ model, currency }: MonthBlockProps) {
   const { balancePath } = model;
   if (model.hidden)
     return (
-      <Panel title="Caminho do saldo">
+      <Panel title="Caminho do saldo" className="mb-0">
         <p className="ds-caption">Valores ocultos.</p>
       </Panel>
     );
   return (
-    <Panel title="Caminho do saldo" meta={balancePath.meta}>
+    <Panel title="Caminho do saldo" meta={balancePath.meta} className="mb-0">
       {balancePath.startBanner ? (
         <StatBanner
           eyebrow="Nas contas agora"

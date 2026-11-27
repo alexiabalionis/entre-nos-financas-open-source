@@ -41,7 +41,7 @@ export function ExpandingSearch({
     onOpenChange?.(open);
   }, [open, onOpenChange]);
   return (
-    <label className={cx("ds-search input", className)} data-open={open || undefined}>
+    <label className={cx("ds-search", className)} data-open={open || undefined}>
       <Icon name="search" size={18} className="ds-search-icon shrink-0" />
       <span className="sr-only">{label}</span>
       <input
@@ -63,7 +63,7 @@ export function ExpandingSearch({
       {open && value !== "" && (
         <button
           type="button"
-          className="ds-search-clear btn btn-ghost btn-circle btn-xs shrink-0"
+          className="ds-search-clear ui-reset-btn inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink cursor-pointer"
           aria-label="Limpar busca"
           // mousedown não rouba o foco do campo: limpa e continua digitando.
           onMouseDown={(e) => e.preventDefault()}

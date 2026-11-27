@@ -20,8 +20,8 @@ export function ChipFieldChip({
   return (
     <span
       className={cx(
-        "ds-chip badge badge-sm rounded-full",
-        flashed ? "badge-soft badge-success" : "badge-outline",
+        "ds-chip inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        flashed ? "border-ok/30 bg-ok-bg text-ok" : "border-border bg-surface-2 text-ink",
         onRemove && "pr-1",
       )}
     >
@@ -29,7 +29,7 @@ export function ChipFieldChip({
       {onRemove ? (
         <button
           type="button"
-          className="btn btn-ghost btn-xs btn-circle -mr-1 text-base-content/60"
+          className="ui-reset-btn -mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink cursor-pointer"
           data-chip-x=""
           aria-label={removeLabel(item.name)}
           disabled={disabled}
