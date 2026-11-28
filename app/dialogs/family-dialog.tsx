@@ -1,12 +1,10 @@
 "use client";
 import { useEffect, useId, useRef, type ReactNode } from "react";
-import { Icon } from "../ds/icon.tsx";
+import { IconButton } from "../ds/icon-button.tsx";
 
 /**
- * Janela de diálogo do app (<dialog> nativo com `modal` do daisyUI; a janela
- * em si é o `modal-box`, que leva o family-dialog): título, botão fechar, bloqueio
- * de fechamento enquanto grava e erro da ação dentro da janela. Cada formulário
- * (item, conferência, mês, entrada, movimento) usa esta mesma janela.
+ * Janela de diálogo do app (<dialog> nativo em Tailwind v4 puro): título,
+ * botão fechar, bloqueio de fechamento enquanto grava e erro da ação.
  */
 export function FamilyDialog({
   open,
@@ -19,7 +17,6 @@ export function FamilyDialog({
 }: {
   open: boolean;
   title: string;
-  /** Linha de contexto sob o título (ex.: a descrição da transação). */
   description?: ReactNode;
   busy: boolean;
   error: string;
@@ -38,45 +35,47 @@ export function FamilyDialog({
   return (
     <dialog
       ref={dialog}
-      className="modal modal-middle"
+      className="ui-dialog-backdrop fixed inset-0 m-0 hidden h-dvh max-h-none w-screen max-w-none items-center justify-center bg-transparent p-4 text-ink backdrop:bg-black/45 backdrop:backdrop-blur-[2px] open:flex"
       onCancel={(event) => {
         if (busy) event.preventDefault();
         else onClose();
       }}
       onClose={onClose}
+      onClick={(e) => {
+        if (e.target === dialog.current && !busy) onClose();
+      }}
       aria-labelledby={titleId}
     >
       {open && (
-        // family-dialog vai no modal-box: o dialog agora cobre a tela inteira
-        // (é o fundo), então borda/raio/rolagem do CSS antigo ficam na janela.
-        // Padding e altura máxima seguem os valores antigos (sticky do título).
-        // 480px: cabe um formulário de 1 coluna sem sobrar meia tela vazia
-        // (o modal-box padrão vai a 512px). Some no celular (largura toda).
-        <div className="family-dialog modal-box w-full max-w-[30rem] max-h-[calc(var(--chat-viewport-height,100dvh)-env(safe-area-inset-top)-env(safe-area-inset-bottom)-24px)]">
+        <div className="family-dialog w-full max-w-[30rem] max-h-[calc(var(--chat-viewport-height,100dvh)-env(safe-area-inset-top)-env(safe-area-inset-bottom)-24px)] overflow-y-auto rounded-2xl border border-border bg-surface p-5 text-ink shadow-xl">
           <div className="family-section mb-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 id={titleId} className="m-0 text-lg leading-snug font-semibold">
+              <h2
+                id={titleId}
+                className="m-0 text-lg leading-snug font-semibold text-ink"
+              >
                 {title}
               </h2>
               {description && (
-                <p className="m-0 mt-1 text-sm leading-snug text-base-content/70 [overflow-wrap:anywhere] line-clamp-3">
+                <p className="m-0 mt-1 text-sm leading-snug text-muted [overflow-wrap:anywhere] line-clamp-3">
                   {description}
                 </p>
               )}
             </div>
-            <button
-              type="button"
-              className="btn btn-ghost btn-circle btn-sm shrink-0"
-              aria-label="Fechar"
+            <IconButton
+              icon="close"
+              size="sm"
+              label="Fechar"
               disabled={busy}
               onClick={onClose}
-            >
-              <Icon name="close" size={18} />
-            </button>
+            />
           </div>
           {children}
           {error && (
-            <p className="family-error" role="alert">
+            <p
+              className="m-0 mt-3 rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm font-medium text-danger"
+              role="alert"
+            >
               {error}
             </p>
           )}

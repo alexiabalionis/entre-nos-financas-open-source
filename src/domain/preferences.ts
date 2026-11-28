@@ -29,6 +29,31 @@ export type Preferences = {
   has_photo: boolean;
   onboarding_done: boolean;
 };
+export type AccentPresetId = "roxo" | "esmeralda" | "oceano" | "ameixa";
+
+export type AccentPreset = {
+  id: AccentPresetId;
+  label: string;
+  hex: string;
+  swatch: string;
+  darkSwatch: string;
+};
+
+export const ACCENT_PRESETS: readonly AccentPreset[] = [
+  { id: "roxo", label: "Roxo", hex: "#5844d8", swatch: "#5844d8", darkSwatch: "#a988ff" },
+  { id: "esmeralda", label: "Esmeralda", hex: "#0f766e", swatch: "#0f766e", darkSwatch: "#34d399" },
+  { id: "oceano", label: "Oceano", hex: "#1d4ed8", swatch: "#1d4ed8", darkSwatch: "#60a5fa" },
+  { id: "ameixa", label: "Ameixa", hex: "#9333ea", swatch: "#9333ea", darkSwatch: "#c084fc" },
+];
+
+export function resolveAccentPreset(hex?: string | null): AccentPreset {
+  const normalized = hex?.trim().toLowerCase();
+  return (
+    ACCENT_PRESETS.find((p) => p.hex.toLowerCase() === normalized) ??
+    ACCENT_PRESETS[0]
+  );
+}
+
 export const defaultPreferences: Preferences = {
   accent: "#5844d8",
   theme: "system",

@@ -10,22 +10,28 @@ export function OutflowTotals({
   fmt: Money;
 }) {
   return (
-    <dl className="stats w-full">
-      <div className="stat px-3 py-2">
-        <dt className="stat-title flex items-center gap-2 whitespace-normal">
-          <span className="budget-sw is-spent" aria-hidden="true" />
+    <dl className="m-0 grid grid-cols-2 divide-x divide-border rounded-2xl border border-border bg-surface-2/50">
+      <div className="px-3.5 py-2.5">
+        <dt className="flex items-center gap-2 text-xs font-medium text-muted">
+          <span
+            className="size-2.5 shrink-0 rounded-[3px] bg-accent"
+            aria-hidden="true"
+          />
           Já gastou
         </dt>
-        <dd className="stat-value text-lg tabular-nums [font-family:var(--family-font-numeric)]">
+        <dd className="m-0 mt-0.5 font-numeric text-lg font-semibold text-ink tabular-nums">
           {fmt(totals.spent)}
         </dd>
       </div>
-      <div className="stat px-3 py-2">
-        <dt className="stat-title flex items-center gap-2 whitespace-normal">
-          <span className="budget-sw is-planned" aria-hidden="true" />
+      <div className="px-3.5 py-2.5">
+        <dt className="flex items-center gap-2 text-xs font-medium text-muted">
+          <span
+            className="size-2.5 shrink-0 rounded-[3px] border border-accent/30 bg-accent-soft"
+            aria-hidden="true"
+          />
           Ainda vai pagar
         </dt>
-        <dd className="stat-value text-lg tabular-nums [font-family:var(--family-font-numeric)]">
+        <dd className="m-0 mt-0.5 font-numeric text-lg font-semibold text-ink tabular-nums">
           {fmt(totals.open)}
         </dd>
       </div>

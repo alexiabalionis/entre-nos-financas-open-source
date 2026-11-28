@@ -10,8 +10,7 @@ export type RowMenuItem = {
 };
 
 /**
- * Menu "⋯" no canto de uma linha de lista. Só guarda se está aberto: cada item
- * chama `onSelect` e fecha. Fecha também ao tocar fora ou com Escape.
+ * Menu "⋯" no canto de uma linha de lista em Tailwind v4 puro.
  */
 export function RowMenu({
   label,
@@ -39,10 +38,10 @@ export function RowMenu({
   }, [open]);
   if (items.length === 0) return null;
   return (
-    <div className="row-menu absolute top-5 right-1.5 z-10" ref={root}>
+    <div className="row-menu absolute top-3 right-1.5 z-10" ref={root}>
       <button
         type="button"
-        className="row-menu-trigger btn btn-ghost btn-sm btn-circle"
+        className="row-menu-trigger ui-icon-btn inline-flex size-8.5 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -51,32 +50,31 @@ export function RowMenu({
         <span aria-hidden="true">⋯</span>
       </button>
       {open && (
-        // Absoluto dentro de um gatilho de 32px: sem `w-max` a largura
-        // "encolhe para caber" nos 32px e só o min-width segurava, quebrando
-        // "Tornar conta fixa" em duas linhas. Largura = conteúdo, com teto na tela.
         <ul
-          className="row-menu-list menu absolute top-full right-0 z-10 mt-1 w-max min-w-40 max-w-[min(18rem,calc(100vw-2rem))] gap-0.5 rounded-box border border-base-300 bg-base-100 p-1 shadow-md"
+          className="row-menu-list absolute top-full right-0 z-20 mt-1 flex w-max min-w-44 max-w-[min(18rem,calc(100vw-2rem))] flex-col gap-0.5 rounded-xl border border-border bg-surface p-1.5 shadow-lg"
           role="menu"
         >
           {items.map((item) => (
-            <li key={item.label} role="none">
+            <li key={item.label} role="none" className="list-none">
               <button
                 type="button"
                 role="menuitem"
                 data-tone={item.tone}
                 className={cx(
-                  "min-h-9 gap-2.5 px-3 py-2 text-sm leading-tight",
-                  item.tone === "danger" && "text-error",
+                  "ui-btn flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm leading-tight transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  item.tone === "danger"
+                    ? "text-danger hover:bg-danger-bg"
+                    : "text-ink hover:bg-surface-2",
                 )}
                 onClick={() => {
                   setOpen(false);
                   item.onSelect();
                 }}
               >
-                <span className="row-menu-icon w-4 text-center opacity-60" aria-hidden="true">
+                <span className="row-menu-icon w-4 text-center opacity-70" aria-hidden="true">
                   {item.icon}
                 </span>
-                {item.label}
+                <span>{item.label}</span>
               </button>
             </li>
           ))}

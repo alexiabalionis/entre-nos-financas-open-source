@@ -26,7 +26,7 @@ export function LinkExistingSeries({
       </Button>
       {open && <>
       {error && (
-        <p className="alert alert-soft alert-error" role="alert">
+        <p className="rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm text-danger" role="alert">
           {error}
         </p>
       )}

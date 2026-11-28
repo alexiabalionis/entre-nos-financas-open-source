@@ -1,9 +1,7 @@
 "use client";
-// Diálogo de nova reserva ou edição (nome, meta, prazo). Prioridade e status
-// mudam por outros fluxos — este formulário só cuida desses três campos.
-import { Button } from "../button.tsx";
+import { Button } from "../ds/button.tsx";
 import { FamilyDialog } from "../dialogs/family-dialog.tsx";
-import { FieldError } from "../fixed/field-error.tsx";
+import { Field } from "../field.tsx";
 import type { GoalDraft } from "./use-goal-form.ts";
 
 export function GoalFormDialog({
@@ -40,27 +38,23 @@ export function GoalFormDialog({
       onClose={onClose}
     >
       <form
-        className="cop-form"
+        className="flex flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
           onSave();
         }}
       >
-        <label>
-          Nome
+        <Field label="Nome" error={showErrors ? nameError : undefined}>
           <input
             name="name"
             autoComplete="off"
             value={draft.name}
             aria-invalid={(showErrors && !!nameError) || undefined}
-            aria-describedby="goal-name-error"
             onChange={(e) => onEdit({ name: e.target.value })}
           />
-        </label>
-        <FieldError id="goal-name-error" text={showErrors ? nameError : undefined} />
-        <label>
-          Meta
+        </Field>
+        <Field label="Meta" error={showErrors ? amountError : undefined}>
           <input
             name="target"
             inputMode="decimal"
@@ -68,25 +62,22 @@ export function GoalFormDialog({
             placeholder="Ex.: 3.000,00"
             value={draft.target}
             aria-invalid={(showErrors && !!amountError) || undefined}
-            aria-describedby="goal-target-error"
             onChange={(e) => onEdit({ target: e.target.value })}
           />
-        </label>
-        <FieldError id="goal-target-error" text={showErrors ? amountError : undefined} />
-        <label>
-          Prazo (opcional)
+        </Field>
+        <Field label="Prazo (opcional)">
           <input
             type="month"
             name="deadline"
             value={draft.deadline}
             onChange={(e) => onEdit({ deadline: e.target.value })}
           />
-        </label>
-        <div className="cop-actions">
+        </Field>
+        <div className="flex flex-wrap gap-2 pt-1">
           <Button variant="primary" type="submit" disabled={busy}>
             Salvar
           </Button>
-          <Button variant="quiet" disabled={busy} onClick={onClose}>
+          <Button variant="secondary" disabled={busy} onClick={onClose}>
             Cancelar
           </Button>
         </div>

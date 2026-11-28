@@ -1,6 +1,7 @@
 "use client";
 import { useId, useState } from "react";
 import { Callout } from "../ds/callout";
+import { Button } from "../ds/button";
 import { BreakdownBar } from "../ds/breakdown-bar";
 import { Collapse } from "../ds/collapse";
 import { Panel } from "../ds/panel";
@@ -68,7 +69,7 @@ export function OutflowBlock({
           {flow.action.notice}
         </Callout>
       )}
-      <Panel title="Saídas por categoria" meta={monthName(month)}>
+      <Panel title="Saídas por categoria" meta={monthName(month)} className="mb-0">
         {rows.length === 0 ? (
           <p className="ds-caption">Nenhuma saída neste mês ainda.</p>
         ) : (
@@ -82,18 +83,20 @@ export function OutflowBlock({
               onSegment={(i) => pick(segments[i].key)}
               aria={`Saídas por categoria: ${rows.map(outflowAria).join("; ")}`}
             />
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm self-start"
-              aria-expanded={listOpen}
-              aria-controls={listId}
-              onClick={() => setListOpen((o) => !o)}
-            >
-              {listSummary(rows)}
-              <span className="ds-collapse-arrow" aria-hidden="true">
-                ↓
-              </span>
-            </button>
+            <div className="flex">
+              <Button
+                variant="quiet"
+                size="sm"
+                aria-expanded={listOpen}
+                aria-controls={listId}
+                onClick={() => setListOpen((o) => !o)}
+              >
+                {listSummary(rows)}{" "}
+                <span className="ds-collapse-arrow ml-1" aria-hidden="true">
+                  ↓
+                </span>
+              </Button>
+            </div>
             <Collapse id={listId} open={listOpen}>
               <p className="ds-caption">
                 {cards.length} de {named} categorias com teto. Toque numa

@@ -49,7 +49,7 @@ export function BackToTop({ focusId = "family-content" }: { focusId?: string }) 
       title="Voltar ao topo"
       inert={!visible}
       className={cx(
-        "ds-back-to-top btn btn-circle btn-primary fixed z-20 shadow-lg transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none",
+        "ds-back-to-top ui-reset-btn fixed z-20 inline-flex size-12 items-center justify-center rounded-full bg-accent text-on-accent shadow-lg transition-[opacity,translate,background-color] duration-200 ease-out hover:bg-accent-hover cursor-pointer motion-reduce:transition-none",
         "right-[max(16px,env(safe-area-inset-right))] bottom-[calc(88px+env(safe-area-inset-bottom))]",
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       )}

@@ -63,8 +63,8 @@ export function CategoryContext({ name, canEdit }: { name: string; canEdit: bool
   if (!loaded) return null;
   if (!canEdit && !isProtected && !saved) return null;
   return (
-    <section className="flex flex-col gap-3 rounded-box bg-base-200 p-4" aria-labelledby={`${id}-t`}>
-      <h3 id={`${id}-t`} className="text-sm font-semibold">
+    <section className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-2 p-4" aria-labelledby={`${id}-t`}>
+      <h3 id={`${id}-t`} className="text-sm font-semibold text-ink">
         O que vocês sabem sobre {name}
       </h3>
       <label className="flex items-start gap-3">
@@ -77,13 +77,13 @@ export function CategoryContext({ name, canEdit }: { name: string; canEdit: bool
           onChange={(e) => void toggle(e.target.checked)}
         />
         <span className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium">Não dá para cortar</span>
-          <span className="text-xs opacity-70">Fica fora dos cortes que o app e a Judite sugerem.</span>
+          <span className="text-sm font-medium text-ink">Não dá para cortar</span>
+          <span className="text-xs text-muted">Fica fora dos cortes que o app e a Judite sugerem.</span>
         </span>
       </label>
       {canEdit ? (
         <div className="flex flex-col gap-1.5">
-          <label htmlFor={`${id}-n`} className="text-xs font-semibold opacity-70">
+          <label htmlFor={`${id}-n`} className="text-xs font-semibold text-muted">
             Contexto para a Judite
           </label>
           <textarea
@@ -103,13 +103,16 @@ export function CategoryContext({ name, canEdit }: { name: string; canEdit: bool
           ) : null}
         </div>
       ) : saved ? (
-        <p className="text-sm">{saved}</p>
+        <p className="text-sm text-ink">{saved}</p>
       ) : null}
       <p className="sr-only" role="status">
         {status}
       </p>
       {error ? (
-        <p role="alert" className="ds-caption alert alert-soft alert-error">
+        <p
+          role="alert"
+          className="rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm text-danger"
+        >
           {error}
         </p>
       ) : null}

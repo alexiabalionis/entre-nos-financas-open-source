@@ -18,7 +18,10 @@ export function OverviewNotice({
   return (
     <div ref={ref} role="status">
       {error ? (
-        <p className="alert alert-soft alert-error" role="alert">
+        <p
+          className="m-0 rounded-xl border border-danger/25 bg-danger-bg px-4 py-3 text-sm font-medium text-danger"
+          role="alert"
+        >
           {error}
         </p>
       ) : (

@@ -15,7 +15,7 @@ import {
 import { categoryColor } from "../src/domain/category-color.ts";
 import { CategoryIcon } from "./family-categories";
 import { FamilyIcon } from "./family-extras";
-import { Button } from "./button";
+import { Button } from "./ds/button";
 import { MovementRowActions } from "./movements/row-actions";
 import type { KindChoices } from "./movements/change-kind-dialog";
 import {
@@ -40,16 +40,26 @@ import { IconBadge } from "./ds/icon-badge";
 import { Icon } from "./ds/icon";
 import { Stat, Stats } from "./ds/stat";
 import { TagPicker } from "./movements/tag-picker";
+import { TriageBar } from "./movements/triage-bar";
+import { TriageRowControls, type TriageRowMeta } from "./movements/triage-row";
+
+const VALID_FILTERS = new Set<MovementFilter>([
+  "all",
+  "income",
+  "expense",
+  "transfer",
+  "card",
+  "fixed",
+  "review",
+]);
 
 const filters: [MovementFilter, string][] = [
   ["all", "Todos"],
-  ["income", "Entradas"],
   ["expense", "Gastos"],
-  ["transfer", "Entre contas"],
-  ["card", "Cartão"],
-  ["fixed", "Fixas"],
+  ["income", "Entradas"],
   ["review", "A conferir"],
 ];
+
 const labels: Record<string, string> = {
   income: "Entrada",
   expense: "Gasto",
@@ -63,7 +73,9 @@ const labels: Record<string, string> = {
   yield: "Rendimento",
   refund: "Reembolso",
 };
+
 type State = Awaited<ReturnType<typeof readState>>;
+
 async function postApiJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch("/api/" + path, {
     method: "POST",
@@ -78,10 +90,13 @@ async function postApiJson<T>(path: string, body: unknown): Promise<T> {
     );
   return data as T;
 }
+
 async function postApi(path: string, body: unknown): Promise<void> {
   await postApiJson<unknown>(path, body);
 }
+
 export function MovementsPanel({
+  month,
   state,
   currency,
   hidden,
@@ -89,6 +104,7 @@ export function MovementsPanel({
   onRecord,
   refresh,
 }: {
+  month?: string;
   state: State;
   currency: Currency;
   hidden: boolean;
@@ -98,13 +114,6 @@ export function MovementsPanel({
 }) {
   const [query, setQuery] = useState("");
   const [refineOpen, setRefineOpen] = useState(false);
-  // TEMPORÁRIO (comparação de layouts): ?filtros=a|b|c. Lido depois de montar
-  // para não divergir do HTML do servidor.
-  const [filterLayout, setFilterLayout] = useState<"a" | "b" | "c">("c");
-  useEffect(() => {
-    const v = new URLSearchParams(window.location.search).get("filtros");
-    if (v === "a" || v === "b" || v === "c") setFilterLayout(v);
-  }, []);
   const [filter, setFilter] = useState<MovementFilter>("all");
   const [account, setAccount] = useState("");
   const [category, setCategory] = useState("");
@@ -113,19 +122,31 @@ export function MovementsPanel({
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
-  // Estado visual por botão (chave livre): loading enquanto roda, success/error
-  // ao fim. As ações são locais (PGlite) e respondem num piscar, então o
-  // success/error é SEGURADO por um tempo mínimo para ser visível (evita o
-  // "blink"); o chamador volta ao idle depois desse hold.
+
+  // Sincroniza ?filtro= e ?conta= (vindo de Mês / Nosso espaço → Contas).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const f = params.get("filtro") as MovementFilter | null;
+    if (f && VALID_FILTERS.has(f)) {
+      setFilter(f);
+      if (f === "card" || f === "fixed" || f === "transfer") {
+        setRefineOpen(true);
+      }
+    }
+    const c = params.get("conta");
+    if (c) {
+      const matched = state.accounts.find((a) => a.id === c || a.name === c);
+      if (matched) {
+        setAccount(matched.name);
+        setRefineOpen(true);
+      }
+    }
+  }, [state.accounts]);
+
   type BtnState = "idle" | "loading" | "success" | "error";
   const [actionState, setActionState] = useState<Record<string, BtnState>>({});
   const FEEDBACK_HOLD_MS = 1400;
-  // Categorização via modal: a transação sendo categorizada (ou null). O ícone
-  // de categoria de um gasto do banco abre este modal; nada de campos inline.
-  // eventId presente => recategorizar um movimento JÁ CONFIRMADO (chama
-  // events/categorize com o event_id). Ausente => fluxo do banco pendente
-  // (banks/learn-category pela chave de texto). "Lembrar deste texto" é
-  // obrigatório no banco e opcional no evento confirmado.
+
   type Categorizing = {
     id: string;
     bankId: string;
@@ -138,25 +159,22 @@ export function MovementsPanel({
     tagName?: string | null;
   };
   const [categorizing, setCategorizing] = useState<Categorizing | null>(null);
-  // Linha cujo "Tornar conta fixa" foi aberto pelo diálogo de categoria.
   const [fixingId, setFixingId] = useState<string | null>(null);
-  // Map "bankpending:<id>" -> meta para as ações inline (versão, grupo e a
-  // sugestão de aprendizado: chave + categoria para o card confirmar).
+
   const pendingMeta = useMemo(() => {
     const m = new Map<
       string,
-      {
-        version: number;
-        group: string | null;
-        suggestedKey: string;
-        suggestedCategory: string;
-        categoryStrong: boolean;
-        tagId: string | null;
-        tagName: string | null;
-      }
+      TriageRowMeta & { tagId: string | null; tagName: string | null }
     >();
-    for (const r of state.bankPending)
+    for (const r of state.bankPending) {
+      const confirmKind: "income" | "expense" | null =
+        r.group === "income"
+          ? "income"
+          : r.group === "expense" || r.autospend
+            ? "expense"
+            : null;
       m.set("bankpending:" + r.id, {
+        bankId: r.id,
         version: r.version,
         group: r.group,
         suggestedKey: r.suggested_key,
@@ -164,9 +182,15 @@ export function MovementsPanel({
         categoryStrong: r.category_strong,
         tagId: r.tag_id,
         tagName: r.tag_name,
+        blocked: r.blocked,
+        duplicate: r.duplicate,
+        accountKind: r.account_kind,
+        confirmKind,
       });
+    }
     return m;
   }, [state.bankPending]);
+
   async function runAction(
     action: () => Promise<void>,
     ok: string,
@@ -180,19 +204,15 @@ export function MovementsPanel({
     if (actionKey) setActionState((s) => ({ ...s, [actionKey]: "loading" }));
     try {
       await action();
-      // Feedback local antes do refresh (que pode remontar/recolher o card).
       onSuccess?.();
       if (actionKey) {
         setActionState((s) => ({ ...s, [actionKey]: "success" }));
-        // Segura o success por um tempo mínimo e então volta ao idle: as ações
-        // locais respondem num piscar; sem o hold o ✓ sumiria antes de ser visto.
         setTimeout(
           () => setActionState((s) => ({ ...s, [actionKey]: "idle" })),
           FEEDBACK_HOLD_MS,
         );
       }
       await refresh();
-      // ok === "" => a ação já definiu a própria mensagem (ex.: lote com contagem).
       if (ok) setActionNotice(ok);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Tente novamente.");
@@ -207,13 +227,9 @@ export function MovementsPanel({
       setBusy(false);
     }
   }
-  const rows = useMemo<Movement[]>(
-    () => movementRows(state),
-    [state],
-  );
-  // Escolhas do "Mudar tipo": contas, categorias e, por linha, as compras que
-  // um estorno pode apontar. Linhas do banco pendentes viram a outra ponta de
-  // um par quando há exatamente uma que casa (otherSide).
+
+  const rows = useMemo<Movement[]>(() => movementRows(state), [state]);
+
   const kindAccounts = useMemo(
     () => state.accounts.map((a) => ({ id: a.id, name: a.name, kind: a.kind })),
     [state.accounts],
@@ -222,11 +238,19 @@ export function MovementsPanel({
     () =>
       state.bankPending.flatMap((p) =>
         p.local_account_id
-          ? [{ id: p.id, accountId: p.local_account_id, date: p.transaction_date, cents: BigInt(p.amount_cents) }]
+          ? [
+              {
+                id: p.id,
+                accountId: p.local_account_id,
+                date: p.transaction_date,
+                cents: BigInt(p.amount_cents),
+              },
+            ]
           : [],
       ),
     [state.bankPending],
   );
+
   const kindChoicesFor = (row: Movement): KindChoices => ({
     accounts: kindAccounts,
     categories: state.categories,
@@ -240,8 +264,12 @@ export function MovementsPanel({
           !p.removed &&
           -BigInt(p.amount) >= BigInt(row.amount),
       )
-      .map((p) => ({ id: p.id.slice("event:".length), name: `${movementTitle(p)} · ${brDate(p.date)}` })),
+      .map((p) => ({
+        id: p.id.slice("event:".length),
+        name: `${movementTitle(p)} · ${brDate(p.date)}`,
+      })),
   });
+
   const changeKindBody = (row: Movement, d: AdjustDraft) => ({
     event_id: row.id.slice("event:".length),
     kind: d.kind,
@@ -255,11 +283,52 @@ export function MovementsPanel({
       ? (state.categories.find((c) => c.id === d.categoryId)?.name ?? null)
       : null,
   });
+
   const totals = useMemo(() => movementTotals(rows), [rows]);
-  const filtered = useMemo(
-    () => visibleMovements(rows, { query, filter, account, category, tag }),
-    [rows, query, filter, account, category, tag],
+
+  // Fila unificada "A conferir": linhas de extrato importado (row.review) +
+  // pendências bancárias ainda não confirmadas como evento (bankpending:*).
+  const isTriageRow = useMemo(
+    () => (row: Movement) =>
+      row.review || (row.id.startsWith("bankpending:") && !row.removed),
+    [],
   );
+
+  const triageRows = useMemo(
+    () => rows.filter(isTriageRow),
+    [rows, isTriageRow],
+  );
+  const triageCount = triageRows.length;
+
+  const batchEligible = useMemo(
+    () =>
+      state.bankPending.filter(
+        (r) =>
+          !r.blocked &&
+          !r.duplicate &&
+          r.account_kind !== "card" &&
+          (r.group === "income" || r.group === "expense"),
+      ),
+    [state.bankPending],
+  );
+  const blockedPendingCount = useMemo(
+    () => state.bankPending.filter((r) => r.blocked).length,
+    [state.bankPending],
+  );
+
+  const filtered = useMemo(() => {
+    if (filter === "review") {
+      return visibleMovements(triageRows, {
+        query,
+        filter: "all",
+        account,
+        category,
+        tag,
+      });
+    }
+    return visibleMovements(rows, { query, filter, account, category, tag });
+  }, [rows, triageRows, query, filter, account, category, tag]);
+
   const tagOptions = useMemo(
     () =>
       category
@@ -289,46 +358,55 @@ export function MovementsPanel({
   const groups = new Map<string, Movement[]>();
   for (const row of filtered.slice(0, limit))
     groups.set(row.date, [...(groups.get(row.date) ?? []), row]);
-  // ----- Peças do bloco de filtros (a distribuição depende de filterLayout).
-  // Tipo: o recorte principal. `fill` = linha própria, abas divididas por igual.
-  // "A conferir" só existe para linhas de extrato importado.
+
+  const isSpecificType =
+    filter === "card" || filter === "fixed" || filter === "transfer";
+  const primaryFilter: MovementFilter = isSpecificType ? "all" : filter;
+
   const typeOptions = filters.filter(
-    ([value]) => value !== "review" || totals.review > 0 || filter === "review",
+    ([value]) => value !== "review" || triageCount > 0 || filter === "review",
   );
   const pickType = (value: MovementFilter) => {
     setFilter(value);
     setLimit(40);
   };
-  // As abas precisam de ~32rem; abaixo disso (container query no bloco de
-  // filtros, não na tela) o tipo vira um Select — nada cortado, sem rolagem
-  // lateral escondida.
-  const typeFilter = (fill: boolean) => (
+
+  const typeFilter = (
     <>
-      <div className="max-w-full @max-[32rem]:hidden">
+      <div className="max-w-full @max-[36rem]:hidden">
         <Segmented
           size="sm"
-          fill={fill}
+          fill
           label="Tipo de movimento"
-          value={filter}
-          options={typeOptions.map(([value, label]) => ({ value, label }))}
+          value={primaryFilter}
+          options={typeOptions.map(([value, label]) => ({
+            value,
+            label,
+            badge: value === "review" ? triageCount : undefined,
+          }))}
           onChange={pickType}
         />
       </div>
       <Select
         size="sm"
-        className="@min-[32rem]:hidden"
+        className="@min-[36rem]:hidden"
         aria-label="Tipo de movimento"
-        value={filter}
+        value={primaryFilter}
         onChange={(e) => pickType(e.target.value as MovementFilter)}
       >
         {typeOptions.map(([value, label]) => (
           <option key={value} value={value}>
-            {value === "all" ? "Todos os tipos" : label}
+            {value === "all"
+              ? "Todos os tipos"
+              : value === "review" && triageCount > 0
+                ? `${label} (${triageCount})`
+                : label}
           </option>
         ))}
       </Select>
     </>
   );
+
   const search = (
     <ExpandingSearch
       label="Buscar movimentos"
@@ -340,75 +418,100 @@ export function MovementsPanel({
       }}
     />
   );
-  // Registrar é AÇÃO, não filtro: sempre o último item da linha, isolado.
+
   const recordButton = (
     <Button
       type="button"
       variant="primary"
-      className="btn-circle shrink-0"
+      size="sm"
+      icon="plus"
+      className="shrink-0"
       disabled={reader}
       onClick={onRecord}
-      aria-label="Registrar movimento"
     >
-      <Icon name="plus" size={20} />
+      Registrar
     </Button>
   );
-  // Refinamentos (conta, categoria, etiqueta): grade que põe quantos couberem
-  // por linha (mín. 10rem cada) e quebra sozinha — 2 ou 3 campos, sem apertar.
+
   const refinements = (
-    <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(10rem,100%),1fr))]">
-          <Select
-            size="sm"
-                        aria-label="Filtrar por conta"
-            value={account}
-            onChange={(e) => {
-              setAccount(e.target.value);
-              setLimit(40);
-            }}
-          >
-            <option value="">Todas as contas</option>
-            {accounts.map((a) => (
-              <option key={a}>{a}</option>
-            ))}
-          </Select>
-          <Select
-            size="sm"
-                        aria-label="Filtrar por categoria"
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setTag("");
-              setLimit(40);
-            }}
-          >
-            <option value="">Todas as categorias</option>
-            {categories.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </Select>
-          {tagOptions.length > 0 && (
-            <Select
-              size="sm"
-                            aria-label="Filtrar por etiqueta"
-              value={tag}
-              onChange={(e) => {
-                setTag(e.target.value);
-                setLimit(40);
-              }}
-            >
-              <option value="">Todas as etiquetas</option>
-              {tagOptions.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </Select>
-          )}
+    <div
+      className={cx(
+        "grid grid-cols-1 gap-2 sm:grid-cols-2",
+        tagOptions.length > 0 ? "lg:grid-cols-4" : "lg:grid-cols-3",
+      )}
+    >
+      <Select
+        size="sm"
+        aria-label="Tipo específico"
+        value={isSpecificType ? filter : ""}
+        onChange={(e) => {
+          setFilter((e.target.value || "all") as MovementFilter);
+          setLimit(40);
+        }}
+      >
+        <option value="">Qualquer tipo</option>
+        <option value="card">Compras no cartão</option>
+        <option value="fixed">Contas fixas</option>
+        <option value="transfer">Entre contas</option>
+      </Select>
+      <Select
+        size="sm"
+        aria-label="Filtrar por conta"
+        value={account}
+        onChange={(e) => {
+          setAccount(e.target.value);
+          setLimit(40);
+        }}
+      >
+        <option value="">Todas as contas</option>
+        {accounts.map((a) => (
+          <option key={a}>{a}</option>
+        ))}
+      </Select>
+      <Select
+        size="sm"
+        aria-label="Filtrar por categoria"
+        value={category}
+        onChange={(e) => {
+          setCategory(e.target.value);
+          setTag("");
+          setLimit(40);
+        }}
+      >
+        <option value="">Todas as categorias</option>
+        {categories.map((c) => (
+          <option key={c}>{c}</option>
+        ))}
+      </Select>
+      {tagOptions.length > 0 && (
+        <Select
+          size="sm"
+          aria-label="Filtrar por etiqueta"
+          value={tag}
+          onChange={(e) => {
+            setTag(e.target.value);
+            setLimit(40);
+          }}
+        >
+          <option value="">Todas as etiquetas</option>
+          {tagOptions.map((t) => (
+            <option key={t}>{t}</option>
+          ))}
+        </Select>
+      )}
     </div>
   );
-  const refineCount = [account, category, tag].filter(Boolean).length;
-  const refineShown = refineOpen || refineCount > 0;
+
+  const refineCount = [
+    account,
+    category,
+    tag,
+    isSpecificType ? filter : "",
+  ].filter(Boolean).length;
+  const targetMonth = month ?? state.month;
 
   return (
-    <div className="ds-list">
+    <div className="flex flex-col gap-5">
       <Stats label="Resumo dos movimentos confirmados">
         <Stat
           icon="in"
@@ -434,20 +537,9 @@ export function MovementsPanel({
           tone="danger"
           title="Saídas"
           value={money(state.summary.expense_cents)}
-          rows={(
-            [
-              ["Saiu da conta", state.summary.expense_left_cents],
-              ["Agendado", state.summary.expense_scheduled_cents],
-              [
-                "No cartão, sai ao pagar a fatura",
-                state.summary.expense_card_cents,
-              ],
-            ] as const
-          )
-            .filter(([, cents]) => BigInt(cents) !== 0n)
-            .map(([label, cents]) => ({ label, value: money(cents) }))}
         />
       </Stats>
+
       {state.cardBudgetUnconfigured.length > 0 && (
         <Callout
           icon="💳"
@@ -456,101 +548,70 @@ export function MovementsPanel({
         >
           Alguns cartões ainda não têm fechamento e vencimento informados. As
           compras deles aparecem no mês em que foram feitas, e podem mudar de
-          mês quando você informar. Informe em Perfil, Bancos.
+          mês quando você informar em Nosso espaço → Contas e cartões.
         </Callout>
       )}
+
       {actionError && (
-        <p role="alert" className="ds-caption alert alert-soft alert-error">
+        <p
+          role="alert"
+          className="m-0 rounded-xl border border-danger/25 bg-danger-bg px-4 py-3 text-sm font-medium text-danger"
+        >
           {actionError}
         </p>
       )}
       {actionNotice && (
-        <p role="status" className="ds-caption alert alert-soft alert-success">
+        <p
+          role="status"
+          className="m-0 rounded-xl border border-ok/25 bg-ok-bg px-4 py-3 text-sm font-medium text-ok"
+        >
           {actionNotice}
         </p>
       )}
-      {totals.review > 0 && (
+
+      {triageCount > 0 && filter !== "review" && (
         <Callout
           icon="?"
-          tone="warn"
-          title={`${totals.review} a conferir`}
-          meta="Linhas de extratos importados, ainda fora dos totais."
+          tone="accent"
+          title={`${triageCount} ${
+            triageCount === 1
+              ? "movimento aguardando conferência"
+              : "movimentos aguardando conferência"
+          }`}
+          meta="Revise categorias sugeridas ou confirme o que o banco leu."
         >
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => {
-              setFilter("review");
-              setLimit(40);
-            }}
-          >
-            Ver
-          </Button>
+          <div className="mt-2">
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              onClick={() => {
+                setFilter("review");
+                setLimit(40);
+              }}
+            >
+              Abrir fila A conferir
+            </Button>
+          </div>
         </Callout>
       )}
+
       <section aria-label="Buscar e filtrar movimentos">
-        <Panel>
-          <div className="@container flex flex-col gap-2">
-          {filterLayout === "a" ? (
-            /* A · Busca em cima: busca sempre aberta + registrar; tipo com
-               linha própria; refinamentos numa grade que quebra sozinha. */
-            <>
+        <Panel className="mb-0">
+          <div className="@container flex flex-col gap-3">
+            <div className="min-w-0">{typeFilter}</div>
+            <div>
               <div className="flex items-center gap-2">
-                <label className="input min-w-0 flex-1">
-                  <Icon name="search" size={18} className="opacity-50" />
-                  <span className="sr-only">Buscar movimentos</span>
-                  <input
-                    type="search"
-                    className="grow"
-                    value={query}
-                    onChange={(e) => {
-                      setQuery(e.target.value);
-                      setLimit(40);
-                    }}
-                    placeholder="Buscar descrição, conta ou categoria"
-                  />
-                </label>
-                {recordButton}
-              </div>
-              <div className="min-w-0">{typeFilter(true)}</div>
-              {refinements}
-            </>
-          ) : filterLayout === "b" ? (
-            /* B · Tipo em destaque: tipo · lupa · registrar; refinamentos
-               numa grade abaixo. */
-            <>
-              <div className="flex items-center gap-2">
-                <div className="ds-search-sibling min-w-0">
-                  {typeFilter(false)}
-                </div>
-                {search}
-                {recordButton}
-              </div>
-              {refinements}
-            </>
-          ) : (
-            /* C · Refinar sob demanda: tipo com linha própria (recorte
-               principal); linha de ferramentas com "Refinar", lupa (com a
-               linha livre para abrir) e registrar; conta/categoria/etiqueta
-               recolhidas até pedir, com contador quando ativas. */
-            <>
-              <div className="min-w-0">{typeFilter(true)}</div>
-              {/* Ferramentas + refinamentos num bloco só: recolhido, o painel
-                  não deixa o gap do cartão sobrando embaixo. */}
-              <div>
-              <div className="flex items-center gap-2">
-                {/* Controle terciário: sem fundo (só um tom no hover), 32px,
-                    13px/500 — não compete com a lupa nem com o registrar. */}
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm shrink-0 -ml-2 gap-0 px-2 text-[0.8125rem] font-medium text-base-content/70 hover:bg-[var(--color-primary-tint)] hover:text-[var(--color-primary-ink)] aria-expanded:text-[var(--color-primary-ink)]"
-                  aria-expanded={refineShown}
+                  className="ui-btn inline-flex h-8.5 shrink-0 items-center gap-1 rounded-xl px-2.5 text-[0.8125rem] font-medium text-muted transition-colors hover:bg-accent-soft hover:text-accent-ink aria-expanded:bg-accent-soft aria-expanded:text-accent-ink cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  aria-expanded={refineOpen}
                   aria-controls="movements-refine"
-                  onClick={() => setRefineOpen(!refineShown)}
+                  onClick={() => setRefineOpen((v) => !v)}
                 >
-                  Refinar
+                  <span>Refinar</span>
                   {refineCount > 0 && (
-                    <span className="ml-1.5 inline-grid min-w-4 place-items-center rounded-full bg-[var(--color-primary-tint)] px-1 text-[0.6875rem] leading-4 font-semibold text-[var(--color-primary-ink)] tabular-nums">
+                    <span className="ml-0.5 inline-grid min-w-4 place-items-center rounded-full bg-accent-soft px-1.5 py-0.5 font-numeric text-[0.6875rem] leading-none font-semibold text-accent-ink tabular-nums">
                       {refineCount}
                     </span>
                   )}
@@ -558,40 +619,97 @@ export function MovementsPanel({
                     name="down"
                     size={14}
                     className={cx(
-                      "ml-1 opacity-70 transition-transform duration-(--ds-dur)",
-                      refineShown && "rotate-180",
+                      "opacity-75 transition-transform duration-(--ds-dur)",
+                      refineOpen && "rotate-180",
                     )}
                   />
                 </button>
                 {search}
                 {recordButton}
               </div>
-              <Collapse id="movements-refine" open={refineShown}>
-                <div className="pt-2">{refinements}</div>
+              <Collapse id="movements-refine" open={refineOpen}>
+                <div className="pt-2.5">{refinements}</div>
               </Collapse>
-              </div>
-            </>
-          )}
+            </div>
           </div>
         </Panel>
       </section>
+
+      {filter === "review" && (
+        <TriageBar
+          eligibleCount={batchEligible.length}
+          blockedCount={blockedPendingCount}
+          reader={reader}
+          busy={busy}
+          batchState={actionState["batch"]}
+          onConfirmAll={() => {
+            if (!targetMonth) return;
+            void runAction(
+              async () => {
+                const res = await postApiJson<{
+                  recorded: number;
+                  skipped: number;
+                  eligible: number;
+                }>("banks/review-batch", {
+                  month: targetMonth,
+                  currency,
+                });
+                setActionNotice(
+                  res.recorded > 0
+                    ? `${res.recorded} ${
+                        res.recorded === 1
+                          ? "movimento confirmado."
+                          : "movimentos confirmados."
+                      }${
+                        res.skipped > 0
+                          ? ` ${res.skipped} precisaram ficar para conferência manual.`
+                          : ""
+                      }`
+                    : "Nenhum movimento elegível para confirmação automática.",
+                );
+              },
+              "",
+              undefined,
+              "batch",
+            );
+          }}
+        />
+      )}
+
       <Panel
-        title="Histórico do mês"
-        meta={`${filtered.length} ${filtered.length === 1 ? "movimento" : "movimentos"}`}
+        title={filter === "review" ? "Fila A conferir" : "Histórico do mês"}
+        meta={`${filtered.length} ${
+          filtered.length === 1 ? "movimento" : "movimentos"
+        }`}
+        className="mb-0"
       >
         {filtered.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-4 text-center">
-            <FamilyIcon name="movements" />
-            <h3 className="text-sm font-medium">Nenhum movimento por aqui</h3>
-            <p className="ds-caption">
-              {filter === "fixed" && rows.length > 0
-                ? "Nenhum movimento de conta fixa por aqui. Gastos ligados a uma conta fixa aparecem neste filtro."
-                : rows.length
-                  ? "Tente outra busca ou retire os filtros."
-                  : "Os registros deste mês vão aparecer aqui."}
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            {filter === "review" ? (
+              <span className="inline-flex size-10 items-center justify-center rounded-full bg-ok-bg text-ok">
+                <Icon name="check" size={18} />
+              </span>
+            ) : (
+              <FamilyIcon name="movements" />
+            )}
+            <h3 className="m-0 text-sm font-semibold text-ink">
+              {filter === "review"
+                ? "Tudo conferido neste mês"
+                : "Nenhum movimento por aqui"}
+            </h3>
+            <p className="ds-caption max-w-md">
+              {filter === "review"
+                ? "Não há movimentos bancários pendentes ou linhas de extrato aguardando decisão."
+                : filter === "fixed" && rows.length > 0
+                  ? "Nenhum movimento de conta fixa por aqui. Gastos ligados a uma conta fixa aparecem neste filtro."
+                  : rows.length
+                    ? "Tente outra busca ou retire os filtros."
+                    : "Os registros deste mês vão aparecer aqui."}
             </p>
-            {rows.length > 0 && (
+            {(rows.length > 0 && filter !== "all") || refineCount > 0 || query ? (
               <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setQuery("");
                   setAccount("");
@@ -600,24 +718,22 @@ export function MovementsPanel({
                   setFilter("all");
                 }}
               >
-                Limpar filtros
+                {filter === "review" ? "Ver todos os movimentos" : "Limpar filtros"}
               </Button>
-            )}
+            ) : null}
           </div>
         )}
+
         {[...groups].map(([date, entries]) => (
-          <section
-            key={date}
-            aria-label={"Movimentos de " + brDate(date)}
-          >
-            <h3 className="mb-1 text-xs font-semibold uppercase opacity-60">
+          <section key={date} aria-label={"Movimentos de " + brDate(date)}>
+            <h3 className="m-0 mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
               {new Intl.DateTimeFormat("pt-BR", {
                 day: "numeric",
                 month: "long",
                 timeZone: "UTC",
               }).format(new Date(date + "T12:00:00Z"))}
             </h3>
-            <div className="ds-list list gap-0 divide-y divide-base-200">
+            <div className="flex flex-col divide-y divide-border">
               {entries.map((row) => {
                 const type = movementGroup(row);
                 const neutral = [
@@ -628,15 +744,8 @@ export function MovementsPanel({
                   "investment_sell",
                 ].includes(row.kind ?? "");
                 const amount = BigInt(row.amount);
-                // Ícone de categoria é o gatilho do modal de categorização: vale
-                // para gasto do banco (PIX autospend ou pendente), com ou sem
-                // categoria. Reader não categoriza.
                 const rowMeta =
                   row.source === "bank" ? pendingMeta.get(row.id) : undefined;
-                // Qualquer movimento do banco (categorizado ou não, bloqueado,
-                // cartão) OU qualquer evento JÁ CONFIRMADO (débito, crédito,
-                // estorno, compra de cartão...) pode ter a categoria editada.
-                // Transferências entre contas não têm categoria própria.
                 const isConfirmedEvent =
                   row.id.startsWith("event:") && type !== "transfer";
                 const canReopenCategory =
@@ -660,7 +769,8 @@ export function MovementsPanel({
                       version: 0,
                       description: row.description,
                       key: "",
-                      category: row.category ?? state.categories[0]?.name ?? "",
+                      category:
+                        row.category ?? state.categories[0]?.name ?? "",
                       eventId: row.id.slice("event:".length),
                       tagId:
                         state.events.find(
@@ -680,23 +790,23 @@ export function MovementsPanel({
                     : amount > 0n
                       ? "ok"
                       : "danger";
-                // Aviso na própria linha (o aviso global fica fora de vista).
                 const savedLabel =
                   actionState["kind:" + row.id] === "success"
                     ? "Tipo corrigido"
                     : actionState["restore:" + row.id] === "success"
                       ? "Voltou a contar"
-                      : actionState["reject:" + row.id] === "success" && row.removed
+                      : actionState["reject:" + row.id] === "success" &&
+                          row.removed
                         ? "Removido"
                         : null;
+
                 return (
                   <div className="relative" key={row.id}>
                     <Collapsible
-                      // A lista do dia já tem borda e fundo: a linha não repete.
-                      className={
-                        "rounded-none border-0 bg-transparent [&_summary]:pr-14" +
-                        (row.removed ? " opacity-60" : "")
-                      }
+                      className={cx(
+                        "rounded-none border-0 bg-transparent [&_summary]:px-0 [&_summary]:py-3 [&_summary]:pr-11",
+                        row.removed && "opacity-60",
+                      )}
                       arrow={false}
                       summary={
                         <>
@@ -729,10 +839,12 @@ export function MovementsPanel({
                                 </span>
                               )
                             }
-                            role={canReopenCategory ? "Button" : undefined}
+                            role={canReopenCategory ? "button" : undefined}
                             tabIndex={canReopenCategory ? 0 : undefined}
                             title={
-                              canReopenCategory ? "Corrigir categoria" : undefined
+                              canReopenCategory
+                                ? "Corrigir categoria"
+                                : undefined
                             }
                             data-editable={canReopenCategory || undefined}
                             onClick={
@@ -757,32 +869,31 @@ export function MovementsPanel({
                           />
                           <span className="min-w-0 flex-1">
                             <strong
-                              className={
-                                "line-clamp-2 text-sm font-medium" +
-                                (row.removed ? " line-through" : "")
-                              }
+                              className={cx(
+                                "line-clamp-2 text-sm font-medium text-ink",
+                                row.removed && "line-through",
+                              )}
                             >
                               {movementTitle(row)}
                             </strong>
                             {row.name && row.name !== row.description && (
-                              <small className="block text-xs opacity-60 pt-1">
+                              <small className="block pt-0.5 text-xs text-muted">
                                 {row.description}
                               </small>
                             )}
-                            <small className="block text-xs opacity-60 pt-2">
+                            <small className="flex flex-wrap items-center gap-1.5 pt-1.5 text-xs text-muted">
                               {row.scheduled ? (
                                 <StatusChip
                                   tone="warn"
-                                  label=" Agendado · ainda não debitado "
+                                  label="Agendado · ainda não debitado"
                                 />
                               ) : row.cardLabel ? (
                                 <StatusChip icon="" label={row.cardLabel} />
                               ) : (
-                                row.account
+                                <span>{row.account}</span>
                               )}
                               {row.fixed && (
                                 <StatusChip
-                                  className="ml-1.5"
                                   ghost
                                   tone="accent"
                                   icon="↻"
@@ -790,16 +901,10 @@ export function MovementsPanel({
                                 />
                               )}
                               {row.tag && (
-                                <StatusChip
-                                  className="ml-1.5"
-                                  ghost
-                                  icon=""
-                                  label={row.tag}
-                                />
+                                <StatusChip ghost icon="" label={row.tag} />
                               )}
                               {row.removed && (
                                 <StatusChip
-                                  className="ml-1.5"
                                   ghost
                                   tone="warn"
                                   icon=""
@@ -808,7 +913,6 @@ export function MovementsPanel({
                               )}
                               {savedLabel && (
                                 <StatusChip
-                                  className="ml-1.5"
                                   tone="ok"
                                   icon="✓"
                                   label={savedLabel}
@@ -816,7 +920,7 @@ export function MovementsPanel({
                               )}
                             </small>
                             {row.review && (
-                              <em className="block text-xs text-warning not-italic">
+                              <em className="mt-1 block text-xs font-medium text-warn not-italic">
                                 {row.duplicate
                                   ? "Possível repetição · a conferir"
                                   : "A conferir"}
@@ -824,72 +928,95 @@ export function MovementsPanel({
                             )}
                           </span>
                           <strong
-                            className={
-                              "text-sm font-medium whitespace-nowrap tabular-nums" +
-                              (row.review || neutral || row.removed
-                                ? " opacity-60"
+                            className={cx(
+                              "font-numeric text-sm font-semibold whitespace-nowrap tabular-nums",
+                              row.review || neutral || row.removed
+                                ? "text-muted"
                                 : amount > 0n
-                                  ? " text-success"
-                                  : "")
-                            }
+                                  ? "text-ok"
+                                  : "text-ink",
+                            )}
                           >
                             {money(row.amount)}
                           </strong>
                         </>
                       }
                     >
-                      <dl className="grid gap-1 text-sm">
+                      <dl className="grid gap-1.5 rounded-xl bg-surface-2/60 p-3 text-xs">
                         <div className="flex justify-between gap-3">
-                          <dt className="text-xs opacity-60">Tipo</dt>
-                          <dd className="text-xs">
+                          <dt className="text-muted">Tipo</dt>
+                          <dd className="m-0 font-medium text-ink">
                             {row.review
                               ? "Finalidade a confirmar"
                               : (labels[row.kind ?? ""] ?? "Movimento")}
                             {row.auto && !row.review && (
-                              <span className="opacity-60"> · decidido pelo app</span>
+                              <span className="text-muted"> · decidido pelo app</span>
                             )}
                           </dd>
                         </div>
                         <div className="flex justify-between gap-3">
-                          <dt className="text-xs opacity-60">Data</dt>
-                          <dd className="text-xs">{brDate(row.date)}</dd>
+                          <dt className="text-muted">Data</dt>
+                          <dd className="m-0 font-medium text-ink">
+                            {brDate(row.date)}
+                          </dd>
                         </div>
                         <div className="flex justify-between gap-3">
-                          <dt className="text-xs opacity-60">Situação</dt>
-                          <dd className="text-right text-xs">
+                          <dt className="text-muted">Situação</dt>
+                          <dd className="m-0 text-right font-medium text-ink">
                             {row.removed === "bank"
                               ? "O banco não traz mais · fora dos totais"
                               : row.removed
                                 ? "Removido · fora dos totais"
                                 : row.scheduled
-                              ? "Agendado · já conta como gasto do mês"
-                              : row.cardLabel
-                                ? "Compra no cartão · Entra na fatura"
-                                : row.review
-                                  ? "Em revisão · fora dos totais"
-                                  : neutral
-                                    ? "Entre contas · não conta nos totais"
-                                    : "Confirmado"}
+                                  ? "Agendado · já conta como gasto do mês"
+                                  : row.cardLabel
+                                    ? "Compra no cartão · Entra na fatura"
+                                    : row.review
+                                      ? "Em revisão · fora dos totais"
+                                      : neutral
+                                        ? "Entre contas · não conta nos totais"
+                                        : "Confirmado"}
                           </dd>
                         </div>
                       </dl>
                       {row.removed === "bank" && (
                         <p className="ds-caption mt-2">
-                          O banco não traz mais este movimento. Ele volta sozinho se reaparecer.
+                          O banco não traz mais este movimento. Ele volta sozinho
+                          se reaparecer.
                         </p>
                       )}
-                      {/* {!reader && bankMeta && (
-                        <p className="ds-caption mt-2">
-                          {row.scheduled
-                            ? "Agendada no banco; Entra nos gastos deste mês. Se cancelou o agendamento, use Remover no menu ⋯."
-                            : neutral || row.cardLabel
-                              ? "Lido do banco."
-                              : row.kind === "income"
-                                ? "Entrada já incluída nos totais deste mês. Toque no ícone para mudar a categoria. Se não for uma entrada da família, use Remover no menu ⋯."
-                                : "Gasto já incluído nos totais deste mês. Toque no ícone para mudar a categoria. Se não for um gasto, use Remover no menu ⋯."}
-                        </p>
-                      )} */}
                     </Collapsible>
+
+                    {filter === "review" && bankMeta && !row.removed && (
+                      <TriageRowControls
+                        meta={bankMeta}
+                        reader={reader}
+                        busy={busy}
+                        confirmState={actionState["confirm:" + row.id]}
+                        onEditCategory={openCategorize}
+                        onConfirm={() => {
+                          if (!bankMeta.confirmKind) return;
+                          void runAction(
+                            () =>
+                              postApi("banks/review", {
+                                id: bankMeta.bankId,
+                                version: bankMeta.version,
+                                decision: "record",
+                                kind: bankMeta.confirmKind,
+                                category_name: bankMeta.suggestedCategory,
+                                learn_match_text:
+                                  bankMeta.suggestedKey.length >= 3
+                                    ? bankMeta.suggestedKey
+                                    : undefined,
+                              }),
+                            `Confirmado em ${bankMeta.suggestedCategory}.`,
+                            undefined,
+                            "confirm:" + row.id,
+                          );
+                        }}
+                      />
+                    )}
+
                     <MovementRowActions
                       fixedOpen={fixingId === row.id}
                       onFixedClose={() => setFixingId(null)}
@@ -966,16 +1093,22 @@ export function MovementsPanel({
           </section>
         ))}
         {filtered.length > limit && (
-          <Button onClick={() => setLimit((value) => value + 40)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setLimit((value) => value + 40)}
+          >
             Ver mais {Math.min(40, filtered.length - limit)} movimentos
           </Button>
         )}
       </Panel>
-      <p className="ds-caption mt-6 px-1 text-xs leading-relaxed opacity-60">
+
+      <p className="ds-caption px-1 text-xs leading-relaxed">
         Toque em um movimento para ver os detalhes. Os dois lados de
         transferências podem aparecer nas contas de origem e destino; quando
         vinculados, representam uma única operação.
       </p>
+
       <FamilyDialog
         open={!!categorizing}
         title="Categorizar transação"
@@ -985,170 +1118,165 @@ export function MovementsPanel({
         onClose={() => setCategorizing(null)}
       >
         {categorizing && (
-            <form
-              className="flex flex-col gap-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const c = categorizing;
-                const learn = c.key.trim();
-                void runAction(
-                  () =>
-                    c.eventId
-                      ? postApi("events/categorize", {
-                          event_id: c.eventId,
-                          category_name: c.category,
-                          learn_match_text: learn.length >= 3 ? learn : null,
-                          tag_id: c.tagId ?? null,
-                        })
-                      : (async () => {
-                          await postApi("banks/learn-category", {
-                            match_text: c.key,
-                            category_name: c.category,
-                          });
-                          const before =
-                            pendingMeta.get(c.id)?.tagId ?? null;
-                          if ((c.tagId ?? null) !== before)
-                            await postApi("banks/tag", {
-                              bank_transaction_id: c.bankId,
-                              tag_id: c.tagId ?? null,
-                            });
-                        })(),
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const c = categorizing;
+              const learn = c.key.trim();
+              void runAction(
+                () =>
                   c.eventId
-                    ? learn.length >= 3
-                      ? `Categorizado em ${c.category}${c.tagId && c.tagName ? ` · ${c.tagName}` : ""}. Vou lembrar de "${learn}".`
-                      : `Categorizado em ${c.category}${c.tagId && c.tagName ? ` · ${c.tagName}` : ""}.`
-                    : `Categorizado em ${c.category}${c.tagId && c.tagName ? ` · ${c.tagName}` : ""}. Vou lembrar de "${c.key}".`,
-                  () => setCategorizing(null),
-                  "categorize",
-                );
-              }}
-            >
-              <Field label="Categoria">
-                <Select
-                  value={categorizing.category}
-                  onChange={(e) =>
+                    ? postApi("events/categorize", {
+                        event_id: c.eventId,
+                        category_name: c.category,
+                        learn_match_text: learn.length >= 3 ? learn : null,
+                        tag_id: c.tagId ?? null,
+                      })
+                    : (async () => {
+                        await postApi("banks/learn-category", {
+                          match_text: c.key,
+                          category_name: c.category,
+                        });
+                        const before = pendingMeta.get(c.id)?.tagId ?? null;
+                        if ((c.tagId ?? null) !== before)
+                          await postApi("banks/tag", {
+                            bank_transaction_id: c.bankId,
+                            tag_id: c.tagId ?? null,
+                          });
+                      })(),
+                c.eventId
+                  ? learn.length >= 3
+                    ? `Categorizado em ${c.category}${c.tagId && c.tagName ? ` · ${c.tagName}` : ""}. Vou lembrar de "${learn}".`
+                    : `Categorizado em ${c.category}${c.tagId && c.tagName ? ` · ${c.tagName}` : ""}.`
+                  : `Categorizado em ${c.category}${c.tagId && c.tagName ? ` · ${c.tagName}` : ""}. Vou lembrar de "${c.key}".`,
+                () => setCategorizing(null),
+                "categorize",
+              );
+            }}
+          >
+            <Field label="Categoria">
+              <Select
+                value={categorizing.category}
+                onChange={(e) =>
+                  setCategorizing((c) =>
+                    c
+                      ? {
+                          ...c,
+                          category: e.target.value,
+                          tagId: null,
+                          tagName: null,
+                        }
+                      : c,
+                  )
+                }
+              >
+                {[
+                  ...new Set([
+                    categorizing.category,
+                    ...state.categories.map((c) => c.name),
+                  ]),
+                ].map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {(() => {
+              const cat = state.categories.find(
+                (c) => c.name === categorizing.category,
+              );
+              if (!cat) return null;
+              return (
+                <TagPicker
+                  category={cat}
+                  chosen={
+                    categorizing.tagId && categorizing.tagName
+                      ? { id: categorizing.tagId, name: categorizing.tagName }
+                      : null
+                  }
+                  busy={busy}
+                  onChange={(tag) =>
                     setCategorizing((c) =>
                       c
                         ? {
                             ...c,
-                            category: e.target.value,
-                            tagId: null,
-                            tagName: null,
+                            tagId: tag?.id ?? null,
+                            tagName: tag?.name ?? null,
                           }
                         : c,
                     )
                   }
-                >
-                  {[
-                    ...new Set([
-                      categorizing.category,
-                      ...state.categories.map((c) => c.name),
-                    ]),
-                  ].map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              {(() => {
-                const cat = state.categories.find(
-                  (c) => c.name === categorizing.category,
-                );
-                if (!cat) return null;
-                return (
-                  <TagPicker
-                    category={cat}
-                    chosen={
-                      categorizing.tagId && categorizing.tagName
-                        ? { id: categorizing.tagId, name: categorizing.tagName }
-                        : null
-                    }
-                    busy={busy}
-                    onChange={(tag) =>
-                      setCategorizing((c) =>
-                        c
-                          ? {
-                              ...c,
-                              tagId: tag?.id ?? null,
-                              tagName: tag?.name ?? null,
-                            }
-                          : c,
-                      )
-                    }
-                    createTag={(categoryId, name) =>
-                      postApiJson<{ id: string; name: string }>(
-                        "categories/tags",
-                        { category_id: categoryId, name },
-                      )
-                    }
-                  />
-                );
-              })()}
-              <Field
-                label={
-                  categorizing.eventId
-                    ? "Lembrar deste texto nessa categoria (opcional)"
-                    : "Lembrar deste texto nessa categoria"
-                }
-                hint={
-                  categorizing.eventId
-                    ? "Preenchido, toda transação com este texto vai para essa categoria. Em branco, muda só este movimento."
-                    : "Toda transação com este texto na descrição vai para essa categoria."
-                }
-              >
-                <input
-                  className="input w-full"
-                  value={categorizing.key}
-                  minLength={categorizing.eventId ? undefined : 3}
-                  maxLength={120}
-                  required={!categorizing.eventId}
-                  placeholder={
-                    categorizing.eventId
-                      ? "Deixe em branco para só este"
-                      : undefined
-                  }
-                  onChange={(e) =>
-                    setCategorizing((c) =>
-                      c ? { ...c, key: e.target.value } : c,
+                  createTag={(categoryId, name) =>
+                    postApiJson<{ id: string; name: string }>(
+                      "categories/tags",
+                      { category_id: categoryId, name },
                     )
                   }
                 />
-              </Field>
-              {/* Rodapé: ação principal à direita; "Tornar conta fixa" é um
-                  caminho alternativo (fecha este e abre outro diálogo), por
-                  isso fica no mesmo rodapé, com peso menor. No celular, a
-                  principal vai para cima e as duas ocupam a largura. */}
-              <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
-                {(() => {
-                  const target = rows.find((r) => r.id === categorizing.id);
-                  return !reader && target && rowAction(target) ? (
-                    <Button
-                      variant="quiet"
-                      icon="↻"
-                      className="w-full sm:w-auto"
-                      disabled={busy}
-                      onClick={() => {
-                        setCategorizing(null);
-                        setFixingId(target.id);
-                      }}
-                    >
-                      Tornar conta fixa
-                    </Button>
-                  ) : null;
-                })()}
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="w-full sm:ml-auto sm:w-auto"
-                  state={actionState["categorize"]}
-                  busyLabel="Salvando…"
-                  successLabel="Salvo ✓"
-                >
-                  Salvar categoria
-                </Button>
-              </div>
-            </form>
+              );
+            })()}
+            <Field
+              label={
+                categorizing.eventId
+                  ? "Lembrar deste texto nessa categoria (opcional)"
+                  : "Lembrar deste texto nessa categoria"
+              }
+              hint={
+                categorizing.eventId
+                  ? "Preenchido, toda transação com este texto vai para essa categoria. Em branco, muda só este movimento."
+                  : "Toda transação com este texto na descrição vai para essa categoria."
+              }
+            >
+              <input
+                className="input w-full"
+                value={categorizing.key}
+                minLength={categorizing.eventId ? undefined : 3}
+                maxLength={120}
+                required={!categorizing.eventId}
+                placeholder={
+                  categorizing.eventId
+                    ? "Deixe em branco para só este"
+                    : undefined
+                }
+                onChange={(e) =>
+                  setCategorizing((c) =>
+                    c ? { ...c, key: e.target.value } : c,
+                  )
+                }
+              />
+            </Field>
+            <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+              {(() => {
+                const target = rows.find((r) => r.id === categorizing.id);
+                return !reader && target && rowAction(target) ? (
+                  <Button
+                    variant="quiet"
+                    icon="↻"
+                    className="w-full sm:w-auto"
+                    disabled={busy}
+                    onClick={() => {
+                      setCategorizing(null);
+                      setFixingId(target.id);
+                    }}
+                  >
+                    Tornar conta fixa
+                  </Button>
+                ) : null;
+              })()}
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full sm:ml-auto sm:w-auto"
+                state={actionState["categorize"]}
+                busyLabel="Salvando…"
+                successLabel="Salvo ✓"
+              >
+                Salvar categoria
+              </Button>
+            </div>
+          </form>
         )}
       </FamilyDialog>
     </div>

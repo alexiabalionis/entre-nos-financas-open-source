@@ -1,9 +1,6 @@
 "use client";
-// Bloco FIXO do topo da tela Mês (não entra no HomeBlocks reordenável da
-// Etapa 4): aviso "Ainda sem previsão" + o herói (StatBanner inverted com o
-// expand "Como chegamos nesse valor") + os avisos de risco/dado faltando.
-// Com "ocultar valores", os textos mantêm o tamanho e saem borrados (Veil).
-// Extraído de month-screen.tsx (Etapa 2).
+// Bloco FIXO do topo da tela Mês: aviso "Ainda sem previsão" + Branded Hero
+// (StatBanner inverted com o expand "Como chegamos nesse valor") + avisos de risco/dado faltando.
 import type { ReactNode } from "react";
 import { formatted } from "../../../src/domain/format.ts";
 import { Panel } from "../../ds/panel.tsx";
@@ -27,33 +24,35 @@ export function HeroBlock({ model, currency }: MonthBlockProps) {
         : countUpMoney(hero.valueCents, currency)
       : veil(hero.valueText);
   const heroReason = hero.reason ? (
-    <p className="ds-caption text-xs">
-      <strong>{hero.reason.prefix}</strong> {veil(hero.reason.sentence)}
+    <p className="ds-caption m-0 text-xs leading-relaxed">
+      <strong className="font-semibold text-white">{hero.reason.prefix}</strong>{" "}
+      {veil(hero.reason.sentence)}
       {hero.reason.extraCount > 0
-        ? ` E mais ${hero.reason.extraCount} ${hero.reason.extraCount === 1 ? "ponto" : "pontos"} em Precisa de você.`
+        ? ` E mais ${hero.reason.extraCount} ${hero.reason.extraCount === 1 ? "ponto" : "pontos"} em Atenção agora.`
         : null}
     </p>
   ) : null;
-  // Breakdown "Seu mês": mora dentro do herói (expand do StatBanner) — é a
-  // explicação de como chegamos no número, não um painel à parte.
+
   const flowBreakdown: ReactNode | null = model.breakdown ? (
     <>
-      <div className="ds-stat-expand-h">
+      <div className="ds-stat-expand-h mb-3 flex items-center justify-between text-sm font-semibold text-white">
         <span>Seu mês</span>
-        <span className="ds-panel-meta text-xs font-normal opacity-60">{model.breakdown.metaLabel}</span>
+        <span className="text-xs font-normal text-white/75">
+          {model.breakdown.metaLabel}
+        </span>
       </div>
       <SegmentedBar segments={model.breakdown.segments} aria={model.breakdown.aria} />
-      <div className="mt-2 text-sm [&_.list-row]:px-0 [&_.list-row]:py-1.5">
+      <div className="mt-3 text-sm">
         <RowList rows={model.breakdown.rows} bordered={false} />
       </div>
     </>
   ) : null;
+
   const heroExpand =
     flowBreakdown && !hidden
       ? { label: "Como chegamos nesse valor", content: flowBreakdown }
       : undefined;
-  // Avisos que pedem atenção (saldo negativo antes do pagamento, itens sem
-  // valor): valem para os dois topos.
+
   const alerts = (
     <>
       {model.riskAlert ? (
@@ -78,10 +77,11 @@ export function HeroBlock({ model, currency }: MonthBlockProps) {
       ) : null}
     </>
   );
+
   return (
-    <>
+    <div className="flex flex-col gap-3">
       {show.notice ? (
-        <Panel title="Ainda sem previsão">
+        <Panel title="Ainda sem previsão" className="mb-0">
           <p className="ds-caption">
             Sem projeção para este mês ainda. A previsão vale para o mês atual e o próximo.
           </p>
@@ -101,7 +101,12 @@ export function HeroBlock({ model, currency }: MonthBlockProps) {
             title={hero.title}
             neg={hero.neg && !hidden}
             caption={veil(hero.caption)}
-            trailing={<StatusChip tone={hidden ? "neutral" : hero.tone} label={veil(hero.toneLabel)} />}
+            trailing={
+              <StatusChip
+                tone={hidden ? "neutral" : hero.tone}
+                label={veil(hero.toneLabel)}
+              />
+            }
             expand={heroExpand}
           >
             {heroReason}
@@ -109,6 +114,6 @@ export function HeroBlock({ model, currency }: MonthBlockProps) {
           {alerts}
         </>
       ) : null}
-    </>
+    </div>
   );
 }

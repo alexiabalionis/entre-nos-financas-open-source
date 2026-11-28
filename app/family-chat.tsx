@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Button } from "./button";
+import { Button } from "./ds/button.tsx";
+import { IconButton } from "./ds/icon-button.tsx";
 import { takeJuditeQuestion } from "./chat/handoff.ts";
 import {
   JuditeAvatar,
@@ -501,41 +502,42 @@ export function HelpPanel({
     }
   }
   return (
-    <section className="family-chat" aria-label="Conversa com Judite">
+    <section className="family-chat flex min-h-0 flex-1 flex-col gap-3" aria-label="Conversa com Judite">
       {/* Cabeçalho: quem é (avatar, nome, modo — abre as configurações) à
           esquerda; ações da conversa, discretas, à direita. Sem caixas: a
           conversa é o conteúdo, o topo só orienta. */}
-      <header className="chat-toolbar flex items-center gap-1 border-b border-base-300 pb-2">
+      <header className="chat-toolbar flex items-center gap-1.5 border-b border-border pb-2.5">
         <button
           type="button"
-          className="btn btn-ghost h-auto min-h-0 min-w-0 flex-1 justify-start gap-2.5 px-2 py-1.5 text-left font-normal"
+          className="ui-reset-btn flex min-w-0 flex-1 items-center justify-start gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-surface-2"
           aria-expanded={settings}
           onClick={() => setSettings((s) => !s)}
         >
           <JuditeAvatar working={busy || pending} />
           <span className="flex min-w-0 flex-col">
-            <strong className="text-sm leading-tight font-semibold">
+            <strong className="text-[0.9375rem] leading-tight font-semibold text-ink">
               Judite
             </strong>
-            <small className="truncate text-xs leading-tight text-base-content/70">
+            <small className="truncate text-[0.75rem] leading-tight text-ink-2">
               {busy || pending
                 ? "Respondendo…"
-                : "Histórico da família · " +
-                  (external ? "Com IA" : "Sem envio externo")}
+                : external
+                  ? "Com IA ativa"
+                  : "Modo local"}
             </small>
           </span>
           <Icon
             name="down"
             size={14}
             className={cx(
-              "shrink-0 opacity-70 transition-transform duration-(--ds-dur)",
+              "shrink-0 text-ink-2 transition-transform duration-(--ds-dur)",
               settings && "rotate-180",
             )}
           />
         </button>
         <button
           type="button"
-          className="btn btn-ghost btn-sm shrink-0 px-2.5 text-[0.8125rem] font-medium text-base-content/70 aria-expanded:bg-[var(--color-primary-tint)] aria-expanded:text-[var(--color-primary-ink)]"
+          className="ui-reset-btn inline-flex min-h-8.5 shrink-0 items-center rounded-xl px-3 text-[0.8125rem] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50 aria-expanded:bg-accent-soft aria-expanded:text-accent-ink"
           aria-label="Histórico de conversas"
           aria-expanded={historyOpen}
           disabled={busy || !!saving || hidden}
@@ -546,58 +548,48 @@ export function HelpPanel({
         >
           Histórico
         </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm btn-circle shrink-0 text-base-content/70"
+        <IconButton
+          icon="plus"
+          label="Nova conversa"
           disabled={busy || !!saving || loading || hidden}
-          aria-label="Nova conversa"
-          title="Nova conversa"
           onClick={() => void newConversation()}
-        >
-          <Icon name="plus" size={18} />
-        </button>
+        />
       </header>
       {historyOpen && !hidden && (
         <div role="region" aria-label="Suas conversas salvas">
           <Panel title="Suas conversas">
             <div className="flex items-start justify-between gap-2">
-              <p className="ds-caption">
+              <p className="text-[0.875rem] text-ink-2">
                 Privadas para o seu acesso. Novas conversas não apagam as
                 anteriores.
               </p>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm btn-circle -mt-1 shrink-0 text-base-content/60"
-                aria-label="Fechar histórico"
+              <IconButton
+                icon="close"
+                label="Fechar histórico"
                 onClick={() => setHistoryOpen(false)}
-              >
-                <Icon name="close" size={16} />
-              </button>
+              />
             </div>
             {!conversations.length ? (
-              <p className="ds-caption">
+              <p className="text-[0.875rem] text-ink-2">
                 A primeira conversa ficará salva aqui.
               </p>
             ) : (
-              // Lista simples: título (1 linha) e mês embaixo; a conversa
-              // aberta ganha o fundo tingido da marca, as outras só no hover.
-              // Sem list-row (grade de colunas do daisyUI: recuava o item).
-              <ul className="-mx-2 m-0 flex list-none flex-col gap-0.5 p-0">
+              <ul className="-mx-2 m-0 flex list-none flex-col gap-1 p-0">
                 {conversations.map((c) => (
                   <li key={c.id}>
                     <button
                       type="button"
-                      className="btn btn-ghost h-auto min-h-0 w-full flex-col items-start justify-start gap-0.5 px-2 py-2 text-left font-normal hover:bg-[var(--color-primary-tint)] aria-[current=true]:border-transparent aria-[current=true]:bg-[var(--color-primary-tint)]"
+                      className="ui-reset-btn flex w-full flex-col items-start justify-start gap-0.5 rounded-xl px-3 py-2 text-left transition-colors hover:bg-accent-soft/60 disabled:opacity-50 aria-[current=true]:bg-accent-soft aria-[current=true]:text-accent-ink"
                       aria-current={
                         c.id === conversation?.id ? "true" : undefined
                       }
                       disabled={loading}
                       onClick={() => void choose(c.id)}
                     >
-                      <span className="w-full truncate text-sm leading-snug font-medium">
+                      <span className="w-full truncate text-[0.9375rem] leading-snug font-medium text-ink">
                         {c.title}
                       </span>
-                      <span className="text-xs leading-snug text-base-content/70 tabular-nums">
+                      <span className="text-[0.75rem] leading-snug text-ink-2 tabular-nums">
                         {c.month} · {c.currency}
                       </span>
                     </button>
@@ -607,6 +599,8 @@ export function HelpPanel({
             )}
             {hasMore && (
               <Button
+                variant="quiet"
+                size="sm"
                 disabled={loading}
                 onClick={() =>
                   void list(true).catch((e) => setError(e.message))
@@ -619,22 +613,21 @@ export function HelpPanel({
         </div>
       )}
       {settings && !historyOpen && (
-        <Panel>
-          <p className="ds-caption">
+        <Panel title="Como a Judite funciona">
+          <p className="text-[0.875rem] leading-relaxed text-ink-2">
             Consulte todos os meses da família. Diga o período na pergunta para
             focar ou comparar meses. Para alterações, informe mês, valor e data.
           </p>
-          <p className="ds-caption">
+          <p className="text-[0.875rem] leading-relaxed text-ink-2">
             Suas conversas ficam salvas no banco privado, vinculadas ao seu
             acesso. Você pode retomá-las em outro aparelho; a outra pessoa da
             família tem seu próprio histórico.
           </p>
           {ready && !reader ? (
-            // items-start: rótulo de 4 linhas, a caixinha fica na 1ª linha.
-            <label className="family-consent m-0 flex items-start gap-2.5 rounded-box bg-base-200/60 p-3 text-[0.8125rem] leading-normal">
+            <label className="m-0 flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-surface-2 p-3 text-[0.8125rem] leading-relaxed text-ink">
               <input
                 type="checkbox"
-                className="checkbox checkbox-sm mt-px shrink-0"
+                className="mt-1 size-4 shrink-0 rounded border-border accent-accent"
                 checked={external}
                 disabled={busy}
                 onChange={(e) => setExternal(e.target.checked)}
@@ -648,7 +641,7 @@ export function HelpPanel({
               </span>
             </label>
           ) : (
-            <p className="ds-caption">
+            <p className="text-[0.875rem] text-ink-2">
               {reader
                 ? "Seu acesso permite apenas consultas locais."
                 : "A IA externa ainda não está configurada. As consultas locais continuam disponíveis."}
@@ -666,17 +659,24 @@ export function HelpPanel({
         </Panel>
       )}
       {hidden ? (
-        <div className="chat-empty">
-          <span className="chat-emblem" aria-hidden="true">
+        <div className="chat-empty flex flex-1 flex-col items-center justify-center gap-3 px-4 py-12 text-center">
+          <span
+            className="flex size-14 items-center justify-center rounded-2xl bg-surface-2 text-ink-2"
+            aria-hidden="true"
+          >
             <Icon name="eye" size={24} />
           </span>
-          <h2>Conversa protegida</h2>
-          <p>Mostre os valores no topo para continuar.</p>
+          <h2 className="font-display text-xl font-medium tracking-tight text-ink">
+            Conversa protegida
+          </h2>
+          <p className="max-w-sm text-[0.9375rem] text-ink-2">
+            Mostre os valores no topo para continuar.
+          </p>
         </div>
       ) : (
         <>
           <div
-            className="chat-log"
+            className="chat-log flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto pr-1"
             ref={log}
             role="log"
             aria-label="Mensagens"
@@ -693,17 +693,20 @@ export function HelpPanel({
             }}
           >
             {hasOlder && (
-              <Button
-                className="chat-older"
-                disabled={loading}
-                onClick={() => void older()}
-              >
-                Carregar mensagens anteriores
-              </Button>
+              <div className="flex justify-center py-1">
+                <Button
+                  variant="quiet"
+                  size="sm"
+                  disabled={loading}
+                  onClick={() => void older()}
+                >
+                  Carregar mensagens anteriores
+                </Button>
+              </div>
             )}
             {loading && (
-              <p className="chat-loading" role="status">
-                <span className="chat-dots" aria-hidden="true">
+              <p className="flex items-center justify-center gap-2 py-4 text-[0.875rem] text-ink-2" role="status">
+                <span className="chat-dots text-accent-ink" aria-hidden="true">
                   <span />
                   <span />
                   <span />
@@ -712,41 +715,54 @@ export function HelpPanel({
               </p>
             )}
             {!messages.length && !loading && (
-              <div className="chat-empty">
-                <span className="chat-emblem" aria-hidden="true">
-                  <Icon name="sparkle" size={28} />
+              <div className="chat-empty mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-2 py-8 text-center">
+                <span
+                  className="flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent-ink"
+                  aria-hidden="true"
+                >
+                  <Icon name="sparkle" size={26} />
                 </span>
-                <h2>O que vamos cuidar hoje?</h2>
-                <p>
-                  Entenda o mês, planeje uma conta ou registre um gasto. Eu
-                  preparo, vocês conferem.
-                </p>
-                <div className="chat-suggestions">
-                  {[
-                    ...(external
-                      ? ["Analise nossas finanças e me diga onde melhorar"]
-                      : []),
-                    "O que falta pagar neste mês?",
-                    "Quanto sobra no planejamento?",
-                    ...(external
-                      ? [
-                          "Quero planejar uma conta",
-                          "Quero registrar uma despesa",
-                        ]
-                      : ["Como estão nossos investimentos?"]),
-                  ].map((q) => (
-                    <Button key={q} disabled={busy} onClick={() => void ask(q)}>
-                      {q}
+                <div className="flex flex-col gap-1.5">
+                  <h2 className="font-display text-[1.375rem] leading-tight font-medium tracking-tight text-ink">
+                    O que vamos cuidar hoje?
+                  </h2>
+                  <p className="text-[0.9375rem] leading-relaxed text-ink-2">
+                    Entenda o mês, planeje uma conta ou registre um gasto. Eu
+                    preparo, vocês conferem.
+                  </p>
+                </div>
+                <div className="flex w-full flex-col gap-2">
+                  {(external
+                    ? [
+                        "Onde estamos gastando demais?",
+                        "Quanto posso gastar até o fim da semana?",
+                        "O que vence nos próximos dias?",
+                        "Quero registrar um gasto",
+                      ]
+                    : [
+                        "O que falta pagar neste mês?",
+                        "Quanto sobra no planejamento?",
+                        "Como estão nossos investimentos?",
+                      ]
+                  ).map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void ask(q)}
+                      className="ui-reset-btn flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3 text-left text-[0.9375rem] font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2 disabled:opacity-50"
+                    >
+                      <span>{q}</span>
                       <Icon
                         name="right"
-                        size={14}
-                        className="shrink-0 opacity-70"
+                        size={16}
+                        className="shrink-0 text-ink-2"
                       />
-                    </Button>
+                    </button>
                   ))}
                 </div>
                 {external && (
-                  <p>
+                  <p className="text-[0.8125rem] leading-relaxed text-ink-2">
                     Para uma análise completa, peça com palavras como
                     “analise”, “o que poderia fazer diferente”, “onde dá para
                     economizar” ou “o que está pesando nas finanças”.
@@ -754,7 +770,7 @@ export function HelpPanel({
                 )}
                 {!external && ready && !reader && (
                   <Button
-                    className="chat-enable"
+                    variant="primary"
                     onClick={() => setSettings(true)}
                   >
                     Ativar conversa com IA
@@ -764,25 +780,27 @@ export function HelpPanel({
             )}
             {messages.map((m) => (
               <article
-                className={`chat-message chat-${m.role} chat ${m.role === "user" ? "chat-end" : "chat-start"}`}
+                className={cx(
+                  "chat-message flex gap-2.5",
+                  m.role === "user" ? "justify-end" : "items-start justify-start",
+                )}
                 key={m.id}
                 aria-label={m.role === "user" ? "Você" : "Judite"}
               >
                 {m.role === "assistant" && (
-                  // Mesmo avatar do cabeçalho; no topo da mensagem (self-start),
-                  // não no pé — em resposta longa ele ficava longe do começo.
+                  // Mesmo avatar do cabeçalho; no topo da mensagem, não no pé.
                   <JuditeAvatar
                     size="sm"
                     working={m.pending}
-                    className="chat-image self-start"
+                    className="mt-0.5"
                   />
                 )}
                 <div
                   className={cx(
-                    "chat-message-body chat-bubble",
+                    "min-w-0 text-[0.9375rem] leading-relaxed shadow-xs [overflow-wrap:anywhere]",
                     m.role === "user"
-                      ? "chat-bubble-primary"
-                      : "bg-base-200 text-base-content",
+                      ? "max-w-[85%] rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-white sm:max-w-[75%]"
+                      : "max-w-[88%] rounded-2xl rounded-tl-md border border-border bg-surface px-4 py-3 text-ink sm:max-w-[80%]",
                   )}
                 >
                   {m.pending ? (
@@ -792,7 +810,7 @@ export function HelpPanel({
                       <Icon
                         name="alert"
                         size={16}
-                        className="mt-[0.3rem] shrink-0 text-error"
+                        className="mt-1 shrink-0 text-danger"
                       />
                       <MessageText text={m.text} />
                     </div>
@@ -800,8 +818,8 @@ export function HelpPanel({
                     <MessageText text={m.text} />
                   )}
                   {m.contas && (
-                    <details className="chat-sources group mt-2 text-xs text-base-content/70">
-                      <summary className="inline-flex min-h-0 cursor-pointer list-none items-center gap-1 rounded py-1 hover:text-base-content [&::-webkit-details-marker]:hidden">
+                    <details className="group mt-2.5 text-[0.75rem] text-ink-2">
+                      <summary className="inline-flex min-h-0 cursor-pointer list-none items-center gap-1 rounded py-1 hover:text-ink [&::-webkit-details-marker]:hidden">
                         Ver as contas
                         <Icon
                           name="down"
@@ -832,14 +850,11 @@ export function HelpPanel({
                                 : "PRÉVIA · AINDA NÃO SALVO"
                         }
                       >
-                        {/* Dados da prévia: linhas de 1 informação, então
-                            lista compacta (8px) — o RowList (54px por linha)
-                            é para linhas com título e detalhe. */}
-                        <ul className="m-0 flex list-none flex-col divide-y divide-base-300 p-0 text-sm">
+                        <ul className="m-0 flex list-none flex-col divide-y divide-border p-0 text-[0.875rem]">
                           {m.action.details.map((d, i) => (
                             <li
                               key={i}
-                              className="py-2 leading-snug [overflow-wrap:anywhere]"
+                              className="py-2 leading-snug text-ink [overflow-wrap:anywhere]"
                             >
                               {d}
                             </li>
@@ -847,13 +862,14 @@ export function HelpPanel({
                         </ul>
                         {m.action.status === "pending" && (
                           <>
-                            <p className="ds-caption">
+                            <p className="text-[0.8125rem] text-ink-2">
                               Válida por 30 minutos. Confira valores, contas e
                               datas.
                             </p>
-                            <div className="chat-action-buttons flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <Button
                                 variant="primary"
+                                size="sm"
                                 disabled={
                                   !!saving ||
                                   busy ||
@@ -871,6 +887,7 @@ export function HelpPanel({
                               </Button>
                               <Button
                                 variant="quiet"
+                                size="sm"
                                 disabled={
                                   !!saving ||
                                   busy ||
@@ -891,7 +908,12 @@ export function HelpPanel({
                     </div>
                   )}
                   {m.origem && (
-                    <p className="ds-caption mt-2">
+                    <p
+                      className={cx(
+                        "mt-2 text-[0.75rem]",
+                        m.role === "user" ? "text-white/80" : "text-ink-2",
+                      )}
+                    >
                       {m.origem.externo
                         ? m.origem.modelo
                           ? `Com IA · ${m.origem.modelo}`
@@ -900,10 +922,8 @@ export function HelpPanel({
                     </p>
                   )}
                   {m.source && (
-                    // Metadado da resposta, não conteúdo: link pequeno que
-                    // abre o texto, sem caixa (era um bloco de 49px).
-                    <details className="chat-sources group mt-2 text-xs text-base-content/70">
-                      <summary className="inline-flex min-h-0 cursor-pointer list-none items-center gap-1 rounded py-1 hover:text-base-content [&::-webkit-details-marker]:hidden">
+                    <details className="group mt-2 text-[0.75rem] text-ink-2">
+                      <summary className="inline-flex min-h-0 cursor-pointer list-none items-center gap-1 rounded py-1 hover:text-ink [&::-webkit-details-marker]:hidden">
                         Fontes e limites da resposta
                         <Icon
                           name="down"
@@ -922,57 +942,58 @@ export function HelpPanel({
             ))}
             {busy && <JuditeWaiting onStop={stop} />}
           </div>
-          <div className="chat-compose-wrap">
+          <div className="chat-compose-wrap flex shrink-0 flex-col gap-2 pt-1">
             {referenceOnly && (
-              <p className="ds-caption">
-                Esta conversa em {conversation?.currency} fica como referência.{" "}
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface-2 px-3.5 py-2 text-[0.875rem] text-ink-2">
+                <span>
+                  Esta conversa em {conversation?.currency} fica como referência.
+                </span>
                 <Button
+                  variant="quiet"
+                  size="sm"
                   disabled={loading}
                   onClick={() => void newConversation()}
                 >
                   Conversar em reais
                 </Button>
-              </p>
+              </div>
             )}
             {error && (
-              <p
-                className="family-error alert alert-soft alert-error"
+              <div
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-danger/25 bg-danger-soft px-3.5 py-2.5 text-[0.875rem] text-danger"
                 role="alert"
               >
-                {error}{" "}
+                <span>{error}</span>
                 {conversation && (
                   <Button
-                    type="button"
+                    variant="quiet"
+                    size="sm"
                     disabled={busy || loading}
                     onClick={() => void choose(conversation.id)}
                   >
                     Atualizar conversa
                   </Button>
                 )}
-              </p>
+              </div>
             )}
             {/* Compositor: uma pílula só. Anexar (discreto) · texto que cresce
                 com o conteúdo (1 a ~6 linhas) · enviar (primário). Botões no
                 pé (items-end): com várias linhas, ficam junto da última. */}
             <form
-              className="chat-composer m-0 flex items-end gap-1 rounded-[1.375rem] border border-base-300 bg-base-100 p-1 shadow-none transition-[border-color,box-shadow] duration-(--ds-dur-fast) focus-within:border-primary focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-primary)_22%,transparent)]"
+              className="chat-composer m-0 flex items-end gap-1.5 rounded-[1.375rem] border border-border bg-surface p-1.5 shadow-xs transition-[border-color,box-shadow] duration-(--ds-dur-fast) focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20"
               onSubmit={(e) => {
                 e.preventDefault();
                 void ask(draft);
               }}
             >
-              <button
-                type="button"
-                className="btn btn-ghost btn-circle shrink-0 text-base-content/70"
-                aria-label="Abrir formulário de movimento"
-                title="Registrar pelo formulário"
+              <IconButton
+                icon="plus"
+                label="Abrir formulário de movimento"
                 disabled={
                   reader || referenceOnly || !!saving || busy || loading
                 }
                 onClick={record}
-              >
-                <Icon name="plus" size={20} />
-              </button>
+              />
               <label className="sr-only" htmlFor="chat-draft">
                 Mensagem para Judite
               </label>
@@ -984,9 +1005,7 @@ export function HelpPanel({
                 disabled={loading || referenceOnly}
                 ref={input}
                 rows={1}
-                // field-sizing: cresce com o texto, sem JS; 40px = altura dos
-                // botões, então 1 linha fica centrada entre eles.
-                className="min-h-[calc(var(--size-field,0.25rem)*10)] max-h-36 flex-1 resize-none px-1 py-2 text-[0.9375rem] leading-6 [field-sizing:content]"
+                className="min-h-10 max-h-36 flex-1 resize-none border-0 bg-transparent px-1.5 py-2 text-base leading-6 text-ink placeholder:text-ink-3 focus:outline-none [@media(pointer:fine)]:text-[0.9375rem] [field-sizing:content]"
                 maxLength={600}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -1000,7 +1019,7 @@ export function HelpPanel({
               {busy ? (
                 <button
                   type="button"
-                  className="btn btn-circle shrink-0 border-0 bg-base-content text-base-100"
+                  className="ui-reset-btn grid size-10 shrink-0 place-items-center rounded-full bg-ink text-surface transition-opacity hover:opacity-90"
                   onClick={stop}
                   aria-label="Parar a espera"
                   title="Parar a espera"
@@ -1013,7 +1032,7 @@ export function HelpPanel({
               ) : (
                 <button
                   type="submit"
-                  className="btn btn-primary btn-circle shrink-0 disabled:bg-base-200 disabled:text-base-content/30"
+                  className="ui-reset-btn grid size-10 shrink-0 place-items-center rounded-full bg-accent text-white transition-all hover:brightness-95 disabled:bg-surface-3 disabled:text-ink-3"
                   disabled={
                     draft.trim().length < 3 ||
                     !!saving ||
@@ -1027,7 +1046,7 @@ export function HelpPanel({
                 </button>
               )}
             </form>
-            <p className="chat-disclaimer m-0 mt-1.5 px-2 text-center text-xs leading-snug text-base-content/70">
+            <p className="chat-disclaimer m-0 mt-1 px-2 text-center text-[0.75rem] leading-snug text-ink-2">
               {external
                 ? "A IA pode errar. Alterações só são salvas ao confirmar."
                 : "Ajuda local para consultas. Ative a IA acima para pedir registros e edições."}

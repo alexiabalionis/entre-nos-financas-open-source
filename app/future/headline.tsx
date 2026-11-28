@@ -1,15 +1,9 @@
 "use client";
 import { ChangedText } from "../ds/index.ts";
-import { cx } from "../ds/shared.ts";
 import { useFutureContext } from "./future-context.tsx";
 import { HorizonSwitch } from "./horizon-switch.tsx";
 import { headline } from "./view-model.ts";
 
-/**
- * Cabeçalho da tela: "O futuro de vocês", a frase de destaque do rascunho
- * (que marca quando muda) e o seletor de horizonte. Não calcula: a frase vem
- * de headline() no modelo. Não mostra valores com "ocultar valores" ligado.
- */
 export function Headline() {
   const f = useFutureContext();
   const result = f.draft ?? f.base;
@@ -19,15 +13,22 @@ export function Headline() {
       ? headline(input, result, f.months, f.hidden)
       : { lead: f.status === "error" ? f.error : "Carregando o futuro…", detail: "" };
   return (
-    <header className={cx("ds-reset", "fut-headline")}>
-      <div className="fut-headline-text">
-        <p className="fut-headline-eyebrow">O futuro de vocês</p>
-        <h1 className="fut-headline-lead" aria-live="polite">
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4">
+      <div className="grid min-w-0 flex-1 basis-80 max-w-3xl gap-1.5">
+        <p className="m-0 text-xs font-semibold uppercase tracking-wider text-muted">
+          O futuro de vocês
+        </p>
+        <h2
+          className="m-0 text-2xl font-semibold tracking-tight text-ink sm:text-3xl leading-[1.15]"
+          aria-live="polite"
+        >
           <ChangedText value={text.lead} />
-        </h1>
-        {text.detail ? <p className="fut-headline-detail">{text.detail}</p> : null}
+        </h2>
+        {text.detail ? (
+          <p className="m-0 text-sm leading-relaxed text-muted">{text.detail}</p>
+        ) : null}
       </div>
-      <div className="fut-headline-switch">
+      <div className="max-w-full overflow-x-auto">
         <HorizonSwitch />
       </div>
     </header>

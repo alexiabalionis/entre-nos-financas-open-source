@@ -174,7 +174,14 @@ export function HomeLayout({
                 Concluir
               </Button>
             </div>
-            {message && <p role="alert" className="ds-caption alert alert-soft alert-error">{message}</p>}
+            {message && (
+              <p
+                role="alert"
+                className="rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm text-danger"
+              >
+                {message}
+              </p>
+            )}
           </Panel>
         </div>
       )}

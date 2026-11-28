@@ -6,9 +6,9 @@ import { formatted, brDate } from "../src/domain/format.ts";
 import { Button } from "./button";
 import { Collapsible } from "./collapsible";
 import { Field } from "./field";
+import { LimitBar } from "./ds/limit-bar";
 import { Panel } from "./ds/panel";
-import { RowList } from "./ds/row-list";
-import { StatBanner } from "./ds/stat-banner";
+import { StatusChip } from "./ds/status-chip";
 import type { ReactNode } from "react";
 type Cards = Awaited<ReturnType<typeof readCards>>;
 type CardProjection = Awaited<ReturnType<typeof readCardProjection>>;
@@ -77,23 +77,19 @@ export function CardsPanel({
   const money = (v: string | null) =>
     hidden ? "••••" : v === null ? "Não informado" : formatted(v, "BRL");
   if (!cards.length) return null;
+  const totalLabel =
+    overview.unknown === cards.length
+      ? "A conferir"
+      : money(overview.total_cents);
   return (
     <div role="region" aria-label="Compras e faturas do cartão" className="credit-overview flex flex-col gap-3">
-      <StatBanner
-        eyebrow={
-          overview.unknown
-            ? "Total conhecido do mês"
-            : "Total das faturas do mês"
-        }
-        value={
-          overview.unknown === cards.length
-            ? "A conferir"
-            : money(overview.total_cents)
-        }
-      />
-      <Panel title="Cartões do mês">
+      <Panel
+        title="Cartões do mês"
+        meta={totalLabel}
+        className="mb-0"
+      >
       <div
-        className="flex h-3 overflow-hidden rounded-full bg-base-200"
+        className="flex h-2.5 overflow-hidden rounded-full bg-surface-2"
         role="img"
         aria-label={
           hidden
@@ -112,7 +108,7 @@ export function CardsPanel({
               />
             ))}
       </div>
-      <p className="ds-caption text-xs opacity-60">
+      <p className="ds-caption text-xs">
         {overview.hasEstimates ? "Inclui estimativas. " : ""}
         {overview.unknown
           ? `${overview.unknown} cartão(ões) com valor a conferir. `
@@ -123,7 +119,7 @@ export function CardsPanel({
         <details
           key={c.id}
           id={"card-" + c.local_account_id}
-          className="credit-account border-t border-base-300 first:border-t-0"
+          className="credit-account border-t border-border first:border-t-0"
           open={expandedCard === c.id}
         >
           <summary
@@ -157,115 +153,206 @@ export function CardsPanel({
             </strong>
           </summary>
           <div className="credit-bank-detail flex flex-col gap-3 pb-3">
-            {(() => {
-              const bill = projection?.cards
-                .find((p) => p.account_id === c.local_account_id)
-                ?.months.find((m) => m.due_month === month);
-              if (!bill) return null;
-              return (
-                <Bill
-                  title="Fatura que vence neste mês"
-                  amount={money(bill.total_cents)}
-                  sub={
-                    <>
-                      {bill.source === "bank"
-                        ? "Informado pelo banco"
-                        : bill.source === "cycle"
-                          ? "Estimado pelo ciclo"
-                          : "Parcial: banco e estimativa"}
-                      {bill.provisional ? " · provisório" : ""}
-                      {bill.purchase_count
-                        ? ` · ${bill.purchase_count} compra(s)`
-                        : ""}
-                    </>
+            {c.connected
+              ? (() => {
+                  const projBill = projection?.cards
+                    .find((p) => p.account_id === c.local_account_id)
+                    ?.months.find((m) => m.due_month === month);
+                  const firstBankBill = c.bills[0];
+                  const hasReviewBill = c.bills.some((b) => b.needs_review);
+                  if (projBill) {
+                    const isClosedBank =
+                      projBill.source === "bank" &&
+                      !projBill.provisional &&
+                      !hasReviewBill;
+                    const status = isClosedBank ? (
+                      <StatusChip tone="ok" label="Fechada" />
+                    ) : hasReviewBill && projBill.source === "bank" ? (
+                      <StatusChip tone="warn" label="A conferir" />
+                    ) : (
+                      <StatusChip tone="accent" label="Estimativa" />
+                    );
+                    const dueLabel = firstBankBill?.due_date
+                      ? brDate(firstBankBill.due_date)
+                      : c.projection
+                        ? brDate(c.projection.due_date)
+                        : null;
+                    const amount =
+                      hasReviewBill &&
+                      projBill.bank_cents === "0" &&
+                      projBill.cycle_cents === "0"
+                        ? "Conferir valor"
+                        : money(projBill.total_cents);
+                    return (
+                      <Bill
+                        title="Fatura do mês"
+                        amount={amount}
+                        status={status}
+                        sub={
+                          <>
+                            {projBill.source === "bank"
+                              ? "Informado pelo banco"
+                              : projBill.source === "cycle"
+                                ? "Estimado pelo ciclo"
+                                : "Banco e estimativa"}
+                            {dueLabel ? ` · vence ${dueLabel}` : ""}
+                            {projBill.provisional ? " · provisório" : ""}
+                            {projBill.purchase_count
+                              ? ` · ${projBill.purchase_count} compra(s)`
+                              : ""}
+                          </>
+                        }
+                      >
+                        {hasReviewBill && (
+                          <small className="block text-xs text-warn">
+                            O provedor retornou um valor que precisa de conferência
+                            no banco.
+                          </small>
+                        )}
+                      </Bill>
+                    );
                   }
+                  if (firstBankBill) {
+                    return (
+                      <Bill
+                        title={
+                          "Fatura com vencimento em " +
+                          brDate(firstBankBill.due_date)
+                        }
+                        amount={
+                          firstBankBill.needs_review
+                            ? "Conferir valor"
+                            : money(firstBankBill.total_cents)
+                        }
+                        status={
+                          firstBankBill.needs_review ? (
+                            <StatusChip tone="warn" label="A conferir" />
+                          ) : (
+                            <StatusChip tone="ok" label="Fechada" />
+                          )
+                        }
+                        sub={
+                          firstBankBill.close_date
+                            ? "Fechamento: " + brDate(firstBankBill.close_date)
+                            : "Informada pelo banco"
+                        }
+                      >
+                        {firstBankBill.needs_review && (
+                          <small className="block text-xs text-warn">
+                            O provedor retornou um valor que precisa de conferência
+                            no banco.
+                          </small>
+                        )}
+                      </Bill>
+                    );
+                  }
+                  if (c.projection) {
+                    return (
+                      <Bill
+                        title={
+                          "Estimativa para " + brDate(c.projection.due_date)
+                        }
+                        amount={money(c.projection.total_cents)}
+                        status={
+                          c.projection.needs_review ? (
+                            <StatusChip tone="warn" label="A conferir" />
+                          ) : (
+                            <StatusChip tone="accent" label="Estimativa" />
+                          )
+                        }
+                        sub={
+                          <>
+                            Compras de {brDate(c.projection.start_date)} a{" "}
+                            {brDate(c.projection.close_date)} ·{" "}
+                            {c.projection.purchase_count} compra(s)
+                          </>
+                        }
+                      />
+                    );
+                  }
+                  return (
+                    <Bill
+                      title="Posição atual do cartão"
+                      amount={money(c.balance_cents)}
+                      status={
+                        <StatusChip tone="neutral" label="Posição atual" />
+                      }
+                      sub={
+                        c.credit_due_date
+                          ? "Vencimento informado: " + brDate(c.credit_due_date)
+                          : "Sem fatura fechada neste mês"
+                      }
+                    />
+                  );
+                })()
+              : c.manual_bill && (
+                  <Bill
+                    title="Fatura informada"
+                    amount={money(c.manual_bill.amount_cents)}
+                    status={
+                      <StatusChip
+                        tone={c.manual_bill.paid ? "ok" : "warn"}
+                        label={c.manual_bill.paid ? "Paga" : "Em aberto"}
+                      />
+                    }
+                    sub={<>Vencimento: {brDate(c.manual_bill.due_date)}</>}
+                  />
+                )}
+            {(() => {
+              const total = c.connected
+                ? c.credit_limit_cents
+                : c.manual_limit_cents;
+              if (total === null) return null;
+              const totalBig = BigInt(total);
+              const usedBig =
+                c.committed_credit_cents !== null
+                  ? BigInt(c.committed_credit_cents)
+                  : null;
+              const ratio =
+                totalBig > 0n && usedBig !== null
+                  ? Math.min(
+                      100,
+                      Math.max(0, Number((usedBig * 100n) / totalBig)),
+                    )
+                  : 0;
+              const tone =
+                ratio >= 90 ? "danger" : ratio >= 75 ? "warn" : "accent";
+              return (
+                <LimitBar
+                  usedLabel="Limite usado"
+                  usedValue={money(c.committed_credit_cents)}
+                  availableLabel="Disponível"
+                  availableValue={
+                    c.available_credit_cents !== null
+                      ? money(c.available_credit_cents)
+                      : undefined
+                  }
+                  totalLabel="Limite total"
+                  totalValue={money(total)}
+                  ratio={hidden ? 0 : ratio}
+                  tone={hidden ? "accent" : tone}
                 />
               );
             })()}
-            {!c.connected && (
-              <p className="ds-caption text-xs opacity-60">
-                Acompanhamento manual. A integração não disponibiliza este
-                cartão. Informe os valores consultados no banco; eles ficam
-                separados das compras registradas.
-              </p>
-            )}
-            <RowList
-              rows={[
-                {
-                  title: "Limite total",
-                  trail: money(
-                    c.connected ? c.credit_limit_cents : c.manual_limit_cents,
-                  ),
-                },
-                { title: "Disponível no cartão", trail: money(c.available_credit_cents) },
-                { title: "Limite comprometido", trail: money(c.committed_credit_cents) },
-              ]}
-            />
-            <p className="ds-caption text-xs opacity-60">
-              Limite de crédito não é saldo da família nem entrada de dinheiro.
-              O limite comprometido pode incluir parcelas futuras e não
-              representa a fatura do mês.
-            </p>
-            {!c.connected && (
-              <>
-                {c.manual_bill && (
-                  <Bill
-                    title="Fatura informada por vocês"
-                    amount={money(c.manual_bill.amount_cents)}
-                    sub={
-                      <>
-                        Vencimento: {brDate(c.manual_bill.due_date)} ·{" "}
-                        {c.manual_bill.paid ? "Marcada como paga" : "Em aberto"}
-                      </>
-                    }
-                  >
-                    <small className="block text-xs opacity-60">
-                      Conta a pagar, sem adicionar despesa ao histórico ou ao
-                      gráfico. O valor da fatura não determina o limite
-                      disponível.
-                    </small>
-                  </Bill>
-                )}
-                <ManualCardForm
-                  key={c.id + month}
-                  card={c}
-                  month={month}
-                  reader={reader}
-                  onRefresh={onRefresh}
-                />
-              </>
-            )}
             {c.credit_limits_review && (
-              <p className="ds-caption text-xs opacity-60">
-                Os limites retornados precisam de conferência no banco; não
-                estimamos o limite comprometido.
+              <p className="ds-caption text-xs text-warn">
+                Os limites retornados precisam de conferência no banco.
               </p>
             )}
-            {c.projection && (
-              <Bill
-                title={"Estimativa para " + brDate(c.projection.due_date)}
-                amount={money(c.projection.total_cents)}
-                sub={
-                  <>
-                    Compras de {brDate(c.projection.start_date)} a{" "}
-                    {brDate(c.projection.close_date)} · ciclo informado por
-                    vocês.
-                  </>
-                }
-              >
-                <small className="block text-xs opacity-60">
-                  {c.projection.purchase_count} compra(s),{" "}
-                  {c.projection.bank_pending_count} ainda pendente(s) no banco.
-                  Não é a fatura oficial nem inclui compras que não chegaram à
-                  integração. Pagamentos e duplicidades ficam fora desta soma.
-                </small>
-                {c.projection.closing_day_count > 0 && (
-                  <small className="block text-xs opacity-60">
-                    Compras no dia do fechamento precisam de conferência: o
-                    banco pode lançá-las no ciclo seguinte.
-                  </small>
-                )}
-              </Bill>
+            {c.bills_read_ok === false && (
+              <p className="ds-caption text-xs text-muted">
+                A consulta detalhada de faturas não ficou disponível nesta
+                leitura. Os dados anteriores foram preservados.
+              </p>
+            )}
+            {!c.connected && (
+              <ManualCardForm
+                key={c.id + month}
+                card={c}
+                month={month}
+                reader={reader}
+                onRefresh={onRefresh}
+              />
             )}
             {c.connected && (
               <CycleForm
@@ -278,121 +365,12 @@ export function CardsPanel({
                 onRefresh={onRefresh}
               />
             )}
-            {c.bills.map((b) => (
-              <Bill
-                key={b.id}
-                title={"Fatura com vencimento em " + brDate(b.due_date)}
-                amount={b.needs_review ? "Conferir valor" : money(b.total_cents)}
-                sub={
-                  b.close_date
-                    ? "Fechamento informado: " + brDate(b.close_date)
-                    : "Fechamento não informado"
-                }
-              >
-                {b.needs_review && (
-                  <small className="block text-xs opacity-60">
-                    O provedor retornou um valor que precisa de conferência no
-                    banco. Ele foi preservado como evidência, sem arredondar nem
-                    somar aos totais.
-                  </small>
-                )}
-                <small className="block text-xs opacity-60">
-                  Valor informado pelo banco; pagamento precisa de conciliação.{" "}
-                  {b.assigned_count} compra(s) vinculada(s) a esta fatura.
-                </small>
-              </Bill>
-            ))}
-            {c.connected && !c.bills.length && (
-              <p className="ds-caption text-xs opacity-60">
-                {c.credit_due_date
-                  ? (c.projection && c.credit_due_date !== c.projection.due_date
-                      ? "Último vencimento retornado pelo banco (outro ciclo): "
-                      : "Vencimento informado pelo cartão: ") +
-                    brDate(c.credit_due_date) +
-                    ". "
-                  : ""}
-                Valor atual consultado: {money(c.balance_cents)}. Esse valor é
-                uma posição do cartão, não uma fatura fechada do mês
-                selecionado.
-              </p>
-            )}
-            {c.bills_read_ok === false && (
-              <p className="ds-caption text-xs opacity-60">
-                A consulta detalhada de faturas não ficou disponível nesta
-                leitura. Os dados anteriores foram preservados.
-              </p>
-            )}
-            <RowList
-              rows={[
-                { title: "Compras registradas", trail: money(c.registered_cents) },
-                { title: "Compras para conferir", trail: money(c.preview_cents) },
-                { title: "Aguardando o banco", trail: money(c.bank_pending_cents) },
-              ]}
-            />
-            {(c.history_match_cents !== "0" || c.duplicate_cents !== "0") && (
-              <p className="ds-caption text-xs opacity-60">
-                Coincidências com o histórico: {money(c.history_match_cents)}.
-                Possíveis duplicidades: {money(c.duplicate_cents)}. Esses
-                valores ficam fora da prévia para evitar somar a mesma compra
-                novamente; confira os vínculos.
-              </p>
-            )}
-            {c.unassigned_cents !== "0" && (
-              <p className="ds-caption text-xs opacity-60">
-                Compras recentes sem mês de fatura confirmado:{" "}
-                <strong>{money(c.unassigned_cents)}</strong>. Elas aparecem
-                abaixo pela data da compra e não foram atribuídas à fatura deste
-                mês por suposição.
-              </p>
-            )}
-            {!!c.payments.length && (
-              <p className="ds-caption text-xs opacity-60">
-                {c.payments.length} pagamento(s) do cartão identificado(s) no
-                período. Pagamento de fatura quita a dívida e não é uma nova
-                despesa.
-              </p>
-            )}
-            <Collapsible
-              summary={
-                <>
-                  Ver compras e pagamentos (
-                  {c.purchases.length + c.payments.length})
-                </>
-              }
-            >
-              <RowList
-                rows={[...c.purchases, ...c.payments].map((r) => ({
-                  title: r.description,
-                  sub:
-                    brDate(r.transaction_date) +
-                    " · " +
-                    (r.changed || r.missing
-                      ? "Evidência alterada: revisar"
-                      : r.event_id
-                        ? "Já registrado"
-                        : r.provider_status === "POSTED"
-                          ? "Conferir antes de registrar"
-                          : "Pendente no banco") +
-                    (r.card_meta.installment_number &&
-                    r.card_meta.total_installments
-                      ? ` · Parcela ${r.card_meta.installment_number}/${r.card_meta.total_installments}`
-                      : ""),
-                  trail: money(r.amount_cents),
-                }))}
-              />
-            </Collapsible>
-            <p className="ds-caption text-xs opacity-60">
-              Compras sem vínculo com uma fatura são mostradas pela data da
-              operação. Com ciclo informado, indicamos uma estimativa separada
-              da fatura oficial. A parcela é contada pelo valor do mês, sem
-              multiplicar pelo número de parcelas.
-            </p>
             {c.connected && (
               <Button
                 type="button"
                 onClick={() => onReview(c.local_account_id)}
               >
-                Conferir movimentos deste cartão
+                Ver compras no Extrato
               </Button>
             )}
           </div>
@@ -403,26 +381,31 @@ export function CardsPanel({
   );
 }
 
-/** Bloco de fatura: título/sub à esquerda, valor à direita, notas abaixo. */
+/** Bloco de fatura: título/status/sub à esquerda, valor à direita, notas abaixo. */
 function Bill({
   title,
   sub,
   amount,
+  status,
   children,
 }: {
   title: string;
   sub: ReactNode;
   amount: string;
+  status?: ReactNode;
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded-box bg-base-200 p-3 flex flex-col gap-1">
+    <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface-2/60 p-3.5">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <strong className="block text-sm font-medium">{title}</strong>
-          <small className="block text-xs opacity-60">{sub}</small>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <strong className="text-sm font-medium text-ink">{title}</strong>
+            {status}
+          </div>
+          <small className="mt-0.5 block text-xs text-muted">{sub}</small>
         </div>
-        <strong className="text-sm font-medium whitespace-nowrap tabular-nums">{amount}</strong>
+        <strong className="font-numeric text-sm font-semibold whitespace-nowrap tabular-nums text-ink">{amount}</strong>
       </div>
       {children}
     </div>
@@ -574,8 +557,8 @@ function CycleForm({
         >
           {!cycle && creditDue !== null && (
             <p className="ds-caption text-xs opacity-60">
-              Preenchemos com as datas que o banco retornou nesta leitura.
-              Confira e salve para a projeção começar.
+              Preenchemos com as datas do banco; confira e salve para ativar a
+              projeção.
             </p>
           )}
           <Field label="Próximo fechamento">
@@ -588,8 +571,7 @@ function CycleForm({
           </Field>
           {closeEstimated && (
             <p className="ds-caption text-xs opacity-60">
-              O banco não informou a data de fechamento desta vez. Sugerimos 10
-              dias antes do vencimento. Ajuste se o seu cartão fechar em outro
+              Sugerimos 10 dias antes do vencimento; ajuste se fechar em outro
               dia.
             </p>
           )}
@@ -602,21 +584,22 @@ function CycleForm({
             />
           </Field>
           <p className="ds-caption text-xs opacity-60">
-            Usamos esses dias para os próximos meses. Datas específicas do
-            banco, quando disponíveis, continuam separadas. Não ajustamos
-            feriados automaticamente.
-          </p>
-          <p className="ds-caption text-xs opacity-60">
-            Uma mudança passa a valer depois do fechamento da fatura atual.
-            Informe o fechamento e o vencimento da primeira fatura no ciclo
-            novo.
+            Usamos esses dias para os próximos meses; alterações passam a valer
+            após o fechamento atual.
           </p>
           <Button type="submit" busy={busy} busyLabel="Salvando…">
             Salvar ciclo do cartão
           </Button>
         </form>
       )}
-      {message && <p role="status" className="alert alert-soft alert-info">{message}</p>}
+      {message && (
+        <p
+          role="status"
+          className="rounded-xl border border-info/25 bg-info-bg px-3.5 py-2.5 text-sm text-ink"
+        >
+          {message}
+        </p>
+      )}
     </Collapsible>
   );
 }
@@ -680,8 +663,7 @@ function ManualCardForm({
     >
       <form className="card-cycle-form" onSubmit={save}>
         <p className="ds-caption text-xs opacity-60">
-          Fatura com vencimento em {month.slice(5)}/{month.slice(0, 4)}. Ao
-          salvar novamente, atualizamos a mesma fatura deste mês.
+          Fatura com vencimento em {month.slice(5)}/{month.slice(0, 4)}.
         </p>
         <Field label="Limite total (R$)">
           <input
@@ -721,15 +703,21 @@ function ManualCardForm({
           Esta fatura já foi paga
         </label>
         <p className="ds-caption text-xs opacity-60">
-          Marcar como paga apenas encerra o lembrete. Não movimenta contas nem
-          cria uma segunda despesa. Informe as compras separadamente quando
-          quiser detalhar categorias.
+          Marcar como paga apenas encerra o lembrete deste mês, sem criar nova
+          despesa.
         </p>
         <Button type="submit" busy={busy} busyLabel="Salvando…">
           Salvar limite e fatura
         </Button>
       </form>
-      {message && <p role="status" className="alert alert-soft alert-info">{message}</p>}
+      {message && (
+        <p
+          role="status"
+          className="rounded-xl border border-info/25 bg-info-bg px-3.5 py-2.5 text-sm text-ink"
+        >
+          {message}
+        </p>
+      )}
     </Collapsible>
   );
 }

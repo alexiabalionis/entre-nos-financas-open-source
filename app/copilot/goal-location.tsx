@@ -1,8 +1,6 @@
 "use client";
-// Pergunta única antes do primeiro depósito: onde o dinheiro fica. Sem isso o
-// app não sabe se ele ainda aparece no saldo da conta.
 import { useState } from "react";
-import { Button } from "../button.tsx";
+import { Button } from "../ds/button.tsx";
 import type { Goal } from "./model.ts";
 import type { CopilotWrite } from "../hooks/use-copilot.ts";
 
@@ -29,21 +27,36 @@ export function GoalLocation({
     }
   };
   return (
-    <div className="cop-inline">
-      <p className="ds-caption">
-        <b>Onde esse dinheiro vai ficar?</b> Assim a gente sabe se ele ainda
-        aparece no saldo da sua conta.
+    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3.5">
+      <p className="ds-caption m-0">
+        <strong className="text-ink">Onde esse dinheiro vai ficar?</strong>{" "}
+        Assim a gente sabe se ele ainda aparece no saldo da sua conta.
       </p>
-      <div className="cop-actions">
-        <Button variant="primary" busy={busy === "same_account"} disabled={busy !== null} onClick={() => void choose("same_account")}>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="primary"
+          size="sm"
+          busy={busy === "same_account"}
+          disabled={busy !== null}
+          onClick={() => void choose("same_account")}
+        >
           Na mesma conta
         </Button>
-        <Button busy={busy === "elsewhere"} disabled={busy !== null} onClick={() => void choose("elsewhere")}>
+        <Button
+          variant="secondary"
+          size="sm"
+          busy={busy === "elsewhere"}
+          disabled={busy !== null}
+          onClick={() => void choose("elsewhere")}
+        >
           Em outro lugar (caixinha, investimento)
         </Button>
       </div>
       {error && (
-        <p className="cop-err alert alert-soft alert-error" role="alert">
+        <p
+          className="m-0 rounded-xl border border-danger/25 bg-danger-bg px-3 py-2 text-xs font-medium text-danger"
+          role="alert"
+        >
           {error}
         </p>
       )}

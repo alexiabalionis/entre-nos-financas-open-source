@@ -23,11 +23,11 @@ test("links antigos ?view= apontam para a rota nova (inclui future -> panorama)"
 test("títulos e barra de baixo: 5 itens na ordem antiga, Nosso espaço fora da barra", () => {
   assert.deepEqual(
     APP_ROUTES.filter((r) => r.nav).map((r) => r.nav!.label),
-    ["Mês", "Movimentos", "Panorama", "Copiloto", "Judite"],
+    ["Agora", "Extrato", "Hábitos", "Planos", "Judite"],
   );
   assert.equal(titleFor("/espaco"), "Nosso espaço");
-  assert.equal(titleFor("/movimentos"), "Movimentos");
-  assert.equal(titleFor("/qualquer"), "Nosso mês");
+  assert.equal(titleFor("/movimentos"), "Extrato");
+  assert.equal(titleFor("/qualquer"), "Agora");
 });
 
 test("withMonth mantém o mês e acrescenta parâmetros extras", () => {

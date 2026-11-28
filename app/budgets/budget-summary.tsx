@@ -9,24 +9,24 @@ import {
 
 /** O teto de uma categoria: barra, números e frase de veredito. */
 const VERDICT_TONE: Record<string, string> = {
-  danger: "text-error",
-  warn: "text-warning",
-  ok: "text-success",
+  danger: "text-danger",
+  warn: "text-warn",
+  ok: "text-ok",
 };
 
-/** Verdict com cor do tom (daisy). */
+/** Verdict com cor do tom semântico do DS. */
 export function verdictClass(tone: string): string {
   return "text-sm font-medium " + (VERDICT_TONE[tone] ?? "");
 }
 
-/** Números lado a lado (daisy stats): rótulo + valor. */
+/** Números lado a lado: rótulo + valor. */
 export function BudgetNums({ items }: { items: [string, string][] }) {
   return (
-    <dl className="stats w-full">
+    <dl className="m-0 grid grid-cols-3 gap-2 rounded-xl bg-surface-2/60 p-3">
       {items.map(([label, value]) => (
-        <div className="stat px-3 py-2 first:pl-0" key={label}>
-          <dt className="stat-title whitespace-normal">{label}</dt>
-          <dd className="stat-value text-lg tabular-nums [font-family:var(--family-font-numeric)]">
+        <div key={label} className="min-w-0">
+          <dt className="text-xs text-muted">{label}</dt>
+          <dd className="m-0 mt-0.5 font-numeric text-base font-semibold text-ink tabular-nums">
             {value}
           </dd>
         </div>

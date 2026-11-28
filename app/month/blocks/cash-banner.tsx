@@ -1,8 +1,5 @@
 "use client";
-// Topo do mês atual: saldo das contas até a véspera do pagamento. Tocar no
-// valor mostra o saldo de cada conta; abrir o card mostra por dia, por semana
-// e as contas programadas, com a data da leitura do saldo. Não calcula: tudo
-// vem de cashCard() (app/month/cash.ts).
+// Topo do mês atual: saldo das contas até a véspera do pagamento.
 import type { Currency } from "../../../src/domain/finance.ts";
 import { formatted } from "../../../src/domain/format.ts";
 import { StatBanner } from "../../ds/stat-banner.tsx";
@@ -42,9 +39,12 @@ export function CashBanner({
           ? {
               label: "Ver saldo de cada conta",
               content: (
-                <div className="text-sm [&_.list-row]:px-0 [&_.list-row]:py-1.5">
+                <div className="text-sm">
                   <RowList
-                    rows={card.accounts.map((a) => ({ title: a.name, trail: a.value }))}
+                    rows={card.accounts.map((a) => ({
+                      title: a.name,
+                      trail: a.value,
+                    }))}
                     bordered={false}
                   />
                 </div>
@@ -57,13 +57,15 @@ export function CashBanner({
         content: (
           <>
             {card.updated ? (
-              <p className="ds-caption mb-2 text-right text-xs opacity-60">{card.updated}</p>
+              <p className="m-0 mb-3 text-right text-xs text-white/70">
+                {card.updated}
+              </p>
             ) : null}
             <dl className="grid grid-cols-3 gap-3">
               {columns.map((c) => (
                 <div key={c.label} className="min-w-0">
-                  <dt className="ds-caption text-xs opacity-60">{c.label}</dt>
-                  <dd className="m-0 font-semibold tabular-nums [font-family:var(--family-font-numeric)]">
+                  <dt className="text-xs text-white/70">{c.label}</dt>
+                  <dd className="m-0 mt-0.5 font-numeric text-base sm:text-lg font-semibold tabular-nums text-white">
                     {c.value}
                   </dd>
                 </div>

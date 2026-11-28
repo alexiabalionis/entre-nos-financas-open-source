@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "../ds/button.tsx";
 import { Select } from "../ds/select";
 import { useState } from "react";
 import { FamilyDialog } from "../dialogs/family-dialog";
@@ -189,9 +190,15 @@ function ItemForm({
           Não gera um novo movimento.
         </p>
       )}
-      <button className="primary btn btn-primary" disabled={busy || reader}>
-        {busy ? "Salvando…" : "Salvar no nosso mês"}
-      </button>
+      <Button
+        type="submit"
+        variant="primary"
+        busy={busy}
+        busyLabel="Salvando…"
+        disabled={reader}
+      >
+        Salvar no nosso mês
+      </Button>
     </form>
   );
 }

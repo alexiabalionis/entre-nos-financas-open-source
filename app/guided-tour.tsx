@@ -23,7 +23,7 @@ const steps = [
   {
     target: "navigation",
     title: "O resto está sempre aqui",
-    text: "Movimentos guarda o histórico. Panorama mostra o que entra, sai e para onde vai. Copiloto ajuda a chegar até o salário e cuida das reservas. Judite conversa com vocês sobre o histórico e os planos da família.",
+    text: "Extrato guarda o histórico. Hábitos mostra o que entra, sai e para onde o dinheiro vai. Planos ajuda a chegar até o próximo salário e cuida das metas e reservas. Judite conversa com vocês sobre o histórico e os planos da família.",
   },
 ];
 type Position = ReturnType<typeof tourLayout>;

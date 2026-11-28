@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "../ds/button.tsx";
 import { FamilyDialog } from "../dialogs/family-dialog";
 import type { Action } from "../hooks/use-action.ts";
 
@@ -24,12 +25,16 @@ export function EntryDialog({
       error={action.error}
       onClose={onClose}
     >
-      <div className="family-entry-options">
-        <p>O dinheiro já entrou ou ainda está previsto?</p>
-        <button className="primary btn btn-primary" onClick={onRecord}>
+      <div className="flex flex-col gap-3">
+        <p className="m-0 text-sm text-ink">
+          O dinheiro já entrou ou ainda está previsto?
+        </p>
+        <Button variant="primary" className="w-full" onClick={onRecord}>
           Já recebi · registrar entrada
-        </button>
-        <button className="btn btn-soft" onClick={onPlan}>Vou receber · planejar entrada</button>
+        </Button>
+        <Button variant="quiet" className="w-full" onClick={onPlan}>
+          Vou receber · planejar entrada
+        </Button>
         <p className="ds-caption">
           Se a entrada já existe no extrato ou no plano, atualize o item
           existente para evitar duplicar.

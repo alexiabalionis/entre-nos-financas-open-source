@@ -149,25 +149,34 @@ export function NotificationsPanel() {
   }
   return (
     <div role="region" aria-label="Configurar notificações" className="notification-settings">
-    <Panel title="Notificações">
-      <p className="ds-caption text-xs opacity-60">
+    <Panel title="Notificações" className="mb-0">
+      <p className="ds-caption">
         Receba um lembrete diário quando houver contas para conferir. Nomes e
         valores ficam protegidos dentro do app.
       </p>
       {error && (
-        <p className="family-error alert alert-soft alert-error" role="alert">
+        <p
+          className="m-0 rounded-xl border border-danger/25 bg-danger-bg px-4 py-3 text-sm font-medium text-danger"
+          role="alert"
+        >
           {error}
         </p>
       )}
       {notice && (
-        <p className="family-notice alert alert-soft alert-info" role="status">
+        <p
+          className="m-0 rounded-xl border border-info/25 bg-info-bg px-4 py-3 text-sm font-medium text-ink"
+          role="status"
+        >
           {notice}
         </p>
       )}
       {device && (
-        <div className="notification-device alert alert-soft alert-info flex flex-col items-start gap-1" role="status">
-          <strong className="font-semibold">{device.platform} · este aparelho</strong>
-          <p className="m-0 text-sm">
+        <div
+          className="flex flex-col items-start gap-1 rounded-xl border border-info/25 bg-info-bg/70 px-4 py-3"
+          role="status"
+        >
+          <strong className="text-sm font-semibold text-ink">{device.platform} · este aparelho</strong>
+          <p className="m-0 text-sm text-ink">
             {device.needsInstall
               ? "Falta abrir o app pela Tela de Início."
               : !device.supported
@@ -183,14 +192,14 @@ export function NotificationsPanel() {
         </div>
       )}
       {device?.needsInstall && (
-        <p className="ds-caption text-xs opacity-60">
+        <p className="ds-caption">
           No iPhone/iPad com iOS 16.4 ou mais recente: Safari → Compartilhar →
           Adicionar à Tela de Início. Abra pelo ícone do Entre Nós e toque em
           Ativar neste aparelho.
         </p>
       )}
       {config && (
-        <p className="ds-caption text-xs opacity-60">
+        <p className="ds-caption">
           {config.enabledDevices} aparelho(s) ativado(s) neste acesso.{" "}
           {config.lastDelivery
             ? "Último lembrete aceito pelo serviço de push: " +
@@ -202,7 +211,10 @@ export function NotificationsPanel() {
         </p>
       )}
       {config && !config.schedulerReady && (
-        <p role="status" className="family-notice alert alert-soft alert-info">
+        <p
+          role="status"
+          className="m-0 rounded-xl border border-info/25 bg-info-bg px-4 py-3 text-sm text-ink"
+        >
           O agendamento diário precisa ser ativado pelo administrador. Você já
           pode ativar este aparelho e testar a entrega.
         </p>
@@ -304,7 +316,7 @@ export function NotificationsPanel() {
           </li>
         </ul>
       </Collapsible>
-      <p className="ds-caption text-xs opacity-60">
+      <p className="ds-caption">
         O lembrete diário é agendado para a janela entre 9h e 10h, no horário de
         Brasília. A entrega depende da conexão, do serviço de push e dos ajustes
         do aparelho; não é um alarme com horário exato.

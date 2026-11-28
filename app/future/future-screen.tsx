@@ -1,7 +1,8 @@
 "use client";
+import { useState } from "react";
 import { maskMoney } from "../lib/cents.ts";
-import { Button } from "../ds/index.ts";
-import { Panel } from "../ds/panel.tsx";
+import { AccordionGroup, Button } from "../ds/index.ts";
+import { FlatPanelsProvider, Panel } from "../ds/panel.tsx";
 import { RowList } from "../ds/row-list.tsx";
 import { CardBillChart } from "./card-bill-chart.tsx";
 import { FutureProvider, useFutureContext } from "./future-context.tsx";
@@ -10,16 +11,16 @@ import { GoalLanes } from "./goal-lanes.tsx";
 import { Headline } from "./headline.tsx";
 import { MonthStations } from "./month-stations.tsx";
 import { Premises } from "./premises.tsx";
+import { ReservesSection } from "./reserves-section.tsx";
 import { Simulator } from "./simulator.tsx";
 import { useFuture } from "./use-future.ts";
 
 export type FutureMode = "ver" | "simular";
 
 /**
- * Tela do Futuro em dois modos que dividem o mesmo rascunho: "ver" (desenho
- * A+B: destaque, trilhos, mês a mês, fatura e o próximo passo) e "simular"
- * (uma mudança por vez com o efeito ao lado). Busca os próprios dados; quem a
- * usa passa a sessão e o modo. A fonte vem do FutureScope de quem monta a página.
+ * Tela do Futuro em dois modos que dividem o mesmo rascunho: "ver" (horizonte,
+ * trilhos, mês a mês, fatura, reservas/metas e próximo passo) e "simular"
+ * (split 2 colunas no desktop, bottom sheet no celular).
  */
 export function FutureScreen({
   hidden,
@@ -50,63 +51,94 @@ function FutureBody({
   onMode?: (m: FutureMode) => void;
 }) {
   const f = useFutureContext();
+  const [reservesSyncKey, setReservesSyncKey] = useState(0);
+  const bumpReserves = () => setReservesSyncKey((k) => k + 1);
+
   if (f.status === "error")
     return (
-      <div className="fut-screen">
+      <div className="fut-screen flex flex-col gap-5">
         <Headline />
-        <p role="alert" className="ds-caption alert alert-soft alert-error">
-          Não deu para montar o futuro agora.{" "}
-          <Button variant="text" onClick={() => void reload()}>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-danger/25 bg-danger-bg px-4 py-3 text-sm font-medium text-danger"
+        >
+          <span>Não deu para montar o futuro agora.</span>
+          <Button variant="quiet" size="sm" onClick={() => void reload()}>
             Tentar novamente
           </Button>
-        </p>
+        </div>
       </div>
     );
   if (!f.input)
     return (
-      <div className="fut-screen" aria-busy="true">
+      <div className="fut-screen flex flex-col gap-5" aria-busy="true">
         <Headline />
       </div>
     );
   if (mode === "simular")
     return (
-      <div className="fut-screen">
-        {/* Aqui o painel "O que muda" já compara, salva e descarta: sem barra. */}
-        <Simulator />
+      <div className="fut-screen flex flex-col gap-5">
+        <Simulator onCommitted={bumpReserves} />
       </div>
     );
   return (
-    <div className="fut-screen">
+    <div className="fut-screen flex flex-col gap-6">
       <Headline />
-      <GoalLanes />
-      <MonthStations />
-      <CardBillChart />
-      <NextStep onSimulate={onMode ? () => onMode("simular") : undefined} />
-      <Premises />
-      <FutureDraftBar />
+      {onMode ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button
+            variant="primary"
+            size="sm"
+            icon="spark"
+            onClick={() => onMode("simular")}
+          >
+            Simular compra ou meta
+          </Button>
+        </div>
+      ) : null}
+      <NextStep />
+      <ReservesSection
+        hidden={f.hidden}
+        reader={f.reader}
+        syncKey={reservesSyncKey}
+        onMutated={() => void reload()}
+        showTotalPanel={false}
+        collapseMargin
+      />
+      <AccordionGroup
+        variant="card"
+        defaultOpen={false}
+        title="Ver projeção detalhada"
+        subtitle="Trilhos no tempo, conta mês a mês, fatura futura e premissas"
+        contentClassName="flex flex-col gap-5 pt-4"
+      >
+        <FlatPanelsProvider>
+          <GoalLanes />
+          <MonthStations />
+          <CardBillChart />
+          <Premises />
+        </FlatPanelsProvider>
+      </AccordionGroup>
+      <FutureDraftBar onSaved={bumpReserves} />
     </div>
   );
 }
 
-/** O primeiro passo que o motor sugere, em uma frase, e a porta para o simulador. */
-function NextStep({ onSimulate }: { onSimulate?: () => void }) {
+function NextStep() {
   const f = useFutureContext();
   const first = f.draft?.decisions[0];
+  if (!first) return null;
   return (
-    <Panel title="Próximo passo">
-      {first ? (
-        <RowList
-          bordered={false}
-          rows={[{ title: maskMoney(first.title, f.hidden), sub: maskMoney(first.impact, f.hidden) }]}
-        />
-      ) : (
-        <p className="ds-caption">Nada pede atenção neste horizonte.</p>
-      )}
-      {onSimulate ? (
-        <div>
-          <Button onClick={onSimulate}>Simular mudanças</Button>
-        </div>
-      ) : null}
+    <Panel title="Próximo passo" className="mb-0">
+      <RowList
+        bordered={false}
+        rows={[
+          {
+            title: maskMoney(first.title, f.hidden),
+            sub: maskMoney(first.impact, f.hidden),
+          },
+        ]}
+      />
     </Panel>
   );
 }

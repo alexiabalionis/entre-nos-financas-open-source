@@ -12,7 +12,7 @@ type PickerCategory = {
   tags: { id: string; name: string; uses: number }[];
 };
 
-/** Escolha única de etiqueta da categoria, usada nos dois fluxos do diálogo "Categorizar transação". */
+/** Escolha única de etiqueta da categoria, usada no diálogo "Categorizar transação". */
 export function TagPicker({
   category,
   chosen,
@@ -33,11 +33,9 @@ export function TagPicker({
   }));
   if (chosen && !items.some((i) => i.id === chosen.id))
     items.push({ ...chosen, meta: usesLabel(0) });
-  // Não usa <Field>: ele é um <label>, e o ChipField já é um <label>. Label
-  // dentro de label repassa o clique da opção ao primeiro controle do campo.
   return (
-    <div className="field fieldset">
-      <span className="fieldset-legend" aria-hidden="true">
+    <div className="field flex min-w-0 flex-col gap-1.5">
+      <span className="text-[0.8125rem] leading-snug font-medium text-ink" aria-hidden="true">
         Etiqueta (opcional)
       </span>
       <ChipField

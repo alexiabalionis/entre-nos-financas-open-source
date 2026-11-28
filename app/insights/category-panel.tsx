@@ -34,7 +34,7 @@ export function CategoryPanel({
   const reading = period === "month" && !hidden ? categoryReading(rows, money, copy.prevReading) : "";
   return (
     <Panel title="Por categoria">
-      <p className="ins-sub">{sub[period]}</p>
+      <p className="text-[0.875rem] text-ink-2">{sub[period]}</p>
       <ChoiceChips label="Período" options={periods} value={period} onChange={setPeriod} />
       <CompareBarChart
         aria="Gasto por categoria"
@@ -53,8 +53,8 @@ export function CategoryPanel({
         emptyText={hidden ? "Valores ocultos." : "Nenhum gasto no período."}
       />
       {reading && (
-        <p className="ds-caption">
-          <b>{reading}</b>
+        <p className="text-[0.875rem] leading-relaxed text-ink-2">
+          <strong className="font-semibold text-ink">{reading}</strong>
         </p>
       )}
     </Panel>

@@ -4,7 +4,8 @@ import { cx } from "./shared.ts";
 import { ChipFieldEdit } from "./chip-field-edit.tsx";
 import type { ChipItem, ChipOption } from "./chip-field-search.ts";
 
-const row = "flex items-center gap-2 rounded-box px-3 py-1.5 hover:bg-base-200";
+const row =
+  "flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-ink transition-colors hover:bg-surface-2";
 
 /** Textos fixos da lista e da linha de renomear; vêm de quem usa o campo. */
 export type ChipFieldListText = {
@@ -61,10 +62,10 @@ export function ChipFieldList({
       id={id}
       role="listbox"
       aria-label={text.list}
-      className="menu mt-1 max-h-72 w-full flex-nowrap overflow-y-auto rounded-box bg-base-100 p-1 shadow-md"
+      className="m-0 mt-1 flex max-h-72 w-full list-none flex-col gap-0.5 overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-lg"
     >
       {options.length === 0 ? (
-        <li role="presentation" className="px-3 py-2 text-sm text-base-content/60">
+        <li role="presentation" className="px-3 py-2 text-sm text-muted">
           {itemCount === 0 ? text.empty : text.noMatch}
         </li>
       ) : null}
@@ -74,7 +75,7 @@ export function ChipFieldList({
           return (
             <li key="create" id={`${id}-${i}`} role="option" aria-selected={active} className="p-0">
               <div
-                className={cx(row, "cursor-pointer justify-start", active && "bg-base-200")}
+                className={cx(row, "cursor-pointer justify-start", active && "bg-surface-2")}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => onChoose(o)}
               >
@@ -103,16 +104,16 @@ export function ChipFieldList({
         return (
           <li key={item.id} id={`${id}-${i}`} role="option" aria-selected={chipIds.includes(item.id)} className="p-0">
             <div
-              className={cx(row, "cursor-pointer", active && "bg-base-200")}
+              className={cx(row, "cursor-pointer", active && "bg-surface-2")}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onChoose(o)}
             >
               <span className="flex-1 truncate font-normal">{item.name}</span>
-              {item.meta ? <small className="text-xs text-base-content/60">{item.meta}</small> : null}
+              {item.meta ? <small className="text-xs text-muted">{item.meta}</small> : null}
               {canRename ? (
                 <button
                   type="button"
-                  className="btn btn-ghost btn-xs btn-circle"
+                  className="ui-reset-btn inline-flex size-7 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink cursor-pointer"
                   aria-label={text.renameLabel(item.name)}
                   disabled={busy}
                   onMouseDown={(e) => e.stopPropagation()}

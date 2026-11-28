@@ -75,7 +75,8 @@ export type ChipFieldProps = {
   floating?: boolean;
 };
 
-const BOX = "input h-auto min-h-10 w-full flex-wrap items-center gap-1 py-1";
+const BOX =
+  "flex h-auto min-h-10 w-full flex-wrap items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 py-1.5 text-sm text-ink transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20";
 
 export function ChipField({
   label,
@@ -143,7 +144,7 @@ export function ChipField({
           />
         ))}
         {chips.length === 0 ? (
-          <span className="text-sm text-base-content/60">{text.none}</span>
+          <span className="text-sm text-muted">{text.none}</span>
         ) : null}
       </div>
     );
@@ -252,7 +253,7 @@ export function ChipField({
           type="text"
           role="combobox"
           aria-label={label}
-          className="min-w-20 flex-1"
+          className="ds-chip-input min-w-20 flex-1 border-0 bg-transparent p-0 text-sm text-ink shadow-none outline-none focus:ring-0"
           placeholder={placeholder}
           autoComplete="off"
           value={query}
@@ -275,7 +276,7 @@ export function ChipField({
         />
         <button
           type="button"
-          className="btn btn-ghost btn-xs btn-circle ml-auto"
+          className="ui-reset-btn ml-auto inline-flex size-6 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink cursor-pointer"
           aria-label={open ? text.closeLabel : text.openLabel}
           onClick={(e) => {
             e.preventDefault();
@@ -293,7 +294,7 @@ export function ChipField({
       {shownError ? (
         <small
           id={errorId}
-          className="family-error label text-error whitespace-normal"
+          className="mt-1 block text-xs text-danger whitespace-normal"
           role="alert"
         >
           {shownError}

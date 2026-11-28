@@ -26,7 +26,7 @@ export function Select({ size = "md", className, children, ...rest }: SelectProp
     <span className={cx("ds-select-wrap relative flex w-full min-w-0", className)}>
       <select
         {...rest}
-        className={cx("ds-select select w-full", size === "sm" && "select-sm")}
+        className={cx("ds-select w-full", size === "sm" && "ds-select-sm")}
       >
         {children}
       </select>

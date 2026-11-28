@@ -21,31 +21,27 @@ export function OverviewSection({
   children: ReactNode;
 }) {
   return (
-    <section className="card card-border bg-base-100 shadow-sm">
-      <div className="card-body gap-4">
-        <div className="flex items-center gap-3">
-          <IconBadge
-            size="lg"
-            solid
-            tone="accent"
-            icon={<Icon name={icon} size={22} />}
-          />
-          <div className="min-w-0 flex-1">
-            <h3 className="m-0 text-base font-semibold leading-snug">
-              {title}
-            </h3>
-            {subtitle && (
-              <p className="m-0 text-sm text-base-content/60">{subtitle}</p>
-            )}
-          </div>
-          {count !== undefined && (
-            <span className="badge badge-soft badge-sm rounded-full">
-              {count}
-            </span>
-          )}
+    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5">
+      <div className="flex items-center gap-3">
+        <IconBadge
+          size="lg"
+          solid
+          tone="accent"
+          icon={<Icon name={icon} size={20} />}
+        />
+        <div className="min-w-0 flex-1">
+          <h3 className="m-0 text-base font-semibold leading-snug text-ink">
+            {title}
+          </h3>
+          {subtitle && <p className="m-0 text-xs text-muted">{subtitle}</p>}
         </div>
-        <div className="flex flex-col gap-2">{children}</div>
+        {count !== undefined && (
+          <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-surface-2 px-2 py-0.5 font-numeric text-xs font-semibold tabular-nums text-muted">
+            {count}
+          </span>
+        )}
       </div>
+      <div className="flex flex-col gap-2">{children}</div>
     </section>
   );
 }

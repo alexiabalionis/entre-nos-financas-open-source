@@ -6,7 +6,6 @@ import { useFutureContext } from "./future-context.tsx";
 import { CardMonthPanel } from "./card-month-panel.tsx";
 import { cardBars, cardSummary, ghostTotals } from "./view-model.ts";
 
-/** "1,6 mil", "850": cabe no topo de uma coluna estreita. */
 function shortReais(v: number, hidden: boolean): string {
   if (hidden) return "••";
   const r = Math.round(v);
@@ -14,12 +13,6 @@ function shortReais(v: number, hidden: boolean): string {
   return `${(r / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil`;
 }
 
-/**
- * Fatura do cartão mês a mês, em camadas por categoria (mais estimativa,
- * valor do banco e a compra simulada à parte), com o valor no topo de cada
- * barra, o contorno do plano salvo quando há simulação e o detalhe do mês
- * selecionado ao lado. Sem cartão não mostra nada. Não calcula: usa cardBars().
- */
 export function CardBillChart() {
   const f = useFutureContext();
   const result = f.draft;
@@ -31,16 +24,19 @@ export function CardBillChart() {
   const ghost = f.dirty && f.base ? ghostTotals(f.base, result, n) : undefined;
   const selected = Math.min(f.selected, n - 1);
   return (
-    <Panel title="Fatura do cartão">
+    <Panel title="Fatura do cartão" className="mb-0">
       {summary ? (
-          <p className="ds-caption">
-            {summary.first} em {summary.firstMonth}
-            {summary.low ? `; depois só parcelas e recorrentes, que caem para ${summary.low.value} em ${summary.low.month}` : ""}
-            . Compras à vista no cartão entram na média do dia a dia. Barras hachuradas são estimativa.
-          </p>
+        <p className="ds-caption">
+          {summary.first} em {summary.firstMonth}
+          {summary.low
+            ? `; depois só parcelas e recorrentes, que caem para ${summary.low.value} em ${summary.low.month}`
+            : ""}
+          . Compras à vista no cartão entram na média do dia a dia. Barras
+          hachuradas são estimativa.
+        </p>
       ) : null}
-      <div className="fut-card-bill-body">
-        <div className="fut-card-bill-chart">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
           <StackedBars
             label={`Fatura projetada por mês, ${n} meses`}
             columns={bars.columns}

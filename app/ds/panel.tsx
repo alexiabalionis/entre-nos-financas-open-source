@@ -1,24 +1,25 @@
 "use client";
 import { createContext, useContext } from "react";
-import type { ReactNode } from "./shared";
+import { cx, type ReactNode } from "./shared";
 
 type PanelProps = {
   /** Título do cabeçalho. Sem title e sem meta, o cabeçalho é omitido. */
   title?: string;
   /** Texto auxiliar à direita do título. */
   meta?: string;
-  /** Cor do dot ao lado do meta. É DADO (cor dinâmica), não tom semântico,
-   *  então vai inline via style — único hex permitido aqui. */
+  /** Cor do dot ao lado do meta. É DADO (cor dinâmica), não tom semântico. */
   metaDot?: string;
   /** Remove fundo/padding (vira só um agrupador de seção). */
   flush?: boolean;
+  /** Variante visual explícita ("card" com borda hairline ou "flat" apenas separador). */
+  variant?: "card" | "flat";
+  className?: string;
   children?: ReactNode;
 };
 
 /**
  * Dentro de um contêiner que já é cartão (ex. ProfileCard), o Panel vira
  * seção plana: título e conteúdo, separados das vizinhas por uma linha.
- * Cartão dentro de cartão some sem cada tela precisar passar `flush`.
  */
 const FlatPanels = createContext(false);
 
@@ -27,46 +28,73 @@ export function FlatPanelsProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Cartão de seção com cabeçalho opcional. Porta do Panel do ds-kit: só compõe
- * as classes já existentes em family.css, sem inventar estilo.
+ * Cartão de seção com cabeçalho opcional. Superfície limpa com borda hairline
+ * ou seção plana dentro de agrupadores.
  */
-export function Panel({ title, meta, metaDot, flush, children }: PanelProps) {
-  const flat = useContext(FlatPanels);
+export function Panel({
+  title,
+  meta,
+  metaDot,
+  flush,
+  variant,
+  className,
+  children,
+}: PanelProps) {
+  const flatCtx = useContext(FlatPanels);
+  const isFlat = variant === "flat" || (flatCtx && !flush && variant !== "card");
+
   const head =
     title || meta ? (
-      <div className="ds-panel-h flex items-center justify-between gap-2">
-        <h2 className="card-title m-0 text-base leading-snug">{title ?? ""}</h2>
+      <div className="ds-panel-h flex items-center justify-between gap-3">
+        <h2 className="m-0 text-[0.9375rem] font-semibold tracking-tight text-ink leading-snug">
+          {title ?? ""}
+        </h2>
         {meta ? (
-          <span className="ds-panel-meta inline-flex items-center gap-1.5 text-xs text-base-content/60">
+          <span className="ds-panel-meta inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted">
             {metaDot ? (
-              // metaDot é cor de DADO -> só a cor do dot vai inline.
-              <span className="ds-dot status status-xs" style={{ background: metaDot }} />
+              <span
+                className="ds-dot inline-block size-2 rounded-full"
+                style={{ background: metaDot }}
+              />
             ) : null}
             {meta}
           </span>
         ) : null}
       </div>
     ) : null;
-  if (flat && !flush)
+
+  if (isFlat) {
     return (
-      <section className="ds-panel-flat flex min-w-0 flex-col gap-3 border-t border-base-300 pt-4 first:border-t-0 first:pt-0 [&>p]:m-0">
+      <section
+        className={cx(
+          "ds-panel-flat flex min-w-0 flex-col gap-3 border-t border-border pt-4 first:border-t-0 first:pt-0 [&>p]:m-0",
+          className,
+        )}
+      >
         {head}
         {children}
       </section>
     );
+  }
+
+  if (flush) {
+    return (
+      <section className={cx("ds-panel flush flex min-w-0 flex-col gap-3", className)}>
+        {head}
+        {children}
+      </section>
+    );
+  }
+
   return (
-    <section className={flush ? "ds-panel flush" : "ds-panel card card-border bg-base-100 shadow-sm"}>
-      {flush ? (
-        <>
-          {head}
-          {children}
-        </>
-      ) : (
-        <div className="card-body">
-          {head}
-          {children}
-        </div>
+    <section
+      className={cx(
+        "ds-panel flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-surface p-5",
+        className,
       )}
+    >
+      {head}
+      {children}
     </section>
   );
 }

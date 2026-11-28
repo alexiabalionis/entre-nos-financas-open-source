@@ -39,15 +39,15 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f4ef" },
-    { media: "(prefers-color-scheme: dark)", color: "#181a18" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f6fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#111117" },
   ],
 };
-/** Aplica o tema salvo antes da primeira pintura (sem ele, quem usa "claro"
- *  num aparelho em modo escuro via o tema escuro piscar até o React carregar).
- *  O app-shell grava a preferência nesta chave sempre que aplica o tema. */
+/** Aplica o tema e o acento salvos antes da primeira pintura (sem ele, quem usa
+ *  "claro" num aparelho em modo escuro via o tema escuro piscar até o React carregar).
+ *  O app-shell grava a preferência nestas chaves sempre que aplica tema/acento. */
 const THEME_BOOT =
-  'try{var t=localStorage.getItem("entre-nos-theme-v1");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}';
+  'try{var t=localStorage.getItem("entre-nos-theme-v1");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;var a=localStorage.getItem("entre-nos-accent-v1");if(a==="roxo"||a==="esmeralda"||a==="oceano"||a==="ameixa")document.documentElement.dataset.accent=a}catch(e){}';
 
 export default async function Layout({
   children,

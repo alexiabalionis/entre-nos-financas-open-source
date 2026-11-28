@@ -37,8 +37,9 @@ export function ChipFieldEdit({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2 px-3 py-1">
-        <label className="input input-sm flex-1">
+        <label className="flex min-h-8 flex-1 items-center rounded-lg border border-border bg-surface px-2.5 focus-within:border-accent">
           <input
+            className="ds-chip-input w-full border-0 bg-transparent text-sm text-ink outline-none"
             value={name}
             autoFocus
             aria-label={fieldLabel}
@@ -61,19 +62,24 @@ export function ChipFieldEdit({
         </label>
         <button
           type="button"
-          className="btn btn-ghost btn-xs btn-circle"
+          className="ui-reset-btn inline-flex size-7 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink cursor-pointer disabled:opacity-40"
           aria-label={saveLabel}
           disabled={Boolean(own) || busy}
           onClick={save}
         >
           <Icon name="check" size={14} />
         </button>
-        <button type="button" className="btn btn-ghost btn-xs btn-circle" aria-label={cancelLabel} onClick={onCancel}>
+        <button
+          type="button"
+          className="ui-reset-btn inline-flex size-7 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink cursor-pointer disabled:opacity-40"
+          aria-label={cancelLabel}
+          onClick={onCancel}
+        >
           <Icon name="close" size={14} />
         </button>
       </div>
       {error ? (
-        <small className="px-3 text-xs text-error" role="alert">
+        <small className="px-3 text-xs text-danger" role="alert">
           {error}
         </small>
       ) : null}

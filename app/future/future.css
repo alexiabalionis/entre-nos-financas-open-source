@@ -231,7 +231,7 @@
 :root .fut-sim-alts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 :root .fut-sim-alt {
   display: grid; gap: 2px; width: 100%; min-height: 44px; padding: 8px 12px; text-align: left;
-  border: 1px solid var(--family-line); border-radius: var(--family-radius-md); background: var(--color-base-100);
+  border: 1px solid var(--family-line); border-radius: var(--family-radius-md); background: var(--ui-surface);
   color: var(--family-text); cursor: pointer;
   transition: border-color var(--ds-dur) var(--ds-ease), background-color var(--ds-dur) var(--ds-ease);
 }
@@ -284,7 +284,7 @@
 :root .fut-sim-sheet-foot {
   /* Preso ao pé da caixa (sem padding embaixo nela): nada rola por baixo das ações. */
   display: grid; gap: 10px; position: sticky; bottom: 0;
-  padding: 12px 0 calc(20px + env(safe-area-inset-bottom)); background: var(--color-base-100); border-top: 1px solid var(--family-line);
+  padding: 12px 0 calc(20px + env(safe-area-inset-bottom)); background: var(--ui-surface); border-top: 1px solid var(--family-line);
 }
 :root .fut-sim-confirm { margin: 0; font-size: 0.875rem; line-height: 1.45; color: var(--family-text); }
 :root .fut-sim-actions { display: flex; gap: 10px; }

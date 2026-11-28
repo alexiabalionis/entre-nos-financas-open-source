@@ -1,9 +1,7 @@
 "use client";
-// Margem de segurança: o mínimo que fica na conta até o salário. A pessoa
-// escolhe o valor; sem escolha, vale meia semana do dia a dia de sempre.
 import { useId, useState } from "react";
 import { Panel } from "../ds/panel.tsx";
-import { Button } from "../button.tsx";
+import { Button } from "../ds/button.tsx";
 import type { CopilotWire } from "../../src/server/copilot.ts";
 import type { CopilotWrite } from "../hooks/use-copilot.ts";
 import { parseAmount } from "./model.ts";
@@ -40,7 +38,6 @@ export function MarginPanel({
     }
   };
   const submit = () => {
-    // Zero é permitido: sem margem.
     if (/^0+(,0{1,2})?$/.test(value.trim())) return void save("0,00");
     const parsed = parseAmount(value, null, money);
     if (!parsed.ok) return setError(parsed.error);
@@ -48,26 +45,42 @@ export function MarginPanel({
   };
 
   return (
-    <Panel title="Margem de segurança" meta={money(margin)}>
+    <Panel title="Margem de segurança" meta={money(margin)} className="mb-0">
       <p className="ds-caption">
-        O mínimo que fica na conta até o salário, para imprevistos. Não é para gastar e não é reserva.
-        {copilot.marginChosen ? "" : " Hoje vale o padrão: meia semana do dia a dia de sempre."}
+        O mínimo que fica na conta até o salário, para imprevistos. Não é para
+        gastar e não é reserva.
+        {copilot.marginChosen
+          ? ""
+          : " Hoje vale o padrão: meia semana do dia a dia de sempre."}
       </p>
       {!reader && !editing && (
-        <div className="cop-links">
-          <Button variant="text" onClick={() => { setEditing(true); setValue(""); setError(""); }}>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setEditing(true);
+              setValue("");
+              setError("");
+            }}
+          >
             Alterar a margem
           </Button>
           {copilot.marginChosen && (
-            <Button variant="text" busy={busy} onClick={() => void save(null)}>
+            <Button
+              variant="quiet"
+              size="sm"
+              busy={busy}
+              onClick={() => void save(null)}
+            >
               Voltar ao padrão
             </Button>
           )}
         </div>
       )}
       {!reader && editing && (
-        <div className="cop-inline">
-          <label className="ds-caption" htmlFor={inputId}>
+        <div className="flex flex-col gap-2.5">
+          <label className="text-xs font-medium text-ink" htmlFor={inputId}>
             Margem, em reais
           </label>
           <input
@@ -75,21 +88,30 @@ export function MarginPanel({
             inputMode="decimal"
             placeholder="Ex.: 300"
             value={value}
+            className="font-numeric text-base"
             aria-invalid={error ? true : undefined}
             onChange={(e) => setValue(e.target.value)}
           />
-          <div className="cop-actions">
-            <Button variant="primary" busy={busy} onClick={submit}>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" size="sm" busy={busy} onClick={submit}>
               Salvar margem
             </Button>
-            <Button variant="text" disabled={busy} onClick={() => setEditing(false)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => setEditing(false)}
+            >
               Cancelar
             </Button>
           </div>
         </div>
       )}
       {error && (
-        <p className="cop-err alert alert-soft alert-error" role="alert">
+        <p
+          className="m-0 rounded-xl border border-danger/25 bg-danger-bg px-3 py-2 text-xs font-medium text-danger"
+          role="alert"
+        >
           {error}
         </p>
       )}

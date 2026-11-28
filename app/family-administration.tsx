@@ -28,28 +28,30 @@ export function FamilyAdministration() {
   const { busy, error, notice, run } = useAsyncAction();
   return (
     <div role="region" aria-label="Administração de famílias" className="family-administration">
-    <Panel title="Famílias que você administra">
-      <p className="ds-caption text-xs opacity-60">
+    <Panel title="Famílias que você administra" className="mb-0">
+      <p className="ds-caption">
         Só seu perfil pode liberar novos casais. Cada casal terá seu próprio
         espaço, separado das finanças de vocês. Até 30 pessoas no total.
       </p>
-      <Button
-        busy={busy}
-        onClick={() =>
-          void run(async () => {
-            setFamilies((await request()).families);
-          })
-        }
-      >
-        Ver famílias cadastradas
-      </Button>
+      <div>
+        <Button
+          busy={busy}
+          onClick={() =>
+            void run(async () => {
+              setFamilies((await request()).families);
+            })
+          }
+        >
+          Ver famílias cadastradas
+        </Button>
+      </div>
       {families?.map((f) => (
         <div key={f.id}>
-          <h3 className="text-sm font-semibold">{f.name}</h3>
+          <h3 className="m-0 text-sm font-semibold text-ink">{f.name}</h3>
           <RowList rows={f.people.map((p) => ({ title: p.name, sub: p.email }))} />
         </div>
       ))}
-      {families?.length === 0 && <p className="ds-caption text-xs opacity-60">Nenhum outro casal cadastrado ainda.</p>}
+      {families?.length === 0 && <p className="ds-caption">Nenhum outro casal cadastrado ainda.</p>}
       <Collapsible summary="Adicionar um casal">
         <form
           autoComplete="off"
@@ -127,7 +129,7 @@ export function FamilyAdministration() {
               autoComplete="current-password"
             />
           </Field>
-          <p className="ds-caption text-xs opacity-60">
+          <p className="ds-caption">
             Os dois acessos são criados juntos. As senhas não ficam visíveis na
             lista de famílias. Entregue cada acesso à pessoa correspondente por
             um canal privado.
@@ -137,8 +139,22 @@ export function FamilyAdministration() {
           </Button>
         </form>
       </Collapsible>
-      {error && <p role="alert" className="alert alert-soft alert-error">{error}</p>}
-      {notice && <p role="status" className="alert alert-soft alert-info">{notice}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="m-0 rounded-xl border border-danger/25 bg-danger-bg px-4 py-3 text-sm font-medium text-danger"
+        >
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p
+          role="status"
+          className="m-0 rounded-xl border border-info/25 bg-info-bg px-4 py-3 text-sm font-medium text-ink"
+        >
+          {notice}
+        </p>
+      )}
     </Panel>
     </div>
   );

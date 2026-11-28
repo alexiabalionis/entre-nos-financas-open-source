@@ -1,8 +1,7 @@
-import { CopilotPage } from "../../copilot/copilot-page";
 import { FutureScope } from "../../future/future-scope";
 import { CopilotoTabs, FutureSlot } from "./copiloto-tabs";
 
-/** /copiloto: o Futuro (nova tela, com a fonte própria) e o Agora (tela anterior, intacta). */
+/** /copiloto: unificado em 2 modos (Futuro + Simular), com Reservas integradas. */
 export default function Page() {
   return (
     <CopilotoTabs
@@ -11,7 +10,6 @@ export default function Page() {
           <FutureSlot />
         </FutureScope>
       }
-      now={<CopilotPage />}
     />
   );
 }

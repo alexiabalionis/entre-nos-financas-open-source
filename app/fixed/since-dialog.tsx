@@ -69,7 +69,7 @@ export function SinceDialog({
           />
         </label>
         {showError && (
-          <p className="text-error text-sm" id="since-error" role="alert">
+          <p className="text-sm text-danger" id="since-error" role="alert">
             {error}
           </p>
         )}

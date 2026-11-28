@@ -67,7 +67,7 @@ const TITLES: Record<Kind, string> = {
  * dia a dia são simulação. Fechar uma pergunta limpa o que não pode virar
  * plano; um aporte em teste fica guardado e aparece como "Teste em aberto".
  */
-export function Simulator() {
+export function Simulator({ onCommitted }: { onCommitted?: () => void } = {}) {
   const f = useFutureContext();
   const goals = (f.draftInput?.goals ?? []).filter((g) => g.status === "active");
   // Todas as sugestões do motor (avisos também), menos as escondidas com "agora não".
@@ -82,6 +82,15 @@ export function Simulator() {
   const [open, setOpen] = useState<Kind | null>(null);
   const [last, setLast] = useState<Kind | null>(null);
   const [saved, setSaved] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setIsDesktop(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const ask = (kind: Kind) => {
     // Uma pergunta por vez: trocar de pergunta começa do plano salvo. Um rascunho
@@ -104,72 +113,126 @@ export function Simulator() {
       : []),
   ];
 
+  const handleSaved = () => {
+    setSaved(true);
+    setOpen(null);
+    onCommitted?.();
+  };
+
   return (
     <HistoryContext.Provider value={history}>
-    <div className="fut-sim">
-      <header className="fut-sim-head">
-        <h2 className="fut-sim-title">O que vocês querem saber?</h2>
-        <p className="fut-sim-lede">Escolham uma pergunta. Nada é gravado até vocês confirmarem.</p>
-      </header>
+    <div className="fut-sim grid grid-cols-1 items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="flex flex-col gap-4 lg:sticky lg:top-6">
+        <header className="fut-sim-head">
+          <h2 className="fut-sim-title">O que vocês querem saber?</h2>
+          <p className="fut-sim-lede">Escolham uma pergunta. Nada é gravado até vocês confirmarem.</p>
+        </header>
 
-      {saved ? (
-        <p className="fut-sim-status" role="status">
-          <Icon name="check" size={16} /> Plano salvo. O Futuro já mostra os novos aportes.
-        </p>
-      ) : null}
+        {saved ? (
+          <p className="fut-sim-status" role="status">
+            <Icon name="check" size={16} /> Plano salvo. O Futuro já está contando com isso.
+          </p>
+        ) : null}
 
-      {f.dirty && f.canSave && !open ? (
-        <div className="fut-sim-pending" role="status">
-          <span className="fut-sim-pending-text">
-            <strong>Teste em aberto</strong>
-            <span>{maskMoney(f.describe[0] ?? "Uma mudança ainda não salva.", f.hidden)}</span>
-          </span>
-          <span className="fut-sim-pending-actions">
-            <Button variant="quiet" size="sm" onClick={f.discard}>
-              Descartar
+        {f.dirty && f.canSave && (!open || !isDesktop) ? (
+          <div className="fut-sim-pending" role="status">
+            <span className="fut-sim-pending-text">
+              <strong>Teste em aberto</strong>
+              <span>{maskMoney(f.describe[0] ?? "Uma mudança ainda não salva.", f.hidden)}</span>
+            </span>
+            <span className="fut-sim-pending-actions">
+              <Button variant="quiet" size="sm" onClick={f.discard}>
+                Descartar
+              </Button>
+              <Button size="sm" onClick={() => setOpen(last ?? "goal")}>
+                Continuar
+              </Button>
+            </span>
+          </div>
+        ) : null}
+
+        {doors.length ? (
+          <ul className="fut-sim-doors">
+            {doors.map((d) => {
+              const selected = isDesktop && open === d.kind;
+              return (
+                <li key={d.kind}>
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    className={cx(
+                      "fut-sim-door transition-colors",
+                      selected && "border-accent! bg-accent-soft/50! ring-1 ring-accent",
+                    )}
+                    onClick={() => ask(d.kind)}
+                  >
+                    <span className="fut-sim-door-icon" aria-hidden>
+                      <Icon name={d.icon} size={20} />
+                    </span>
+                    <span className="fut-sim-door-text">
+                      <span className="fut-sim-door-title">
+                        {TITLES[d.kind]}
+                        {d.count ? <span className="fut-sim-door-count">{d.count}</span> : null}
+                      </span>
+                      <span className="fut-sim-door-sub">{d.sub}</span>
+                    </span>
+                    <Icon name="right" size={18} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="ds-caption">
+            Cadastrem um objetivo ou um cartão para simular. Sem eles, ainda não há o que testar aqui.
+          </p>
+        )}
+
+        {hasEveryday ? (
+          <p className="fut-sim-other">
+            <Button variant="text" onClick={() => ask("everyday")}>
+              Outra coisa: mudar o gasto do dia a dia
             </Button>
-            <Button size="sm" onClick={() => setOpen(last ?? "goal")}>
-              Continuar
-            </Button>
-          </span>
-        </div>
-      ) : null}
+          </p>
+        ) : null}
+      </div>
 
-      {doors.length ? (
-        <ul className="fut-sim-doors">
-          {doors.map((d) => (
-            <li key={d.kind}>
-              <button type="button" className="fut-sim-door" onClick={() => ask(d.kind)}>
-                <span className="fut-sim-door-icon" aria-hidden>
-                  <Icon name={d.icon} size={20} />
-                </span>
-                <span className="fut-sim-door-text">
-                  <span className="fut-sim-door-title">
-                    {TITLES[d.kind]}
-                    {d.count ? <span className="fut-sim-door-count">{d.count}</span> : null}
-                  </span>
-                  <span className="fut-sim-door-sub">{d.sub}</span>
-                </span>
-                <Icon name="right" size={18} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="ds-caption">
-          Cadastrem um objetivo ou um cartão para simular. Sem eles, ainda não há o que testar aqui.
-        </p>
-      )}
+      <div className="hidden min-w-0 lg:block">
+        {open ? (
+          <section
+            key={open}
+            aria-label={TITLES[open]}
+            className="rounded-2xl border border-border bg-surface p-6"
+          >
+            <header className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">
+              <h3 className="text-[1.0625rem] font-semibold tracking-tight text-ink">
+                {TITLES[open]}
+              </h3>
+              <IconButton icon="close" label="Fechar" onClick={close} />
+            </header>
+            <QuestionBody
+              kind={open}
+              suggestions={suggestions}
+              hiddenCount={hiddenCount}
+              onDismiss={dismissed.dismiss}
+              onRestore={dismissed.restore}
+              onSaved={handleSaved}
+              onDone={close}
+            />
+          </section>
+        ) : (
+          <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border-strong bg-surface p-8 text-center">
+            <p className="font-display text-lg font-medium text-ink">
+              Escolha uma pergunta ao lado
+            </p>
+            <p className="mt-1.5 max-w-sm text-[0.875rem] leading-relaxed text-ink-2">
+              Você vê o impacto mês a mês e decide depois se quer gravar no plano.
+            </p>
+          </div>
+        )}
+      </div>
 
-      {hasEveryday ? (
-        <p className="fut-sim-other">
-          <Button variant="text" onClick={() => ask("everyday")}>
-            Outra coisa: mudar o gasto do dia a dia
-          </Button>
-        </p>
-      ) : null}
-
-      <QuestionDialog open={open !== null} title={open ? TITLES[open] : ""} onClose={close}>
+      <QuestionDialog open={!isDesktop && open !== null} title={open ? TITLES[open] : ""} onClose={close}>
         {open ? (
           <QuestionBody
             kind={open}
@@ -177,10 +240,7 @@ export function Simulator() {
             hiddenCount={hiddenCount}
             onDismiss={dismissed.dismiss}
             onRestore={dismissed.restore}
-            onSaved={() => {
-              setSaved(true);
-              setOpen(null);
-            }}
+            onSaved={handleSaved}
             onDone={close}
           />
         ) : null}
@@ -190,7 +250,7 @@ export function Simulator() {
   );
 }
 
-/** Folha de baixo no celular, painel no centro a partir de 640px (daisyUI modal). */
+/** Folha de baixo no celular, painel no centro a partir de 640px (native dialog). */
 function QuestionDialog({
   open,
   title,
@@ -213,7 +273,7 @@ function QuestionDialog({
   return (
     <dialog
       ref={ref}
-      className="modal modal-bottom sm:modal-middle"
+      className="fixed inset-0 z-50 m-0 hidden h-dvh max-h-none w-screen max-w-none items-end justify-center bg-transparent p-0 text-ink backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:items-center sm:p-4 open:flex"
       aria-labelledby={titleId}
       onClose={onClose}
       onClick={(e) => {
@@ -221,7 +281,7 @@ function QuestionDialog({
       }}
     >
       {open ? (
-        <div className="modal-box fut-sim-sheet pb-0!">
+        <div className="fut-sim-sheet flex max-h-[90dvh] w-full flex-col overflow-y-auto rounded-t-2xl border border-border bg-surface p-5 pb-0 text-ink shadow-xl sm:max-w-xl sm:rounded-2xl">
           <span className="fut-sim-grab" aria-hidden />
           <header className="fut-sim-sheet-head">
             {/* Foco inicial no título (não no Fechar): o leitor de tela ouve a pergunta e o anel não pesa. */}
@@ -437,7 +497,10 @@ function OtherQuestion({
       {f.dirty ? <Numbers purchase={kind === "purchase"} /> : null}
 
       {f.error ? (
-        <p role="alert" className="ds-caption alert alert-soft alert-error">
+        <p
+          role="alert"
+          className="rounded-xl border border-danger/25 bg-danger-soft px-3.5 py-2.5 text-[0.875rem] text-danger"
+        >
           {f.error}
         </p>
       ) : null}
@@ -715,23 +778,30 @@ function PurchaseQuestion() {
       />
       <fieldset className="fut-sim-chips">
         <legend>Em quantas vezes</legend>
-        <div className="fut-sim-chips-row">
-          {TIMES.map((t) => (
-            <label key={t} className={cx("fut-sim-chip", t === times && "is-on")}>
-              <input
-                className="absolute! inset-0! m-0! h-full! min-h-0! w-full! cursor-pointer appearance-none! opacity-0!"
-                type="radio"
-                name={`${id}-times`}
-                value={t}
-                checked={t === times}
-                onChange={() => {
+        <div role="radiogroup" aria-label="Em quantas vezes" className="grid grid-cols-6 gap-1.5">
+          {TIMES.map((t) => {
+            const active = t === times;
+            return (
+              <button
+                key={t}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                className={cx(
+                  "ui-reset-btn inline-flex min-h-9.5 items-center justify-center rounded-xl border text-[0.875rem] font-semibold tabular-nums transition-colors",
+                  active
+                    ? "border-accent bg-accent text-white"
+                    : "border-border bg-surface text-ink hover:bg-surface-2",
+                )}
+                onClick={() => {
                   setTimes(t);
                   apply({ times: t });
                 }}
-              />
-              {t}x
-            </label>
-          ))}
+              >
+                {t}x
+              </button>
+            );
+          })}
         </div>
         <p className="fut-sim-hint">{installmentLabel(value, times, f.hidden)}</p>
       </fieldset>
@@ -866,7 +936,10 @@ function SuggestionList({
                       Testar
                     </Button>
                   ) : d.link ? (
-                    <Link className="btn btn-soft btn-sm" href={d.link.href}>
+                    <Link
+                      className="inline-flex min-h-8.5 items-center rounded-xl bg-accent-soft px-3 text-[0.8125rem] font-medium text-accent-ink no-underline transition-colors hover:brightness-95"
+                      href={d.link.href}
+                    >
                       {d.link.label}
                     </Link>
                   ) : null}
@@ -1243,7 +1316,10 @@ function GoalQuestion({ onSaved, onDone }: { onSaved: () => void; onDone: () => 
       {f.dirty ? <Numbers purchase={false} /> : null}
 
       {error || f.error ? (
-        <p role="alert" className="ds-caption alert alert-soft alert-error">
+        <p
+          role="alert"
+          className="rounded-xl border border-danger/25 bg-danger-soft px-3.5 py-2.5 text-[0.875rem] text-danger"
+        >
           {error || f.error}
         </p>
       ) : null}

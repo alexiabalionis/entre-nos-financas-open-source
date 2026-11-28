@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button } from "../button";
+import { Button } from "../ds/button.tsx";
 import { Icon } from "../ds/icon.tsx";
 import { cx } from "../ds/shared.ts";
 
@@ -16,7 +16,7 @@ export function JuditeAvatar({
   return (
     <span
       className={cx(
-        "judite-avatar grid shrink-0 place-items-center rounded-full bg-[var(--color-primary-tint)] text-[var(--color-primary-ink)]",
+        "judite-avatar grid shrink-0 place-items-center rounded-full bg-accent-soft text-accent-ink",
         size === "sm" ? "size-7" : "size-8",
         working && "is-working",
         className,
@@ -66,22 +66,22 @@ export function JuditeWaiting({ onStop }: { onStop?: () => void }) {
   );
   const long = elapsed >= LONG_WAIT;
   return (
-    <div className="chat chat-start chat-waiting">
-      <JuditeAvatar size="sm" working className="chat-image self-start" />
-      <div className="chat-bubble chat-waiting-bubble bg-[var(--color-primary-tint)] text-base-content">
+    <div className="chat-waiting flex items-start gap-2.5">
+      <JuditeAvatar size="sm" working className="mt-0.5" />
+      <div className="max-w-[88%] rounded-2xl rounded-tl-md border border-border bg-accent-soft/60 px-4 py-3 text-[0.9375rem] text-ink shadow-xs sm:max-w-[80%]">
         <div className="flex items-center gap-2.5">
-          <span className="chat-dots" aria-hidden="true">
+          <span className="chat-dots text-accent-ink" aria-hidden="true">
             <span />
             <span />
             <span />
           </span>
           {/* Só a etapa é anunciada; o relógio fica fora do leitor de tela. */}
-          <span role="status" className="min-w-0">
+          <span role="status" className="min-w-0 leading-snug">
             {stage}
           </span>
           {elapsed >= 3 && (
             <span
-              className="ml-auto shrink-0 pl-1 text-xs text-base-content/70 tabular-nums"
+              className="ml-auto shrink-0 pl-1 text-[0.75rem] text-ink-2 tabular-nums"
               aria-hidden="true"
             >
               {clock(elapsed)}
@@ -89,8 +89,8 @@ export function JuditeWaiting({ onStop }: { onStop?: () => void }) {
           )}
         </div>
         {long && onStop && (
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <p className="m-0 text-[0.8125rem] leading-snug text-base-content/75">
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border/60 pt-2">
+            <p className="m-0 text-[0.8125rem] leading-snug text-ink-2">
               Você pode continuar esperando ou parar. A mensagem enviada fica
               salva.
             </p>
@@ -108,7 +108,7 @@ export function JuditeWaiting({ onStop }: { onStop?: () => void }) {
 export function JuditeInProgress() {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="chat-dots" aria-hidden="true">
+      <span className="chat-dots text-accent-ink" aria-hidden="true">
         <span />
         <span />
         <span />

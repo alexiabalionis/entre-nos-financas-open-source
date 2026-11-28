@@ -15,7 +15,12 @@ export function SummaryCards({
   hidden: boolean;
 }) {
   const s = data.summary;
-  if (!s) return <p className="ds-caption">Ainda não há um mês fechado com lançamentos para comparar.</p>;
+  if (!s)
+    return (
+      <p className="rounded-2xl border border-border bg-surface px-4 py-3 text-[0.875rem] text-ink-2">
+        Ainda não há um mês fechado com lançamentos para comparar.
+      </p>
+    );
   return (
     <Stats label="Resumo dos meses fechados" grid4>
       <Stat icon="in" tone="ok" title="Entra por mês" value={<LiveMoney cents={BigInt(s.avgIn)} hidden={hidden} />} caption="Média dos meses fechados" />

@@ -28,8 +28,8 @@ export function DaysPanel({
         aria="Gasto de cada dia do mês"
       />
       {reading && (
-        <p className="ds-caption">
-          <b>{reading}</b>
+        <p className="text-[0.875rem] leading-relaxed text-ink-2">
+          <strong className="font-semibold text-ink">{reading}</strong>
         </p>
       )}
     </Panel>

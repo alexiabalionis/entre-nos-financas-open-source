@@ -12,13 +12,12 @@ import { preparePhoto, saveProfile } from "./profile-photo";
 import { ProfileAppearance } from "./profile-appearance";
 import { ProfileGreeting } from "./profile-greeting";
 import { ProfilePhotoField } from "./profile-photo-field";
+
 export function HomeBlock({
   children,
 }: {
   cardId: HomeCardId;
   caption?: string;
-  // Read by HomeLayout: false renders the block always open, without the
-  // collapsible HomeDisclosure wrapper (default true).
   collapsible?: boolean;
   children: ReactNode;
 }) {
@@ -31,13 +30,12 @@ export function PreferencesPanel({
   onSaved,
   name,
   onTour,
-  onEditHome,
 }: {
   preferences: Preferences;
   onSaved: (p: Preferences) => void;
   name: string;
   onTour: () => void;
-  onEditHome: () => void;
+  onEditHome?: () => void;
 }) {
   const [draft, setDraft] = useState(preferences),
     [photo, setPhoto] = useState<string | null | undefined>(),
@@ -141,12 +139,12 @@ export function PreferencesPanel({
     >
       <ProfileGreeting name={name} photoUrl={photoUrl} />
       <form onSubmit={save} className="flex flex-col gap-3">
-        <section className="card card-border bg-base-100 shadow-sm">
+        <section className="rounded-2xl border border-border bg-surface p-5">
           <fieldset
             disabled={busy}
-            className="card-body m-0 min-w-0 gap-4 border-0"
+            className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0"
           >
-            <legend className="float-left mb-1 w-full p-0 text-base font-semibold">
+            <legend className="mb-1 w-full p-0 text-base font-semibold text-ink">
               Meu perfil e aparência
             </legend>
             <ProfilePhotoField
@@ -163,27 +161,10 @@ export function PreferencesPanel({
             <ProfileAppearance
               theme={draft.theme}
               onTheme={(theme) => setDraft({ ...draft, theme })}
+              accent={draft.accent}
+              onAccent={(accent) => setDraft({ ...draft, accent })}
             />
           </fieldset>
-        </section>
-        <section className="card card-border bg-base-100 shadow-sm">
-          <div className="card-body items-start gap-2">
-            <h3 className="m-0 text-base font-semibold">
-              Organização da tela principal
-            </h3>
-            <p className="m-0 text-sm text-base-content/70">
-              Edite os próprios cards, arrastando, usando setas ou tocando na
-              lixeira. Remover da tela não apaga informações.
-            </p>
-            <Button
-              variant="quiet"
-              size="sm"
-              icon="layers"
-              onClick={onEditHome}
-            >
-              Organizar minha tela principal
-            </Button>
-          </div>
         </section>
         <Button
           type="submit"
@@ -199,7 +180,10 @@ export function PreferencesPanel({
               : "Salvar meu espaço"}
         </Button>
         {message && (
-          <p role="status" className="alert alert-soft alert-info m-0">
+          <p
+            role="status"
+            className="m-0 rounded-xl border border-info/25 bg-info-bg px-4 py-3 text-sm font-medium text-ink"
+          >
             {message}
           </p>
         )}

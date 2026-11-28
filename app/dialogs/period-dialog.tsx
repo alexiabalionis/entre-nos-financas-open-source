@@ -52,9 +52,12 @@ export function PeriodDialog({
                 key={value}
                 type="button"
                 className={cx(
-                  "btn btn-sm h-11 rounded-field font-medium capitalize",
-                  selected ? "btn-primary" : "btn-ghost",
-                  isToday && !selected && "border-primary/50 text-primary",
+                  "ui-reset-btn inline-flex h-11 items-center justify-center rounded-xl border text-sm font-medium capitalize transition-colors cursor-pointer",
+                  selected
+                    ? "border-accent bg-accent text-on-accent"
+                    : isToday
+                      ? "border-accent/60 bg-accent-soft/50 text-accent-ink hover:bg-accent-soft"
+                      : "border-transparent bg-surface text-ink hover:bg-surface-2",
                 )}
                 aria-pressed={selected}
                 aria-current={isToday ? "date" : undefined}

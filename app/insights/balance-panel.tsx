@@ -28,14 +28,15 @@ export function BalancePanel({
         aria="Saldo das contas no fim de cada dia"
         animate
         data={points.map((p) => ({ x: ddmm(p.day), v: toReais(p.cents) }))}
-        legend={[{ label: "saldo", color: "var(--family-accent)" }]}
+        legend={[{ label: "saldo", color: "var(--ui-accent)" }]}
         height={170}
         empty={hidden || points.length < 2}
         emptyText={hidden ? "Valores ocultos." : "Informe o saldo inicial das contas para ver a linha."}
       />
       {!hidden && points.length > 1 && (
-        <p className="ds-caption">
-          <b>{balanceReading(points, money)}</b> Pelos lançamentos registrados.
+        <p className="text-[0.875rem] leading-relaxed text-ink-2">
+          <strong className="font-semibold text-ink">{balanceReading(points, money)}</strong>{" "}
+          Pelos lançamentos registrados.
         </p>
       )}
     </Panel>

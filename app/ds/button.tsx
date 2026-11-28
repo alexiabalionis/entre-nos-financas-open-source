@@ -7,14 +7,20 @@ export type ButtonVariant = "primary" | "secondary" | "quiet" | "text";
 /** Estados mutuamente exclusivos. loading/success/error desabilitam o clique. */
 export type ButtonState = "idle" | "loading" | "success" | "error";
 
-// As classes de variante antigas ficam porque as telas as usam em regras de
-// layout (ex.: `.cop-actions .ds-button`, `.family-actions .primary`). O visual
-// vem do daisyUI (btn-*), que vence o CSS antigo pela ordem das camadas.
 const variantClass: Record<ButtonVariant, string> = {
-  primary: "primary btn-primary",
-  secondary: "ds-secondary",
-  quiet: "quiet btn-soft",
-  text: "text-button btn-link",
+  primary:
+    "primary bg-accent text-on-accent hover:bg-accent-hover shadow-xs border border-transparent",
+  secondary:
+    "ds-secondary bg-surface text-ink border border-border hover:border-border-strong hover:bg-surface-2",
+  quiet:
+    "quiet bg-accent-soft text-accent-ink border border-transparent hover:brightness-95 dark:hover:brightness-110",
+  text:
+    "text-button bg-transparent text-accent-ink border border-transparent hover:underline px-1.5",
+};
+
+const stateOverride: Partial<Record<ButtonState, string>> = {
+  success: "!bg-ok !text-white !border-transparent",
+  error: "!bg-danger !text-white !border-transparent",
 };
 
 export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
@@ -36,9 +42,7 @@ export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "childre
 
 /**
  * Botão de ação do design system, par do IconButton: texto (e ícone opcional),
- * 44px de altura mínima (36px no `sm`, com a mesma área de toque), hover,
- * pressão e foco do DS. Repassa qualquer prop nativa de `<button>`; `type` é
- * "button" por padrão. Estados: loading (spinner), success (✓) e error.
+ * 40px no desktop / 44px no toque (34px no `sm`), hover, pressão e foco do DS.
  */
 export function Button({
   variant = "secondary",
@@ -66,7 +70,10 @@ export function Button({
           : children;
   const glyph =
     current === "loading" ? (
-      <span className="loading loading-spinner loading-sm" aria-hidden="true" />
+      <span
+        className="inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+        aria-hidden="true"
+      />
     ) : current === "success" ? (
       <span className="ds-button-glyph inline-flex" aria-hidden="true">
         <Icon name="check" size={16} />
@@ -82,7 +89,6 @@ export function Button({
         ) : isIconName(icon) ? (
           <Icon name={icon} size={16} />
         ) : (
-          // Glifo de texto ("↻", "💳"): antes virava um <Icon> sem desenho.
           <span className="inline-block w-4 text-center leading-none">{icon}</span>
         )}
       </span>
@@ -93,11 +99,12 @@ export function Button({
       type={type}
       disabled={disabled || current !== "idle"}
       className={cx(
-        "ds-button btn",
+        "ds-button ui-btn inline-flex items-center justify-center gap-2 rounded-xl font-medium whitespace-nowrap transition-[background-color,border-color,color,transform,filter] duration-150 cursor-pointer select-none active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
+        size === "sm"
+          ? "is-sm min-h-8.5 px-3 text-[0.8125rem] leading-none"
+          : "min-h-10 [@media(pointer:coarse)]:min-h-11 px-4 text-sm leading-none",
         variantClass[variant],
-        size === "sm" && "is-sm btn-sm",
-        current === "success" && "btn-success",
-        current === "error" && "btn-error",
+        stateOverride[current],
         current !== "idle" && `is-${current}`,
         className,
       )}
